@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "wordpress-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "5c1c5d5704d071543469604773df0f56df33b729221c42899f92fee1f846ea15"
+    },
+    "wp-performance": {
+      "source": "wordpress/agent-skills",
+      "sourceType": "github",
+      "computedHash": "580d879ffecd41835e297cbf222443bff6bebf7aaa0efb46852d743249330f9b"
+    },
+    "wp-plugin-development": {
+      "source": "wordpress/agent-skills",
+      "sourceType": "github",
+      "computedHash": "3c13a9d2e6e346c9f933918fdf4d191cdba9f2cfe24f87cbcd763d090bbd8014"
+    },
+    "wpds": {
+      "source": "wordpress/agent-skills",
+      "sourceType": "github",
+      "computedHash": "1a05f741c9a43026507c8c9641b2dbde4b4928a14038f97322c36ee8b1e88470"
+    }
+  }
+}
