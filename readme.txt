@@ -45,3 +45,11 @@ No, AI Tamer allows you to distinguish between Google Search indexing and Google
 * Audit reports (CSV export).
 * HTTP protection headers (X-Robots-Tag).
 * Bot license token management (HMAC signed).
+
+== Screenshots ==
+
+1. **Dashboard**: Overview of AI bot activity and protection status.
+2. **General Settings**: Configure robots.txt and meta tag protection.
+3. **Audit Reports**: Generate CSV evidence of crawler access.
+4. **License Management**: Issue and revoke access tokens for trusted agents.
+5. **Post Protection**: Granular AI control for individual posts.
