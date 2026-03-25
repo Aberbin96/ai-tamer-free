@@ -1,8 +1,28 @@
 {
+  "name": "aitamer/ai-tamer",
+  "description": "Protects your WordPress content from unauthorized AI scraping.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require-php": ">=7.4",
+  "autoload": {
+    "classmap": [
+      "includes/",
+      "admin/"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "AiTamer\\Tests\\": "tests/"
+    }
+  },
   "require-dev": {
+    "phpunit/phpunit": "^9.6",
+    "brain/monkey": "^2.6",
+    "antecedent/patchwork": "^2.1",
     "wp-cli/i18n-command": "^2"
   },
   "scripts": {
+    "test": "phpunit --colors=always",
     "makepot": "wp i18n make-pot ."
   }
 }

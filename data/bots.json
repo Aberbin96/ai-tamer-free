@@ -1,0 +1,130 @@
+{
+  "bots": [
+    {
+      "name": "GPTBot",
+      "user_agent": "GPTBot",
+      "owner": "OpenAI",
+      "type": "training",
+      "docs": "https://platform.openai.com/docs/gptbot"
+    },
+    {
+      "name": "ChatGPT-User",
+      "user_agent": "ChatGPT-User",
+      "owner": "OpenAI",
+      "type": "training",
+      "docs": "https://platform.openai.com/docs/plugins/bot"
+    },
+    {
+      "name": "CCBot",
+      "user_agent": "CCBot",
+      "owner": "Common Crawl",
+      "type": "training",
+      "docs": "https://commoncrawl.org/ccbot"
+    },
+    {
+      "name": "Google-Extended",
+      "user_agent": "Google-Extended",
+      "owner": "Google",
+      "type": "training",
+      "docs": "https://developers.google.com/search/docs/crawling-indexing/google-extended"
+    },
+    {
+      "name": "anthropic-ai",
+      "user_agent": "anthropic-ai",
+      "owner": "Anthropic",
+      "type": "training",
+      "docs": "https://www.anthropic.com/research"
+    },
+    {
+      "name": "ClaudeBot",
+      "user_agent": "ClaudeBot",
+      "owner": "Anthropic",
+      "type": "training",
+      "docs": "https://www.anthropic.com"
+    },
+    {
+      "name": "cohere-ai",
+      "user_agent": "cohere-ai",
+      "owner": "Cohere",
+      "type": "training",
+      "docs": "https://cohere.com"
+    },
+    {
+      "name": "Omgilibot",
+      "user_agent": "Omgilibot",
+      "owner": "Webz.io",
+      "type": "scraper",
+      "docs": "https://webz.io"
+    },
+    {
+      "name": "YouBot",
+      "user_agent": "YouBot",
+      "owner": "You.com",
+      "type": "search",
+      "docs": "https://you.com"
+    },
+    {
+      "name": "PerplexityBot",
+      "user_agent": "PerplexityBot",
+      "owner": "Perplexity AI",
+      "type": "search",
+      "docs": "https://www.perplexity.ai"
+    },
+    {
+      "name": "Applebot-Extended",
+      "user_agent": "Applebot-Extended",
+      "owner": "Apple",
+      "type": "training",
+      "docs": "https://support.apple.com/en-us/119829"
+    },
+    {
+      "name": "AmazonBot",
+      "user_agent": "AmazonBot",
+      "owner": "Amazon",
+      "type": "training",
+      "docs": "https://developer.amazon.com/support/amazonbot"
+    },
+    {
+      "name": "Perplexity-User",
+      "user_agent": "Perplexity-User",
+      "owner": "Perplexity AI",
+      "type": "training",
+      "docs": "https://www.perplexity.ai"
+    },
+    {
+      "name": "Claude-SearchBot",
+      "user_agent": "Claude-SearchBot",
+      "owner": "Anthropic",
+      "type": "training",
+      "docs": "https://www.anthropic.com"
+    },
+    {
+      "name": "FacebookBot",
+      "user_agent": "FacebookBot",
+      "owner": "Meta",
+      "type": "training",
+      "docs": "https://www.facebook.com/externalua"
+    },
+    {
+      "name": "Bytespider",
+      "user_agent": "Bytespider",
+      "owner": "ByteDance",
+      "type": "training",
+      "docs": "https://bytedance.com"
+    },
+    {
+      "name": "Googlebot",
+      "user_agent": "Googlebot",
+      "owner": "Google",
+      "type": "search",
+      "docs": "https://developers.google.com/search/docs/crawling-indexing/googlebot"
+    },
+    {
+      "name": "Bingbot",
+      "user_agent": "bingbot",
+      "owner": "Microsoft",
+      "type": "search",
+      "docs": "https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8648f4d8"
+    }
+  ]
+}

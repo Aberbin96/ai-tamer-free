@@ -1,0 +1,467 @@
+/*
+ * AI Tamer — Admin Design System
+ * Scoped to .aitamer-wrap to avoid overriding core WP styles.
+ */
+
+/* =========================================================
+   Design Tokens
+   ========================================================= */
+.aitamer-wrap {
+	--at-bg:          #f0f0f1; /* WP Light Background */
+	--at-surface:     #ffffff; /* White cards */
+	--at-surface-2:   #f6f7f7; /* Subtle hover/input background */
+	--at-border:      #dcdcde; /* WP Standard border */
+	--at-text:        #1d2327; /* WP Dark text */
+	--at-muted:       #646970; /* WP Muted text */
+	--at-green:       #00a32a; /* Slightly deeper green for contrast on white */
+	--at-green-dim:   #e5f5e8; /* Soft green tint */
+	--at-amber:       #bd8600; /* Darker amber for readability */
+	--at-amber-dim:   #fcf5e5; /* Soft amber tint */
+	--at-red:         #d63638; /* WP Error red */
+	--at-red-dim:     #fcf0f1; /* Soft red tint */
+	--at-blue:        #2271b1; /* WP Link blue */
+	--at-blue-dim:    #f0f6fa; /* Soft blue tint */
+	--at-radius:      4px;    /* Matches WP UI */
+	--at-radius-sm:   3px;
+	--at-font-mono:   'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+/* =========================================================
+   Base Container
+   ========================================================= */
+.aitamer-wrap {
+	background: var(--at-bg);
+	color: var(--at-text);
+	border-radius: var(--at-radius);
+	padding: 24px;
+	margin-top: 12px;
+	min-height: 70vh;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.aitamer-wrap h1 {
+	color: var(--at-text);
+	font-size: 20px;
+	font-weight: 600;
+	border-bottom: 1px solid var(--at-border);
+	padding-bottom: 16px;
+	margin: 0 0 24px 0;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.aitamer-wrap h1 .aitamer-badge {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	background: var(--at-green-dim);
+	color: var(--at-green);
+	border: 1px solid var(--at-green);
+	border-radius: 3px;
+	padding: 2px 8px;
+	vertical-align: middle;
+}
+
+.aitamer-wrap h2 {
+	color: var(--at-text);
+	font-size: 14px;
+	font-weight: 600;
+	margin: 0 0 16px 0;
+}
+
+.aitamer-wrap p {
+	color: var(--at-muted);
+	margin: 0 0 20px 0;
+}
+
+/* =========================================================
+   Cards & Surfaces
+   ========================================================= */
+.aitamer-card {
+	background: var(--at-surface);
+	border: 1px solid var(--at-border);
+	border-radius: var(--at-radius);
+	padding: 20px;
+	margin-bottom: 20px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.aitamer-card-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+/* =========================================================
+   Metrics Row
+   ========================================================= */
+.aitamer-metrics {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+	margin-bottom: 24px;
+}
+
+.aitamer-metric {
+	background: var(--at-surface);
+	border: 1px solid var(--at-border);
+	border-radius: var(--at-radius);
+	padding: 16px 20px;
+	position: relative;
+	overflow: hidden;
+	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.aitamer-metric::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 2px;
+}
+.aitamer-metric.green::before  { background: var(--at-green); }
+.aitamer-metric.amber::before  { background: var(--at-amber); }
+.aitamer-metric.red::before    { background: var(--at-red); }
+.aitamer-metric.blue::before   { background: var(--at-blue); }
+
+.aitamer-metric-label {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--at-muted);
+	margin-bottom: 8px;
+}
+
+.aitamer-metric-value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	color: var(--at-text);
+}
+
+.aitamer-metric.green .aitamer-metric-value { color: var(--at-green); }
+.aitamer-metric.amber .aitamer-metric-value { color: var(--at-amber); }
+.aitamer-metric.red   .aitamer-metric-value { color: var(--at-red); }
+.aitamer-metric.blue  .aitamer-metric-value { color: var(--at-blue); }
+
+.aitamer-metric-sub {
+	font-size: 11px;
+	color: var(--at-muted);
+	margin-top: 4px;
+}
+
+/* =========================================================
+   Tables
+   ========================================================= */
+.aitamer-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	min-width: 600px; /* Force minimum width to trigger scroll on mobile */
+}
+
+.aitamer-table-responsive {
+	width: 100%;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	margin-bottom: 10px;
+}
+
+.aitamer-table thead th {
+	text-align: left;
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--at-muted);
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--at-border);
+}
+
+.aitamer-table tbody tr {
+	border-bottom: 1px solid var(--at-border);
+	transition: background 0.15s;
+}
+
+.aitamer-table tbody tr:hover {
+	background: var(--at-surface-2);
+}
+
+.aitamer-table tbody td {
+	padding: 10px 12px;
+	color: var(--at-text);
+	vertical-align: middle;
+}
+
+.aitamer-table .mono {
+	font-family: var(--at-font-mono);
+	font-size: 11px;
+	color: var(--at-muted);
+}
+
+/* =========================================================
+   Status Badges
+   ========================================================= */
+.aitamer-badge-status {
+	display: inline-block;
+	font-size: 9px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	padding: 3px 8px;
+	border-radius: var(--at-radius-sm);
+}
+.aitamer-badge-status.blocked    { background: var(--at-red-dim);   color: var(--at-red);   border: 1px solid var(--at-red); }
+.aitamer-badge-status.allowed    { background: var(--at-green-dim); color: var(--at-green); border: 1px solid var(--at-green); }
+.aitamer-badge-status.limited    { background: var(--at-amber-dim); color: var(--at-amber); border: 1px solid var(--at-amber); }
+.aitamer-badge-status.training   { background: var(--at-red-dim);   color: var(--at-red);   border: 1px solid var(--at-red); }
+.aitamer-badge-status.search     { background: var(--at-blue-dim);  color: var(--at-blue);  border: 1px solid var(--at-blue); }
+.aitamer-badge-status.scraper    { background: var(--at-amber-dim); color: var(--at-amber); border: 1px solid var(--at-amber); }
+.aitamer-badge-status.active     { background: var(--at-green-dim); color: var(--at-green); border: 1px solid var(--at-green); }
+.aitamer-badge-status.expired    { background: var(--at-surface-2); color: var(--at-muted); border: 1px solid var(--at-border); }
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+.aitamer-wrap .button,
+.aitamer-wrap .button-primary,
+.aitamer-wrap .button-secondary {
+	border-radius: var(--at-radius-sm) !important;
+}
+
+.aitamer-btn-primary {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: var(--at-green) !important;
+	color: #000 !important;
+	border: none !important;
+	border-radius: var(--at-radius-sm) !important;
+	font-weight: 600 !important;
+	padding: 6px 14px !important;
+	cursor: pointer;
+	text-decoration: none;
+	font-size: 12px;
+	transition: opacity 0.15s;
+}
+.aitamer-btn-primary:hover { opacity: 0.85; color: #000 !important; }
+
+.aitamer-btn-ghost {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: transparent !important;
+	color: var(--at-text) !important;
+	border: 1px solid var(--at-border) !important;
+	border-radius: var(--at-radius-sm) !important;
+	font-weight: 500 !important;
+	padding: 5px 12px !important;
+	cursor: pointer;
+	text-decoration: none;
+	font-size: 12px;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.aitamer-btn-ghost:hover {
+	border-color: var(--at-green) !important;
+	color: var(--at-green) !important;
+	background: var(--at-green-dim) !important;
+}
+
+.aitamer-btn-danger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: transparent !important;
+	color: var(--at-red) !important;
+	border: 1px solid var(--at-red) !important;
+	border-radius: var(--at-radius-sm) !important;
+	padding: 3px 10px !important;
+	cursor: pointer;
+	text-decoration: none;
+	font-size: 11px;
+	transition: background 0.15s;
+}
+.aitamer-btn-danger:hover { background: var(--at-red-dim) !important; }
+
+/* =========================================================
+   Forms & Settings
+   ========================================================= */
+.aitamer-wrap .form-table {
+	background: transparent;
+}
+.aitamer-wrap .form-table th {
+	color: var(--at-muted);
+	font-size: 12px;
+	font-weight: 600;
+	padding: 12px 10px 12px 0;
+}
+.aitamer-wrap .form-table td {
+	padding: 12px 0;
+}
+.aitamer-wrap .form-table input[type="text"],
+.aitamer-wrap .form-table input[type="number"],
+.aitamer-wrap .form-table select,
+.aitamer-wrap .form-table textarea {
+	background: var(--at-surface-2) !important;
+	border: 1px solid var(--at-border) !important;
+	color: var(--at-text) !important;
+	border-radius: var(--at-radius-sm) !important;
+}
+.aitamer-wrap .form-table input[type="text"]:focus,
+.aitamer-wrap .form-table input[type="number"]:focus,
+.aitamer-wrap .form-table select:focus {
+	border-color: var(--at-green) !important;
+	box-shadow: 0 0 0 1px var(--at-green) !important;
+	outline: none;
+}
+.aitamer-wrap .description {
+	color: var(--at-muted) !important;
+	font-size: 11px;
+}
+
+.aitamer-wrap .submit input[type="submit"],
+.aitamer-wrap input[type="submit"] {
+	background: var(--at-green) !important;
+	border-color: var(--at-green) !important;
+	color: #000 !important;
+	font-weight: 600 !important;
+	border-radius: var(--at-radius-sm) !important;
+}
+
+.aitamer-wrap h3.aitamer-section-title {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--at-muted);
+	border-top: 1px solid var(--at-border);
+	padding-top: 20px;
+	margin-top: 20px;
+	margin-bottom: 4px;
+}
+
+/* =========================================================
+   Notices
+   ========================================================= */
+.aitamer-wrap .notice {
+	background: var(--at-surface-2) !important;
+	border-color: var(--at-border) !important;
+	color: var(--at-text) !important;
+}
+.aitamer-wrap .notice-success {
+	border-left-color: var(--at-green) !important;
+}
+.aitamer-wrap .notice-error {
+	border-left-color: var(--at-red) !important;
+}
+
+/* =========================================================
+   Code blocks & tokens
+   ========================================================= */
+.aitamer-wrap code {
+	background: var(--at-surface-2);
+	border: 1px solid var(--at-border);
+	color: var(--at-green);
+	font-family: var(--at-font-mono);
+	border-radius: var(--at-radius-sm);
+	padding: 2px 6px;
+	font-size: 11px;
+	word-break: break-all;
+}
+
+.aitamer-token-block {
+	background: var(--at-green-dim);
+	border: 1px solid var(--at-green);
+	border-radius: var(--at-radius);
+	padding: 12px 16px;
+	font-family: var(--at-font-mono);
+	font-size: 11px;
+	color: var(--at-green);
+	word-break: break-all;
+	display: block;
+}
+
+/* =========================================================
+   Status dot indicator
+   ========================================================= */
+.aitamer-status-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 6px;
+	background: var(--at-green);
+	box-shadow: 0 0 4px var(--at-green);
+	animation: aitamer-pulse 2s infinite;
+}
+
+@keyframes aitamer-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.4; }
+}
+
+/* =========================================================
+   Empty state
+   ========================================================= */
+.aitamer-empty {
+	text-align: center;
+	padding: 40px 20px;
+	color: var(--at-muted);
+}
+.aitamer-empty svg {
+	opacity: 0.3;
+	margin-bottom: 12px;
+}
+
+/* =========================================================
+   Page Header strip
+   ========================================================= */
+.aitamer-page-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+	margin-bottom: 24px;
+}
+.aitamer-page-header .aitamer-page-title { margin: 0; }
+.aitamer-page-header .aitamer-page-desc {
+	font-size: 12px;
+	color: var(--at-muted);
+	margin: 4px 0 0;
+}
+
+/* =========================================================
+   Responsive Adjustments
+   ========================================================= */
+@media screen and (max-width: 782px) {
+	.aitamer-metrics {
+		grid-template-columns: 1fr;
+	}
+	.aitamer-metric-value {
+		font-size: 24px;
+	}
+	.aitamer-page-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.aitamer-btn-primary,
+	.aitamer-btn-ghost {
+		width: 100%;
+		justify-content: center;
+	}
+}
+@media screen and (max-width: 480px) {
+	.aitamer-wrap {
+		padding: 16px;
+	}
+	.aitamer-card {
+		padding: 15px;
+	}
+}

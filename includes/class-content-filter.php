@@ -1,0 +1,115 @@
+<?php
+/**
+ * ContentFilter — selectively hides content from AI training agents.
+ *
+ * Hooks into `the_content` to strip or replace blocks marked as `data-noai`
+ * and respects per-post protection settings from the MetaBox.
+ *
+ * @package Ai_Tamer
+ */
+
+namespace AiTamer;
+
+use function add_filter;
+use function get_the_ID;
+use function is_singular;
+
+defined( 'ABSPATH' ) || exit;
+
+/**
+ * ContentFilter class.
+ */
+class ContentFilter {
+
+	/** @var Detector */
+	private Detector $detector;
+
+	/**
+	 * @param Detector $detector
+	 */
+	public function __construct( Detector $detector ) {
+		$this->detector = $detector;
+	}
+
+	/**
+	 * Registers the content filter hook.
+	 */
+	public function register(): void {
+		add_filter( 'the_content', array( $this, 'filter_content' ), 99 );
+	}
+
+	/**
+	 * Filters post content for training agents based on per-post and global settings.
+	 *
+	 * @param string $content Original post content.
+	 * @return string Filtered content.
+	 */
+	public function filter_content( string $content ): string {
+		// Only filter on singular post views.
+		if ( ! is_singular() ) {
+			return $content;
+		}
+
+		$agent   = $this->detector->classify();
+		$post_id = (int) get_the_ID();
+
+		// Determine effective protection level.
+		$level = MetaBox::get_setting( $post_id );
+
+		// Resolve "inherit" to the actual outcome.
+		if ( 'inherit' === $level ) {
+			if ( $agent['type'] === 'training' || $agent['type'] === 'scraper' ) {
+				$level = 'block_training';
+			} else {
+				return $content; // No filtering for search bots or humans.
+			}
+		}
+
+		// If explicitly allow_all, skip all filtering.
+		if ( 'allow_all' === $level ) {
+			return $content;
+		}
+
+		$should_filter = false;
+		if ( 'block_all' === $level && $agent['matched'] ) {
+			$should_filter = true; // Block any known bot.
+		} elseif ( 'block_training' === $level && $this->detector->is_training_agent() ) {
+			$should_filter = true; // Block only training/scraper bots.
+		}
+
+		if ( ! $should_filter ) {
+			return $content;
+		}
+
+		// Strip elements marked with data-noai attribute.
+		$content = $this->strip_noai_elements( $content );
+
+		return $content;
+	}
+
+	/**
+	 * Removes HTML elements that carry the `data-noai` attribute.
+	 * These elements are specifically marked by the author as "not for AI".
+	 *
+	 * Usage: wrap content in <div data-noai> ... </div>
+	 * The entire block will be invisible to training agents.
+	 *
+	 * @param string $content HTML content.
+	 * @return string Filtered HTML.
+	 */
+	private function strip_noai_elements( string $content ): string {
+		// Use regex to remove block-level elements with data-noai attribute.
+		// This handles divs, figures, sections, articles, asides.
+		$tags = 'div|figure|section|article|aside|p|blockquote';
+		$content = preg_replace(
+			'/<(' . $tags . ')[^>]*\bdata-noai\b[^>]*>[\s\S]*?<\/\1>/i',
+			'',
+			$content
+		);
+
+		// Also strip <img> tags with data-noai.
+		$content = preg_replace( '/<img[^>]*\bdata-noai\b[^>]*\/?>/i', '', $content );
+
+		return $content ?? '';
+	}
+}
