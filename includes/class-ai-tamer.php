@@ -163,6 +163,7 @@ class Plugin {
 					'inject_http_headers'  => true,
 					'rate_limit_enabled'   => true,
 					'rpm'                  => 30,
+					'auto_update_bots'     => true,
 				)
 			);
 		}
