@@ -117,7 +117,7 @@ class MetaBox
 	public function save(int $post_id, $post): void
 	{
 		// Verify nonce.
-		$nonce = isset($_POST[self::NONCE_FIELD]) ? wp_unslash($_POST[self::NONCE_FIELD]) : '';
+		$nonce = isset( $_POST[ self::NONCE_FIELD ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::NONCE_FIELD ] ) ) : '';
 		if (! wp_verify_nonce($nonce, self::NONCE_ACTION)) {
 			return;
 		}

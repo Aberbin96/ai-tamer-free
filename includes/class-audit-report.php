@@ -39,10 +39,7 @@ class AuditReport {
 		$table   = $wpdb->prefix . Logger::TABLE;
 		$results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT bot_name, bot_type, post_id, request_uri, ip_hash, created_at
-				 FROM `{$table}`
-				 WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
-				 ORDER BY created_at DESC",
+				"SELECT bot_name, bot_type, post_id, request_uri, ip_hash, created_at FROM `{$table}` WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY) ORDER BY created_at DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$days_back
 			),
 			ARRAY_A
@@ -121,7 +118,7 @@ class AuditReport {
 			) );
 		}
 
-		fclose( $fp );
+		fclose( $fp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
 
 		return $filepath;
 	}
