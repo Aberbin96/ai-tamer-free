@@ -1,0 +1,329 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: AI Tamer 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-24 23:44+0100\n"
+"PO-Revision-Date: 2026-03-25 21:44+0100\n"
+"Last-Translator: AI Tamer Team\n"
+"Language-Team: Spanish\n"
+"Language: es_ES\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.9\n"
+
+#: includes/class-meta-box.php:67
+msgid "AI Tamer Protection"
+msgstr "Protección AI Tamer"
+
+#: includes/class-meta-box.php:88
+msgid "AI Bot Access"
+msgstr "Acceso de Bots de IA"
+
+#: includes/class-meta-box.php:92
+msgid "— Inherit global settings —"
+msgstr "— Heredar ajustes globales —"
+
+#: includes/class-meta-box.php:95
+msgid "Block all AI bots"
+msgstr "Bloquear todos los bots de IA"
+
+#: includes/class-meta-box.php:98
+msgid "Block training bots only"
+msgstr "Bloquear solo bots de entrenamiento"
+
+#: includes/class-meta-box.php:101
+msgid "Allow all AI bots"
+msgstr "Permitir todos los bots de IA"
+
+#: includes/class-meta-box.php:106
+msgid "Override global AI protection for this specific post."
+msgstr "Sobrescribir protección global de IA para esta entrada."
+
+#: admin/class-admin.php:71 admin/class-admin.php:72
+msgid "AI Tamer"
+msgstr "AI Tamer"
+
+#: admin/class-admin.php:83 admin/class-admin.php:84
+msgid "Dashboard"
+msgstr "Principal"
+
+#: admin/class-admin.php:93 admin/class-admin.php:94
+msgid "Settings"
+msgstr "Ajustes"
+
+#: admin/class-admin.php:103 admin/class-admin.php:104
+msgid "Audit Reports"
+msgstr "Informes de Auditoría"
+
+#: admin/class-admin.php:113 admin/class-admin.php:114
+msgid "Licensing"
+msgstr "Licencias"
+
+#: admin/class-admin.php:135
+msgid "General Protection"
+msgstr "Protección General"
+
+#: admin/class-admin.php:142
+msgid "Block training bots in robots.txt"
+msgstr "Bloquear bots de entrenamiento en robots.txt"
+
+#: admin/class-admin.php:151
+msgid "Inject noai meta tags"
+msgstr "Inyectar etiquetas meta noai"
+
+#: admin/class-admin.php:160
+msgid "Inject X-Robots-Tag HTTP headers"
+msgstr "Inyectar cabeceras HTTP X-Robots-Tag"
+
+#: admin/class-admin.php:170
+msgid "Rate Limiting"
+msgstr "Límite de Frecuencia"
+
+#: admin/class-admin.php:177
+msgid "Enable rate limiting for bots"
+msgstr "Activar límite de frecuencia para bots"
+
+#: admin/class-admin.php:186
+msgid "Max requests per minute (RPM)"
+msgstr "Máximo de peticiones por minuto (RPM)"
+
+#: admin/class-admin.php:196
+msgid "Bandwidth Limiting"
+msgstr "Límite de Ancho de Banda"
+
+#: admin/class-admin.php:203
+msgid "Enable daily bandwidth cap for bots"
+msgstr "Activar cupo diario de ancho de banda"
+
+#: admin/class-admin.php:212
+msgid "Max KB served per bot per day"
+msgstr "Máximo KB servidos por bot al día"
+
+#: admin/views/dashboard.php:21
+msgid "Total AI Requests Detected"
+msgstr "Total de Peticiones de IA Detectadas"
+
+#: admin/views/dashboard.php:29
+msgid "Protection Status"
+msgstr "Estado de Protección"
+
+#: admin/views/dashboard.php:31 admin/views/licensing.php:82
+msgid "Active"
+msgstr "Activo"
+
+#: admin/views/dashboard.php:34
+msgid "Headers, meta tags and robots.txt rules are live."
+msgstr "Cabeceras, etiquetas meta y reglas de robots.txt están activas."
+
+#: admin/views/dashboard.php:42
+msgid "Top AI Bots by Activity"
+msgstr "Principales Bots de IA por Actividad"
+
+#: admin/views/dashboard.php:44
+msgid "No AI bot activity recorded yet."
+msgstr "No hay actividad de bots de IA registrada aún."
+
+#: admin/views/dashboard.php:49
+msgid "Bot Name"
+msgstr "Nombre del Bot"
+
+#: admin/views/dashboard.php:50
+msgid "Type"
+msgstr "Tipo"
+
+#: admin/views/dashboard.php:51 admin/views/dashboard.php:84
+msgid "Requests"
+msgstr "Peticiones"
+
+#: admin/views/dashboard.php:76
+msgid "Most Targeted Content"
+msgstr "Contenido más Solicitado"
+
+#: admin/views/dashboard.php:78
+msgid "No content-specific activity recorded yet."
+msgstr "No hay actividad específica de contenido registrada aún."
+
+#: admin/views/dashboard.php:83
+msgid "Post"
+msgstr "Entrada"
+
+#: admin/views/settings.php:15
+msgid ""
+"Control how AI agents interact with your content. Changes take effect "
+"immediately."
+msgstr ""
+"Controla cómo interactúan los agentes de IA con tu contenido. Los cambios "
+"tienen efecto inmediato."
+
+#: admin/views/settings.php:22
+msgid "Save Settings"
+msgstr "Guardar Ajustes"
+
+#: admin/views/audit.php:21
+msgid ""
+"Generate a downloadable CSV audit report with evidence of AI bot access to "
+"your content."
+msgstr ""
+"Genera un informe de auditoría CSV descargable con evidencias de acceso de "
+"bots de IA a tu contenido."
+
+#: admin/views/audit.php:25
+msgid "Could not generate the report. Please check file system permissions."
+msgstr ""
+"No se pudo generar el informe. Por favor, comprueba los permisos del sistema "
+"de archivos."
+
+#: admin/views/audit.php:30
+msgid "Download Report"
+msgstr "Descargar Informe"
+
+#: admin/views/audit.php:31
+msgid "Select the time period and download the audit CSV file."
+msgstr "Selecciona el periodo y descarga el archivo CSV de auditoría."
+
+#: admin/views/audit.php:35
+msgid "Period"
+msgstr "Periodo"
+
+#: admin/views/audit.php:38
+msgid "Last 7 days"
+msgstr "Últimos 7 días"
+
+#: admin/views/audit.php:42
+msgid "Last 30 days"
+msgstr "Últimos 30 días"
+
+#: admin/views/audit.php:46
+msgid "Last 90 days"
+msgstr "Últimos 90 días"
+
+#: admin/views/audit.php:56
+#, php-format
+msgid "There are currently %s log records available."
+msgstr "Hay actualmente %s registros disponibles."
+
+#: admin/views/audit.php:63
+msgid ""
+"Reports are saved to wp-content/uploads/aitamer-reports/ and are protected "
+"from direct web access."
+msgstr ""
+"Los informes se guardan en wp-content/uploads/aitamer-reports/ y están "
+"protegidos contra acceso web directo."
+
+#: admin/views/licensing.php:42
+msgid ""
+"Issue machine-readable license tokens to trusted AI agents. The agent must "
+"send the token in the X-AI-License-Token HTTP header with each request to "
+"bypass protection rules."
+msgstr ""
+"Emite tokens de licencia legibles por máquina a agentes de IA de confianza. "
+"El agente debe enviar el token en la cabecera HTTP X-AI-License-Token con "
+"cada petición para omitir las reglas de protección."
+
+#: admin/views/licensing.php:47
+msgid "Token revoked successfully."
+msgstr "Token revocado con éxito."
+
+#: admin/views/licensing.php:53
+msgid "Token issued. Share it securely with the licensee."
+msgstr "Token emitido. Compártelo de forma segura con el licenciatario."
+
+#: admin/views/licensing.php:59
+msgid "The agent sends this as: X-AI-License-Token: [token]"
+msgstr "El agente lo envía como: X-AI-License-Token: [token]"
+
+#: admin/views/licensing.php:65
+msgid "Issued Tokens"
+msgstr "Tokens Emitidos"
+
+#: admin/views/licensing.php:69
+msgid "Agent"
+msgstr "Agente"
+
+#: admin/views/licensing.php:70
+msgid "Issued"
+msgstr "Emitido"
+
+#: admin/views/licensing.php:71
+msgid "Expires"
+msgstr "Expira"
+
+#: admin/views/licensing.php:72
+msgid "Status"
+msgstr "Estado"
+
+#: admin/views/licensing.php:73
+msgid "Token (truncated)"
+msgstr "Token (truncado)"
+
+#: admin/views/licensing.php:74
+msgid "Actions"
+msgstr "Acciones"
+
+#: admin/views/licensing.php:81
+msgid "Expired"
+msgstr "Expirado"
+
+#: admin/views/licensing.php:95
+msgid "Revoke"
+msgstr "Revocar"
+
+#: admin/views/licensing.php:105
+msgid "No tokens issued yet."
+msgstr "No se han emitido tokens aún."
+
+#: admin/views/licensing.php:109
+msgid "Issue New Token"
+msgstr "Emitir Nuevo Token"
+
+#: admin/views/licensing.php:117
+msgid "Agent Name"
+msgstr "Nombre del Agente"
+
+#: admin/views/licensing.php:122
+msgid "The User-Agent name of the licensed crawler."
+msgstr "El nombre User-Agent del rastreador con licencia."
+
+#: admin/views/licensing.php:127
+msgid "Validity (days)"
+msgstr "Validez (días)"
+
+#: admin/views/licensing.php:135
+msgid "Generate Token"
+msgstr "Generar Token"
+
+#: admin/views/licensing.php:140
+msgid "How It Works"
+msgstr "Cómo Funciona"
+
+#: admin/views/licensing.php:142
+msgid "You issue a signed HMAC token to a trusted AI company."
+msgstr "Emitas un token HMAC firmado a una empresa de IA de confianza."
+
+#: admin/views/licensing.php:143
+msgid "They include it in every request as the X-AI-License-Token header."
+msgstr "Ellos lo incluyen en cada petición como cabecera X-AI-License-Token."
+
+#: admin/views/licensing.php:144
+msgid "AI Tamer verifies the signature and bypasses blocking for that agent."
+msgstr "AI Tamer verifica la firma y omite el bloqueo para ese agente."
+
+#: admin/views/licensing.php:145
+msgid "Tokens expire automatically after the configured period."
+msgstr "Los tokens expiran automáticamente tras el periodo configurado."
+
+#: admin/views/licensing.php:151
+#, php-format
+msgid ""
+"JSON-LD schema.org/CreativeWork blocks and AI-Content-License HTTP headers "
+"are automatically added to every page to signal your licensing intent to AI "
+"crawlers. %s"
+msgstr ""
+"Bloques JSON-LD schema.org/CreativeWork y cabeceras HTTP AI-Content-License "
+"se añaden automáticamente a cada página para señalar tu intención de "
+"licencia a los rastreadores de IA. %s"
+
+#: admin/views/licensing.php:152
+msgid "Learn more →"
+msgstr "Saber más →"
