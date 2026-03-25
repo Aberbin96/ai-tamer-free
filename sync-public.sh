@@ -3,7 +3,7 @@
 # Configuration
 PLUGIN_NAME="ai-tamer"
 SOURCE_DIR="./"
-TARGET_DIR="../ai-tamer-free" # Change this if you want a different location
+TARGET_DIR="../ai-tamer" # Change this if you want a different location
 
 echo "🚀 Starting synchronization for Public Repo..."
 

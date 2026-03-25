@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Admin — settings page and menu.
  *
@@ -27,8 +28,8 @@ use function settings_fields;
 use function status_header;
 use function submit_button;
 use function wp_nonce_url;
-use function wp_redirect;
 use function wp_safe_redirect;
+use function wp_delete_file;
 use function __;
 use function esc_attr;
 use function esc_html;
@@ -36,12 +37,13 @@ use function esc_html__;
 use function plugin_dir_url;
 use function selected;
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 /**
  * Admin class.
  */
-class Admin {
+class Admin
+{
 
 	/** @var Admin|null Singleton. */
 	private static ?Admin $instance = null;
@@ -49,8 +51,9 @@ class Admin {
 	/**
 	 * @return Admin
 	 */
-	public static function get_instance(): Admin {
-		if ( null === self::$instance ) {
+	public static function get_instance(): Admin
+	{
+		if (null === self::$instance) {
 			self::$instance = new self();
 		}
 		return self::$instance;
@@ -59,11 +62,12 @@ class Admin {
 	/**
 	 * Private constructor.
 	 */
-	private function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
-		add_action( 'admin_post_aitamer_download_report', array( $this, 'handle_download_report' ) );
-		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	private function __construct()
+	{
+		add_action('admin_menu', array($this, 'register_menu'));
+		add_action('admin_init', array($this, 'register_settings'));
+		add_action('admin_post_aitamer_download_report', array($this, 'handle_download_report'));
+		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 	}
 
 	/**
@@ -71,25 +75,27 @@ class Admin {
 	 *
 	 * @param string $hook Current admin page hook.
 	 */
-	public function enqueue_assets( string $hook ): void {
-		if ( false === strpos( $hook, 'ai-tamer' ) ) {
+	public function enqueue_assets(string $hook): void
+	{
+		if (false === strpos($hook, 'ai-tamer')) {
 			return;
 		}
-		$url = plugin_dir_url( AITAMER_PLUGIN_FILE ) . 'admin/assets/css/admin-style.css';
-		wp_enqueue_style( 'aitamer-admin', $url, array(), AITAMER_VERSION );
+		$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
+		wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 	}
 
 	/**
 	 * Registers the top-level admin menu item.
 	 */
-	public function register_menu(): void {
+	public function register_menu(): void
+	{
 		// Top level menu — shows Dashboard as default.
 		add_menu_page(
-			__( 'AI Tamer — Scraper Protection', 'ai-tamer' ),
-			__( 'AI Tamer', 'ai-tamer' ),
+			__('AI Tamer — Scraper Protection', 'ai-tamer'),
+			__('AI Tamer', 'ai-tamer'),
 			'manage_options',
 			'ai-tamer',
-			array( $this, 'render_dashboard_page' ),
+			array($this, 'render_dashboard_page'),
 			'dashicons-shield',
 			80
 		);
@@ -97,112 +103,113 @@ class Admin {
 		// Dashboard submenu.
 		add_submenu_page(
 			'ai-tamer',
-			__( 'Dashboard', 'ai-tamer' ),
-			__( 'Dashboard', 'ai-tamer' ),
+			__('Dashboard', 'ai-tamer'),
+			__('Dashboard', 'ai-tamer'),
 			'manage_options',
 			'ai-tamer',
-			array( $this, 'render_dashboard_page' )
+			array($this, 'render_dashboard_page')
 		);
 
 		// Settings submenu.
 		add_submenu_page(
 			'ai-tamer',
-			__( 'Settings', 'ai-tamer' ),
-			__( 'Settings', 'ai-tamer' ),
+			__('Settings', 'ai-tamer'),
+			__('Settings', 'ai-tamer'),
 			'manage_options',
 			'ai-tamer-settings',
-			array( $this, 'render_settings_page' )
+			array($this, 'render_settings_page')
 		);
 
 		// Audit Reports submenu.
 		add_submenu_page(
 			'ai-tamer',
-			__( 'Audit Reports', 'ai-tamer' ),
-			__( 'Audit Reports', 'ai-tamer' ),
+			__('Audit Reports', 'ai-tamer'),
+			__('Audit Reports', 'ai-tamer'),
 			'manage_options',
 			'ai-tamer-audit',
-			array( $this, 'render_audit_page' )
+			array($this, 'render_audit_page')
 		);
 
 		// Licensing submenu.
 		add_submenu_page(
 			'ai-tamer',
-			__( 'Licensing', 'ai-tamer' ),
-			__( 'Licensing', 'ai-tamer' ),
+			__('Licensing', 'ai-tamer'),
+			__('Licensing', 'ai-tamer'),
 			'manage_options',
 			'ai-tamer-licensing',
-			array( $this, 'render_licensing_page' )
+			array($this, 'render_licensing_page')
 		);
 	}
 
 	/**
 	 * Registers settings using the Settings API.
 	 */
-	public function register_settings(): void {
+	public function register_settings(): void
+	{
 		register_setting(
 			'aitamer_settings_group',
 			'aitamer_settings',
 			array(
-				'sanitize_callback' => array( $this, 'sanitize_settings' ),
+				'sanitize_callback' => array($this, 'sanitize_settings'),
 			)
 		);
 
 		add_settings_section(
 			'aitamer_general',
-			__( 'General Protection', 'ai-tamer' ),
+			__('General Protection', 'ai-tamer'),
 			null,
 			'ai-tamer-settings'
 		);
 
 		add_settings_field(
 			'block_training_bots',
-			__( 'Block training bots in robots.txt', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Block training bots in robots.txt', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'block_training_bots' )
+			array('key' => 'block_training_bots')
 		);
 
 		add_settings_field(
 			'inject_meta_tags',
-			__( 'Inject noai meta tags', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Inject noai meta tags', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'inject_meta_tags' )
+			array('key' => 'inject_meta_tags')
 		);
 
 		add_settings_field(
 			'inject_http_headers',
-			__( 'Inject X-Robots-Tag HTTP headers', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Inject X-Robots-Tag HTTP headers', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'inject_http_headers' )
+			array('key' => 'inject_http_headers')
 		);
 
 		add_settings_field(
 			'crawl_delay_enabled',
-			__( 'Add Crawl-delay to blocked bots', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Add Crawl-delay to blocked bots', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'crawl_delay_enabled' )
+			array('key' => 'crawl_delay_enabled')
 		);
 
 		add_settings_field(
 			'crawl_delay',
-			__( 'Crawl-delay (seconds)', 'ai-tamer' ),
-			array( $this, 'render_number_field' ),
+			__('Crawl-delay (seconds)', 'ai-tamer'),
+			array($this, 'render_number_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'crawl_delay', 'min' => 1, 'max' => 120 )
+			array('key' => 'crawl_delay', 'min' => 1, 'max' => 120)
 		);
 
 		add_settings_field(
 			'license_policy',
-			__( 'AI License Policy (meta tag)', 'ai-tamer' ),
-			array( $this, 'render_license_policy_field' ),
+			__('AI License Policy (meta tag)', 'ai-tamer'),
+			array($this, 'render_license_policy_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
 			array()
@@ -211,53 +218,53 @@ class Admin {
 		// Rate Limiting section.
 		add_settings_section(
 			'aitamer_rate_limiting',
-			__( 'Rate Limiting', 'ai-tamer' ),
+			__('Rate Limiting', 'ai-tamer'),
 			null,
 			'ai-tamer-settings'
 		);
 
 		add_settings_field(
 			'rate_limit_enabled',
-			__( 'Enable rate limiting for bots', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Enable rate limiting for bots', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_rate_limiting',
-			array( 'key' => 'rate_limit_enabled' )
+			array('key' => 'rate_limit_enabled')
 		);
 
 		add_settings_field(
 			'rpm',
-			__( 'Max requests per minute (RPM)', 'ai-tamer' ),
-			array( $this, 'render_number_field' ),
+			__('Max requests per minute (RPM)', 'ai-tamer'),
+			array($this, 'render_number_field'),
 			'ai-tamer-settings',
 			'aitamer_rate_limiting',
-			array( 'key' => 'rpm', 'min' => 1, 'max' => 500 )
+			array('key' => 'rpm', 'min' => 1, 'max' => 500)
 		);
 
 		// Bandwidth section.
 		add_settings_section(
 			'aitamer_bandwidth',
-			__( 'Bandwidth Limiting', 'ai-tamer' ),
+			__('Bandwidth Limiting', 'ai-tamer'),
 			null,
 			'ai-tamer-settings'
 		);
 
 		add_settings_field(
 			'bandwidth_limit_enabled',
-			__( 'Enable daily bandwidth cap for bots', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Enable daily bandwidth cap for bots', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_bandwidth',
-			array( 'key' => 'bandwidth_limit_enabled' )
+			array('key' => 'bandwidth_limit_enabled')
 		);
 
 		add_settings_field(
 			'bandwidth_kb_limit',
-			__( 'Max KB served per bot per day', 'ai-tamer' ),
-			array( $this, 'render_number_field' ),
+			__('Max KB served per bot per day', 'ai-tamer'),
+			array($this, 'render_number_field'),
 			'ai-tamer-settings',
 			'aitamer_bandwidth',
-			array( 'key' => 'bandwidth_kb_limit', 'min' => 100, 'max' => 102400 )
+			array('key' => 'bandwidth_kb_limit', 'min' => 100, 'max' => 102400)
 		);
 	}
 
@@ -267,23 +274,24 @@ class Admin {
 	 * @param array $input Raw form input.
 	 * @return array Sanitized values.
 	 */
-	public function sanitize_settings( array $input ): array {
-		$allowed_policies = array( 'no-training', 'allow', 'allow-with-attribution' );
+	public function sanitize_settings(array $input): array
+	{
+		$allowed_policies = array('no-training', 'allow', 'allow-with-attribution');
 		$policy           = $input['license_policy'] ?? 'no-training';
-		if ( ! in_array( $policy, $allowed_policies, true ) ) {
+		if (! in_array($policy, $allowed_policies, true)) {
 			$policy = 'no-training';
 		}
 		return array(
-			'block_training_bots'     => ! empty( $input['block_training_bots'] ),
-			'inject_meta_tags'        => ! empty( $input['inject_meta_tags'] ),
-			'inject_http_headers'     => ! empty( $input['inject_http_headers'] ),
-			'crawl_delay_enabled'     => ! empty( $input['crawl_delay_enabled'] ),
-			'crawl_delay'             => absint( $input['crawl_delay'] ?? 10 ) ?: 10,
+			'block_training_bots'     => ! empty($input['block_training_bots']),
+			'inject_meta_tags'        => ! empty($input['inject_meta_tags']),
+			'inject_http_headers'     => ! empty($input['inject_http_headers']),
+			'crawl_delay_enabled'     => ! empty($input['crawl_delay_enabled']),
+			'crawl_delay'             => absint($input['crawl_delay'] ?? 10) ?: 10,
 			'license_policy'          => $policy,
-			'rate_limit_enabled'      => ! empty( $input['rate_limit_enabled'] ),
-			'rpm'                     => absint( $input['rpm'] ?? 30 ) ?: 30,
-			'bandwidth_limit_enabled' => ! empty( $input['bandwidth_limit_enabled'] ),
-			'bandwidth_kb_limit'      => absint( $input['bandwidth_kb_limit'] ?? 5120 ) ?: 5120,
+			'rate_limit_enabled'      => ! empty($input['rate_limit_enabled']),
+			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
+			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
+			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
 		);
 	}
 
@@ -292,14 +300,15 @@ class Admin {
 	 *
 	 * @param array $args Field args (expects 'key').
 	 */
-	public function render_checkbox_field( array $args ): void {
+	public function render_checkbox_field(array $args): void
+	{
 		$key      = $args['key'];
-		$settings = get_option( 'aitamer_settings', array() );
-		$checked  = ! empty( $settings[ $key ] );
+		$settings = get_option('aitamer_settings', array());
+		$checked  = ! empty($settings[$key]);
 		printf(
 			'<input type="checkbox" id="%1$s" name="aitamer_settings[%1$s]" value="1" %2$s>',
-			esc_attr( $key ),
-			checked( $checked, true, false )
+			esc_attr($key),
+			checked($checked, true, false)
 		);
 	}
 
@@ -308,48 +317,51 @@ class Admin {
 	 *
 	 * @param array $args Field args (expects 'key', 'min', 'max').
 	 */
-	public function render_number_field( array $args ): void {
+	public function render_number_field(array $args): void
+	{
 		$key      = $args['key'];
-		$settings = get_option( 'aitamer_settings', array() );
-		$value    = isset( $settings[ $key ] ) ? absint( $settings[ $key ] ) : 30;
+		$settings = get_option('aitamer_settings', array());
+		$value    = isset($settings[$key]) ? absint($settings[$key]) : 30;
 		printf(
 			'<input type="number" id="%1$s" name="aitamer_settings[%1$s]" value="%2$d" min="%3$d" max="%4$d" class="small-text">',
-			esc_attr( $key ),
-			$value,
-			absint( $args['min'] ?? 1 ),
-			absint( $args['max'] ?? 500 )
+			esc_attr($key),
+			(int) $value,
+			absint($args['min'] ?? 1),
+			absint($args['max'] ?? 500)
 		);
 	}
 
 	/**
 	 * Renders the AI license policy select field.
 	 */
-	public function render_license_policy_field(): void {
-		$settings = get_option( 'aitamer_settings', array() );
+	public function render_license_policy_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
 		$selected = $settings['license_policy'] ?? 'no-training';
 		$options  = array(
-			'no-training'              => __( 'No Training (default)', 'ai-tamer' ),
-			'allow'                    => __( 'Allow all AI use', 'ai-tamer' ),
-			'allow-with-attribution'   => __( 'Allow with attribution', 'ai-tamer' ),
+			'no-training'              => __('No Training (default)', 'ai-tamer'),
+			'allow'                    => __('Allow all AI use', 'ai-tamer'),
+			'allow-with-attribution'   => __('Allow with attribution', 'ai-tamer'),
 		);
 		echo '<select id="license_policy" name="aitamer_settings[license_policy]">';
-		foreach ( $options as $value => $label ) {
+		foreach ($options as $value => $label) {
 			printf(
 				'<option value="%s" %s>%s</option>',
-				esc_attr( $value ),
-				selected( $selected, $value, false ),
-				esc_html( $label )
+				esc_attr($value),
+				selected($selected, $value, false),
+				esc_html($label)
 			);
 		}
 		echo '</select>';
-		echo '<p class="description">' . esc_html__( 'Controls the value of the <meta name="ai-license"> tag output on frontend pages.', 'ai-tamer' ) . '</p>';
+		echo '<p class="description">' . esc_html__('Controls the value of the <meta name="ai-license"> tag output on frontend pages.', 'ai-tamer') . '</p>';
 	}
 
 	/**
 	 * Renders the dashboard page.
 	 */
-	public function render_dashboard_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+	public function render_dashboard_page(): void
+	{
+		if (! current_user_can('manage_options')) {
 			return;
 		}
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/dashboard.php';
@@ -358,8 +370,9 @@ class Admin {
 	/**
 	 * Renders the settings page.
 	 */
-	public function render_settings_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+	public function render_settings_page(): void
+	{
+		if (! current_user_can('manage_options')) {
 			return;
 		}
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/settings.php';
@@ -368,8 +381,9 @@ class Admin {
 	/**
 	 * Renders the Audit Reports page.
 	 */
-	public function render_audit_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+	public function render_audit_page(): void
+	{
+		if (! current_user_can('manage_options')) {
 			return;
 		}
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/audit.php';
@@ -378,8 +392,9 @@ class Admin {
 	/**
 	 * Renders the Licensing page.
 	 */
-	public function render_licensing_page(): void {
-		if ( ! current_user_can( 'manage_options' ) ) {
+	public function render_licensing_page(): void
+	{
+		if (! current_user_can('manage_options')) {
 			return;
 		}
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/licensing.php';
@@ -388,33 +403,34 @@ class Admin {
 	/**
 	 * Handles the admin-post action to generate and stream a CSV report download.
 	 */
-	public function handle_download_report(): void {
-		check_admin_referer( 'aitamer_download_report' );
+	public function handle_download_report(): void
+	{
+		check_admin_referer('aitamer_download_report');
 
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_safe_redirect( admin_url() );
+		if (! current_user_can('manage_options')) {
+			wp_safe_redirect(admin_url());
 			exit;
 		}
 
-		$days = absint( $_GET['days'] ?? 30 ) ?: 30;
-		$file = AuditReport::generate( $days );
+		$days = absint($_GET['days'] ?? 30) ?: 30;
+		$file = AuditReport::generate($days);
 
-		if ( ! $file || ! file_exists( $file ) ) {
+		if (! $file || ! file_exists($file)) {
 			wp_safe_redirect(
-				add_query_arg( 'aitamer_error', '1', admin_url( 'admin.php?page=ai-tamer-audit' ) )
+				add_query_arg('aitamer_error', '1', admin_url('admin.php?page=ai-tamer-audit'))
 			);
 			exit;
 		}
 
 		// Stream the file to the browser as a download.
-		header( 'Content-Type: text/csv; charset=UTF-8' );
-		header( 'Content-Disposition: attachment; filename="' . basename( $file ) . '"' );
-		header( 'Content-Length: ' . filesize( $file ) );
+		header('Content-Type: text/csv; charset=UTF-8');
+		header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+		header('Content-Length: ' . filesize($file));
 		// phpcs:ignore WordPress.WP.AlternativeFunctions
-		readfile( $file );
+		readfile($file);
 
 		// Security: Delete the file after it has been streamed to the user.
-		@unlink( $file );
+		wp_delete_file($file);
 		exit;
 	}
 }

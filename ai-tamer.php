@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name:     AI Tamer — Scraper & Crawler Protection
  * Plugin URI:      https://github.com/Aberbin96/ai-tamer-free
@@ -8,17 +9,19 @@
  * Text Domain:     ai-tamer
  * Domain Path:     /languages
  * Version:         0.1.0
+ * License:         GPL-2.0-or-later
+ * License URI:     https://www.gnu.org/licenses/gpl-2.0.html
  *
  * @package         Ai_Tamer
  */
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 // Plugin constants.
-define( 'AITAMER_VERSION', '0.1.0' );
-define( 'AITAMER_PLUGIN_FILE', __FILE__ );
-define( 'AITAMER_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'AITAMER_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define('AITAMER_VERSION', '0.1.0');
+define('AITAMER_PLUGIN_FILE', __FILE__);
+define('AITAMER_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('AITAMER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Autoload classes.
 require_once AITAMER_PLUGIN_DIR . 'includes/class-ai-tamer.php';
@@ -36,8 +39,8 @@ require_once AITAMER_PLUGIN_DIR . 'includes/class-license-verifier.php';
 require_once AITAMER_PLUGIN_DIR . 'admin/class-admin.php';
 
 // Activation / Deactivation hooks.
-register_activation_hook( __FILE__, array( 'AiTamer\\Plugin', 'activate' ) );
-register_deactivation_hook( __FILE__, array( 'AiTamer\\Plugin', 'deactivate' ) );
+register_activation_hook(__FILE__, array('AiTamer\\Plugin', 'activate'));
+register_deactivation_hook(__FILE__, array('AiTamer\\Plugin', 'deactivate'));
 
 // Boot the plugin.
-add_action( 'plugins_loaded', array( 'AiTamer\\Plugin', 'get_instance' ) );
+add_action('plugins_loaded', array('AiTamer\\Plugin', 'get_instance'));

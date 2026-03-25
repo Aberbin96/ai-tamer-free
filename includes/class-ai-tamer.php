@@ -13,8 +13,7 @@ use function add_option;
 use function get_option;
 use function update_option;
 use function is_admin;
-use function load_plugin_textdomain;
-use function plugin_basename;
+
 use function wp_schedule_event;
 use function wp_next_scheduled;
 
@@ -87,9 +86,6 @@ class Plugin {
 	 * Register all plugin hooks.
 	 */
 	private function register_hooks(): void {
-		// Load translations.
-		load_plugin_textdomain( 'ai-tamer', false, dirname( plugin_basename( AITAMER_PLUGIN_FILE ) ) . '/languages' );
-
 		// Auto-create/upgrade the DB table if needed (no deactivation required).
 		if ( get_option( 'aitamer_db_version' ) !== '1.0' ) {
 			Logger::install_table();

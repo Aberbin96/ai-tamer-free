@@ -46,10 +46,10 @@ class Logger {
 			PRIMARY KEY  (id),
 			KEY bot_idx (bot_name(50), created_at),
 			KEY post_idx (post_id, created_at)
-		) {$charset_collate};";
+		) {$charset_collate};"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( $sql );
+		dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
 
 		update_option( 'aitamer_db_version', '1.0' );
 	}
@@ -60,7 +60,8 @@ class Logger {
 	public static function drop_table(): void {
 		global $wpdb;
 		$table = $wpdb->prefix . self::TABLE;
-		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
 	}
 
 	/**
@@ -104,11 +105,7 @@ class Logger {
 
 		$top_bots = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT bot_name, bot_type, COUNT(*) AS hits
-				 FROM `{$table}`
-				 GROUP BY bot_name, bot_type
-				 ORDER BY hits DESC
-				 LIMIT %d",
+				"SELECT bot_name, bot_type, COUNT(*) AS hits FROM `{$table}` GROUP BY bot_name, bot_type ORDER BY hits DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$limit
 			),
 			ARRAY_A
@@ -116,18 +113,15 @@ class Logger {
 
 		$top_posts = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT post_id, COUNT(*) AS hits
-				 FROM `{$table}`
-				 WHERE post_id IS NOT NULL
-				 GROUP BY post_id
-				 ORDER BY hits DESC
-				 LIMIT %d",
+				"SELECT post_id, COUNT(*) AS hits FROM `{$table}` WHERE post_id IS NOT NULL GROUP BY post_id ORDER BY hits DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$limit
 			),
 			ARRAY_A
 		);
 
-		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM `{$table}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			"SELECT COUNT(*) FROM `{$table}`" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		);
 
 		return compact( 'top_bots', 'top_posts', 'total' );
 	}
@@ -142,7 +136,7 @@ class Logger {
 		$table = $wpdb->prefix . self::TABLE;
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"DELETE FROM `{$table}` WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+				"DELETE FROM `{$table}` WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$days
 			)
 		);

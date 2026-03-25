@@ -9,17 +9,17 @@ use AiTamer\Logger;
 
 defined( 'ABSPATH' ) || exit;
 
-$stats    = Logger::get_stats( 10 );
-$total    = (int) ( $stats['total'] ?? 0 );
-$blocked  = 0;
-$training = 0;
-foreach ( ( $stats['top_bots'] ?? array() ) as $bot ) {
-	if ( in_array( $bot['bot_type'], array( 'training', 'scraper' ), true ) ) {
-		$training += (int) $bot['hits'];
+$aitamer_stats    = Logger::get_stats( 10 );
+$aitamer_total    = (int) ( $aitamer_stats['total'] ?? 0 );
+$aitamer_blocked  = 0;
+$aitamer_training = 0;
+foreach ( ( $aitamer_stats['top_bots'] ?? array() ) as $aitamer_bot ) {
+	if ( in_array( $aitamer_bot['bot_type'], array( 'training', 'scraper' ), true ) ) {
+		$aitamer_training += (int) $aitamer_bot['hits'];
 	}
 }
 // Sovereignty Score: simple heuristic (higher blocked ratio = better)
-$score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 ) ) ) ) : 100;
+$aitamer_score = $aitamer_total > 0 ? min( 100, max( 0, round( 100 - ( $aitamer_training / $aitamer_total * 50 ) ) ) ) : 100;
 ?>
 <div class="wrap aitamer-wrap">
 
@@ -37,17 +37,17 @@ $score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 )
 	<div class="aitamer-metrics">
 		<div class="aitamer-metric green">
 			<div class="aitamer-metric-label"><?php esc_html_e( 'Total Detections', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $total ) ); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $aitamer_total ) ); ?></div>
 			<div class="aitamer-metric-sub"><?php esc_html_e( 'AI requests logged', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric red">
 			<div class="aitamer-metric-label"><?php esc_html_e( 'Training Bots', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $training ) ); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $aitamer_training ) ); ?></div>
 			<div class="aitamer-metric-sub"><?php esc_html_e( 'Intercepted scraping hits', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric blue">
 			<div class="aitamer-metric-label"><?php esc_html_e( 'Sovereignty Score', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( $score ); ?>%</div>
+			<div class="aitamer-metric-value"><?php echo esc_html( $aitamer_score ); ?>%</div>
 			<div class="aitamer-metric-sub"><?php esc_html_e( 'Protection health', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric amber">
@@ -64,7 +64,7 @@ $score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 )
 		<div class="aitamer-card-header">
 			<h2><?php esc_html_e( 'Top AI Bots by Activity', 'ai-tamer' ); ?></h2>
 		</div>
-		<?php if ( empty( $stats['top_bots'] ) ) : ?>
+		<?php if ( empty( $aitamer_stats['top_bots'] ) ) : ?>
 			<div class="aitamer-empty">
 				<p><?php esc_html_e( 'No AI bot activity recorded yet. Logs will appear after the first detected bot visit.', 'ai-tamer' ); ?></p>
 			</div>
@@ -79,13 +79,13 @@ $score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 )
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $stats['top_bots'] as $bot ) :
-							$type = $bot['bot_type'] ?? 'search';
+						<?php foreach ( $aitamer_stats['top_bots'] as $aitamer_bot ) :
+							$aitamer_type = $aitamer_bot['bot_type'] ?? 'search';
 						?>
 						<tr>
-							<td><strong><?php echo esc_html( $bot['bot_name'] ); ?></strong></td>
-							<td><span class="aitamer-badge-status <?php echo esc_attr( $type ); ?>"><?php echo esc_html( $type ); ?></span></td>
-							<td><?php echo esc_html( number_format_i18n( (int) $bot['hits'] ) ); ?></td>
+							<td><strong><?php echo esc_html( $aitamer_bot['bot_name'] ); ?></strong></td>
+							<td><span class="aitamer-badge-status <?php echo esc_attr( $aitamer_type ); ?>"><?php echo esc_html( $aitamer_type ); ?></span></td>
+							<td><?php echo esc_html( number_format_i18n( (int) $aitamer_bot['hits'] ) ); ?></td>
 						</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -99,7 +99,7 @@ $score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 )
 		<div class="aitamer-card-header">
 			<h2><?php esc_html_e( 'Most Targeted Content', 'ai-tamer' ); ?></h2>
 		</div>
-		<?php if ( empty( $stats['top_posts'] ) ) : ?>
+		<?php if ( empty( $aitamer_stats['top_posts'] ) ) : ?>
 			<div class="aitamer-empty">
 				<p><?php esc_html_e( 'No content-specific activity recorded yet.', 'ai-tamer' ); ?></p>
 			</div>
@@ -113,20 +113,20 @@ $score = $total > 0 ? min( 100, max( 0, round( 100 - ( $training / $total * 50 )
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $stats['top_posts'] as $row ) :
-							$post_id    = (int) $row['post_id'];
-							$post_title = get_the_title( $post_id );
-							$edit_link  = get_edit_post_link( $post_id );
+						<?php foreach ( $aitamer_stats['top_posts'] as $aitamer_row ) :
+							$aitamer_post_id    = (int) $aitamer_row['post_id'];
+							$aitamer_post_title = get_the_title( $aitamer_post_id );
+							$aitamer_edit_link  = get_edit_post_link( $aitamer_post_id );
 						?>
 						<tr>
 							<td>
-								<?php if ( $edit_link ) : ?>
-									<a href="<?php echo esc_url( $edit_link ); ?>" style="color:var(--at-blue);"><?php echo esc_html( $post_title ); ?></a>
+								<?php if ( $aitamer_edit_link ) : ?>
+									<a href="<?php echo esc_url( $aitamer_edit_link ); ?>" style="color:var(--at-blue);"><?php echo esc_html( $aitamer_post_title ); ?></a>
 								<?php else : ?>
-									<?php echo esc_html( $post_title ?: "Post #{$post_id}" ); ?>
+									<?php echo esc_html( $aitamer_post_title ?: "Post #{$aitamer_post_id}" ); ?>
 								<?php endif; ?>
 							</td>
-							<td><?php echo esc_html( number_format_i18n( (int) $row['hits'] ) ); ?></td>
+							<td><?php echo esc_html( number_format_i18n( (int) $aitamer_row['hits'] ) ); ?></td>
 						</tr>
 						<?php endforeach; ?>
 					</tbody>
