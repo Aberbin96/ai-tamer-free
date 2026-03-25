@@ -49,6 +49,11 @@ class BotUpdater {
 	 * Called by WP-Cron.
 	 */
 	public function fetch_and_update(): void {
+		$settings = get_option( 'aitamer_settings' );
+		if ( empty( $settings['auto_update_bots'] ) ) {
+			return;
+		}
+
 		$url      = self::DEFAULT_REMOTE_URL;
 		$response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 

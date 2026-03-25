@@ -30,6 +30,12 @@ Key Features:
 2. Activate the plugin through the 'Plugins' menu in WordPress.
 3. Configure your preferences in the 'AI Tamer' settings page.
 
+== Third-Party Services ==
+
+This plugin utilizes the following third-party service to maintain an up-to-date protection engine:
+
+* **GitHub Bot List**: The plugin daily fetches a curated list of known AI agents and training bots from our public GitHub repository (`https://raw.githubusercontent.com/Aberbin96/ai-tamer/main/data/bots.json`). This is used to ensure the detection engine stays effective against newly discovered scrapers. No site information or user data is transmitted during this request.
+
 == Frequently Asked Questions ==
 
 = Does this block Google? =

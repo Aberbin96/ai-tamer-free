@@ -215,6 +215,15 @@ class Admin
 			array()
 		);
 
+		add_settings_field(
+			'auto_update_bots',
+			__( 'Auto-update bot list from GitHub', 'ai-tamer' ),
+			array( $this, 'render_checkbox_field' ),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array( 'key' => 'auto_update_bots' )
+		);
+
 		// Rate Limiting section.
 		add_settings_section(
 			'aitamer_rate_limiting',
