@@ -1,6 +1,6 @@
 {
-  "name": "aitamer/ai-tamer",
-  "description": "Protects your WordPress content from unauthorized AI scraping.",
+  "name": "aitamer/ai-tamer-free",
+  "description": "Protects your WordPress content from unauthorized AI scraping and training.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require-php": ">=7.4",

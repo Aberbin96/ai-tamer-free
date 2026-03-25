@@ -85,7 +85,7 @@ class Admin {
 	public function register_menu(): void {
 		// Top level menu — shows Dashboard as default.
 		add_menu_page(
-			__( 'AI Tamer', 'ai-tamer' ),
+			__( 'AI Tamer — Scraper Protection', 'ai-tamer' ),
 			__( 'AI Tamer', 'ai-tamer' ),
 			'manage_options',
 			'ai-tamer',

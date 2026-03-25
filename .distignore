@@ -41,3 +41,10 @@ node_modules
 *.sql
 *.tar.gz
 *.zip
+.agents/
+skills-lock.json
+.phpunit.result.cache
+v2.md
+v3.md
+sync-public.sh
+dist/
