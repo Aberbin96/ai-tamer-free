@@ -55,6 +55,8 @@ class DetectorTest extends TestCase {
 	 */
 	public function test_it_does_not_match_human_visitors(): void {
 		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+		$_SERVER['HTTP_SEC_FETCH_DEST'] = 'document';
+		$_SERVER['HTTP_SEC_FETCH_MODE'] = 'navigate';
 
 		$detector = new Detector();
 		$result   = $detector->classify();

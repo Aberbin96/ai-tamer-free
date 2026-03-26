@@ -85,7 +85,7 @@ class Plugin {
 		$this->meta_box          = new MetaBox();
 		$this->bot_updater       = new BotUpdater();
 		$this->license_manager   = new LicenseManager();
-		$this->rest_api          = new RestApi();
+		$this->rest_api          = new RestApi( $this->detector, $this->logger );
 		$this->stripe_manager    = new StripeManager();
 		$this->register_hooks();
 	}
@@ -98,7 +98,7 @@ class Plugin {
 		$this->rest_api->register();
 
 		// Auto-create/upgrade the DB table if needed (no deactivation required).
-		if ( get_option( 'aitamer_db_version' ) !== '1.0' ) {
+		if ( get_option( 'aitamer_db_version' ) !== '1.1' ) {
 			Logger::install_table();
 		}
 
@@ -154,7 +154,9 @@ class Plugin {
 	 */
 	public function log_request(): void {
 		$agent = $this->detector->classify();
-		$this->logger->log( $agent );
+		// On the frontend, if it's a bot, we apply at least header/meta protection.
+		$protection = $agent['matched'] ? 'headers' : 'none';
+		$this->logger->log( $agent, $protection );
 	}
 
 	/**

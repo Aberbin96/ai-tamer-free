@@ -31,6 +31,7 @@ use function wp_nonce_url;
 use function wp_safe_redirect;
 use function wp_delete_file;
 use function wp_cache_delete;
+use function delete_transient;
 use function __;
 use function esc_attr;
 use function esc_html;
@@ -511,8 +512,11 @@ class Admin
 	{
 		// Clear all 8 possible combinations of granular blocking.
 		for ($i = 0; $i < 8; $i++) {
-			$key = 'aitamer_content_' . (int) $post_id . '_' . ($i & 4 ? '1' : '0') . ($i & 2 ? '1' : '0') . ($i & 1 ? '1' : '0');
+			$suffix = ($i & 4 ? '1' : '0') . ($i & 2 ? '1' : '0') . ($i & 1 ? '1' : '0');
+			$key    = 'ait_c_' . (int) $post_id . '_' . $suffix;
+			
 			wp_cache_delete($key, 'ai-tamer');
+			delete_transient($key);
 		}
 	}
 }

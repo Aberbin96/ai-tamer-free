@@ -38,6 +38,8 @@ use function do_blocks;
 use function wp_cache_get;
 use function wp_cache_set;
 use function wp_cache_delete;
+use function get_transient;
+use function set_transient;
 use function __;
 use function _x;
 
@@ -53,6 +55,24 @@ class RestApi
 	 * REST namespace for all v1 endpoints.
 	 */
 	const NAMESPACE = 'ai-tamer/v1';
+	
+	/** @var Detector */
+	private $detector;
+
+	/** @var Logger */
+	private $logger;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param Detector $detector Dependency.
+	 * @param Logger   $logger   Dependency.
+	 */
+	public function __construct($detector = null, $logger = null)
+	{
+		$this->detector = $detector;
+		$this->logger   = $logger;
+	}
 
 	/**
 	 * Registers the REST API routes.
@@ -121,14 +141,27 @@ class RestApi
 
 	/**
 	 * Validates the X-AI-License-Token header before granting content access.
+	 * 
+	 * Also performs bot detection and logging for auditing purposes.
 	 *
+	 * @param WP_REST_Request $request The REST request.
 	 * @return true|WP_Error
 	 */
-	public function check_token(): bool|WP_Error
+	public function check_token(WP_REST_Request $request): bool|WP_Error
 	{
-		if (LicenseVerifier::has_valid_token()) {
+		$agent = $this->detector ? $this->detector->classify() : array('matched' => false);
+		$is_valid = LicenseVerifier::has_valid_token();
+
+		if ($agent['matched'] && $this->logger) {
+			$post_id = (int) $request->get_param('id');
+			$protection = $is_valid ? 'api_content' : 'unauthorized';
+			$this->logger->log($agent, $protection, $post_id);
+		}
+
+		if ($is_valid) {
 			return true;
 		}
+
 		return new WP_Error(
 			'aitamer_unauthorized',
 			'A valid X-AI-License-Token is required to access this endpoint. Visit ' . home_url('/wp-json/ai-tamer/v1/license') . ' to view usage terms.',
@@ -244,12 +277,22 @@ class RestApi
 		$block_video  = get_post_meta((int) $post->ID, '_aitamer_block_video', true) === 'yes';
 		$block_text   = get_post_meta((int) $post->ID, '_aitamer_block_text', true) === 'yes';
 
-		// Internal Cache Check.
-		$cache_key = 'aitamer_content_' . (int) $post->ID . '_' . ($block_images ? '1' : '0') . ($block_video ? '1' : '0') . ($block_text ? '1' : '0');
-		$cached    = wp_cache_get($cache_key, 'ai-tamer');
+		// Multi-tier Cache Check.
+		$cache_key = 'ait_c_' . (int) $post->ID . '_' . ($block_images ? '1' : '0') . ($block_video ? '1' : '0') . ($block_text ? '1' : '0');
+		
+		// 1. Try Object Cache (fastest, but might be non-persistent on basic hosts).
+		$content = wp_cache_get($cache_key, 'ai-tamer');
+		
+		// 2. Fallback to Transients API (guaranteed persistent in DB).
+		if (false === $content) {
+			$content = get_transient($cache_key);
+			if (false !== $content) {
+				wp_cache_set($cache_key, $content, 'ai-tamer', 3600);
+			}
+		}
 
-		if (false !== $cached) {
-			$content = $cached;
+		if (false !== $content) {
+			// Found in some tier of cache.
 		} else {
 
 		/**
@@ -382,8 +425,9 @@ class RestApi
 			$content = preg_replace('/\n{3,}/', "\n\n", trim($content));
 		}
 
-		// Save to cache for 1 hour.
+		// Save to multi-tier cache for 1 hour.
 		wp_cache_set($cache_key, $content, 'ai-tamer', 3600);
+		set_transient($cache_key, $content, 3600);
 	}
 
 		$author_name = get_the_author_meta('display_name', (int) $post->post_author);

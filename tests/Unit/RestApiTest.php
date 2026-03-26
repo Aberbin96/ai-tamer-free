@@ -103,9 +103,11 @@ class RestApiTest extends TestCase
 
 		// Stub caching and block functions.
 		Monkey\Functions\stubs(array(
-			'wp_cache_get' => false,
-			'wp_cache_set' => true,
-			'do_blocks'    => function ($content) {
+			'wp_cache_get'  => false,
+			'wp_cache_set'  => true,
+			'get_transient' => false,
+			'set_transient' => true,
+			'do_blocks'     => function ($content) {
 				return $content;
 			},
 		));
