@@ -23,6 +23,7 @@ use function add_filter;
 use function get_bloginfo;
 use function get_option;
 use function get_permalink;
+use function get_post_meta;
 use function get_the_ID;
 use function get_the_title;
 use function gmdate;
@@ -93,20 +94,38 @@ class LicenseManager {
 		$directive = $this->get_license_directive();
 		$site      = get_bloginfo( 'name' );
 		$year      = gmdate( 'Y' );
+		$value     = '';
 
-		switch ( $directive ) {
-			case 'none':
-				$value = 'all-rights-reserved; training=prohibited; scraping=prohibited; indexing=prohibited';
-				break;
-			case 'training-prohibited':
-				$value = 'all-rights-reserved; training=prohibited; scraping=prohibited';
-				break;
-			case 'permitted':
-				$value = 'permitted';
-				break;
-			default: // all-rights-reserved
-				$value = 'all-rights-reserved; training=prohibited';
-				break;
+		if ( is_singular() ) {
+			$post_id      = (int) get_the_ID();
+			$block_text   = get_post_meta( $post_id, '_aitamer_block_text', true ) === 'yes';
+			$block_images = get_post_meta( $post_id, '_aitamer_block_images', true ) === 'yes';
+			$block_video  = get_post_meta( $post_id, '_aitamer_block_video', true ) === 'yes';
+
+			if ( $block_text || $block_images || $block_video ) {
+				$parts = array( 'all-rights-reserved' );
+				$parts[] = 'text=' . ( $block_text ? 'prohibited' : 'permitted' );
+				$parts[] = 'images=' . ( $block_images ? 'prohibited' : 'permitted' );
+				$parts[] = 'video=' . ( $block_video ? 'prohibited' : 'permitted' );
+				$value = implode( '; ', $parts );
+			}
+		}
+
+		if ( empty( $value ) ) {
+			switch ( $directive ) {
+				case 'none':
+					$value = 'all-rights-reserved; training=prohibited; scraping=prohibited; indexing=prohibited';
+					break;
+				case 'training-prohibited':
+					$value = 'all-rights-reserved; training=prohibited; scraping=prohibited';
+					break;
+				case 'permitted':
+					$value = 'permitted';
+					break;
+				default: // all-rights-reserved
+					$value = 'all-rights-reserved; training=prohibited';
+					break;
+			}
 		}
 
 		$headers['AI-Content-License'] = $value;
@@ -158,6 +177,22 @@ class LicenseManager {
 				$schema['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
 				$schema['copyrightNotice'] = 'AI training prohibited. All rights reserved.';
 				break;
+		}
+
+		if ( is_singular() ) {
+			$post_id      = (int) get_the_ID();
+			$block_text   = get_post_meta( $post_id, '_aitamer_block_text', true ) === 'yes';
+			$block_images = get_post_meta( $post_id, '_aitamer_block_images', true ) === 'yes';
+			$block_video  = get_post_meta( $post_id, '_aitamer_block_video', true ) === 'yes';
+
+			if ( $block_text || $block_images || $block_video ) {
+				$restrictions = array();
+				if ( $block_text ) $restrictions[] = 'text';
+				if ( $block_images ) $restrictions[] = 'images';
+				if ( $block_video ) $restrictions[] = 'video';
+				
+				$schema['copyrightNotice'] .= ' Specific restrictions apply to: ' . implode( ', ', $restrictions ) . '.';
+			}
 		}
 
 		echo '<script type="application/ld+json">' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput

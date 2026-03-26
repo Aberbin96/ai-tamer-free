@@ -54,6 +54,12 @@ class Plugin {
 	/** @var LicenseManager */
 	private $license_manager;
 
+	/** @var RestApi */
+	private $rest_api;
+
+	/** @var StripeManager */
+	private $stripe_manager;
+
 	/**
 	 * Returns the single instance, creating it on first call.
 	 *
@@ -79,6 +85,8 @@ class Plugin {
 		$this->meta_box          = new MetaBox();
 		$this->bot_updater       = new BotUpdater();
 		$this->license_manager   = new LicenseManager();
+		$this->rest_api          = new RestApi();
+		$this->stripe_manager    = new StripeManager();
 		$this->register_hooks();
 	}
 
@@ -86,6 +94,9 @@ class Plugin {
 	 * Register all plugin hooks.
 	 */
 	private function register_hooks(): void {
+		// Boot the REST API (always — available on frontend and admin).
+		$this->rest_api->register();
+
 		// Auto-create/upgrade the DB table if needed (no deactivation required).
 		if ( get_option( 'aitamer_db_version' ) !== '1.0' ) {
 			Logger::install_table();

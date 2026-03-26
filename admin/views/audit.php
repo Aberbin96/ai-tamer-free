@@ -9,8 +9,7 @@
 use AiTamer\AuditReport;
 use AiTamer\Logger;
 
-defined( 'ABSPATH' ) || exit;
-
+global $wpdb;
 $aitamer_table = $wpdb->prefix . Logger::TABLE;
 $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	"SELECT COUNT(*) FROM `{$aitamer_table}`" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared

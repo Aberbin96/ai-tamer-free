@@ -28,6 +28,7 @@ use function esc_html;
 use function esc_html_e;
 use function __;
 use function selected;
+use function checked;
 
 defined('ABSPATH') || exit;
 
@@ -100,8 +101,43 @@ class MetaBox
 				<option value="allow_all" <?php selected($value, 'allow_all'); ?>>
 					🟢 <?php esc_html_e('Allow all AI bots', 'ai-tamer'); ?>
 				</option>
+				<option value="custom" <?php selected($value, 'custom'); ?>>
+					⚙️ <?php esc_html_e('Custom / Granular Control', 'ai-tamer'); ?>
+				</option>
 			</select>
 		</p>
+
+		<div id="aitamer-granular-options" style="margin-top:10px; padding:10px; background:#f0f0f1; border: 1px solid #ccd0d4; border-radius:4px; <?php echo ( 'custom' === $value ) ? '' : 'display:none;'; ?>">
+			<label style="display:block; margin-bottom:8px; font-weight:600; font-size:12px;">
+				<?php esc_html_e( 'Granular Protections (Internal Targets)', 'ai-tamer' ); ?>
+			</label>
+			
+			<?php
+			$block_text   = get_post_meta( $post->ID, '_aitamer_block_text', true ) === 'yes';
+			$block_images = get_post_meta( $post->ID, '_aitamer_block_images', true ) === 'yes';
+			$block_video  = get_post_meta( $post->ID, '_aitamer_block_video', true ) === 'yes';
+			?>
+
+			<p style="margin:5px 0;">
+				<input type="checkbox" name="aitamer_block_text" id="aitamer_block_text" value="yes" <?php checked( $block_text ); ?> />
+				<label for="aitamer_block_text"><?php esc_html_e( 'Block Text Training', 'ai-tamer' ); ?></label>
+			</p>
+			<p style="margin:5px 0;">
+				<input type="checkbox" name="aitamer_block_images" id="aitamer_block_images" value="yes" <?php checked( $block_images ); ?> />
+				<label for="aitamer_block_images"><?php esc_html_e( 'Block Image Training', 'ai-tamer' ); ?></label>
+			</p>
+			<p style="margin:5px 0;">
+				<input type="checkbox" name="aitamer_block_video" id="aitamer_block_video" value="yes" <?php checked( $block_video ); ?> />
+				<label for="aitamer_block_video"><?php esc_html_e( 'Block Video Training', 'ai-tamer' ); ?></label>
+			</p>
+		</div>
+
+		<script>
+		document.getElementById('aitamer_protection').addEventListener('change', function() {
+			var granular = document.getElementById('aitamer-granular-options');
+			granular.style.display = (this.value === 'custom') ? 'block' : 'none';
+		});
+		</script>
 		<p style="font-size:11px;color:#777;margin-bottom:0;">
 			<?php esc_html_e('Override global AI protection for this specific post.', 'ai-tamer'); ?>
 		</p>
@@ -130,7 +166,7 @@ class MetaBox
 			return;
 		}
 
-		$allowed = array('inherit', 'block_all', 'block_training', 'allow_all');
+		$allowed = array('inherit', 'block_all', 'block_training', 'allow_all', 'custom');
 		$value   = isset($_POST['aitamer_protection'])
 			? sanitize_key(wp_unslash($_POST['aitamer_protection']))
 			: 'inherit';
@@ -140,6 +176,11 @@ class MetaBox
 		}
 
 		update_post_meta($post_id, self::META_KEY, $value);
+
+		// Save granular options.
+		update_post_meta( $post_id, '_aitamer_block_text', isset( $_POST['aitamer_block_text'] ) ? 'yes' : 'no' );
+		update_post_meta( $post_id, '_aitamer_block_images', isset( $_POST['aitamer_block_images'] ) ? 'yes' : 'no' );
+		update_post_meta( $post_id, '_aitamer_block_video', isset( $_POST['aitamer_block_video'] ) ? 'yes' : 'no' );
 	}
 
 	/**
@@ -151,6 +192,6 @@ class MetaBox
 	public static function get_setting(int $post_id): string
 	{
 		$value = get_post_meta($post_id, self::META_KEY, true);
-		return in_array($value, array('inherit', 'block_all', 'block_training', 'allow_all'), true) ? $value : 'inherit';
+		return in_array($value, array('inherit', 'block_all', 'block_training', 'allow_all', 'custom'), true) ? $value : 'inherit';
 	}
 }

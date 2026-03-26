@@ -465,3 +465,62 @@
 		padding: 15px;
 	}
 }
+
+/* =========================================================
+   API Documentation (Pro)
+   ========================================================= */
+.aitamer-endpoint-group {
+	margin-bottom: 20px;
+}
+.aitamer-endpoint-group h3 {
+	font-size: 13px;
+	margin-bottom: 8px;
+}
+.aitamer-endpoint-group code {
+	display: block;
+	padding: 12px;
+	background: var(--at-surface-2);
+	border: 1px solid var(--at-border);
+	border-radius: var(--at-radius);
+	font-weight: 600;
+	margin: 10px 0;
+	color: var(--at-text);
+}
+.aitamer-code-block {
+	background: #23282d; /* WP Deep Dark */
+	color: #fff;
+	padding: 16px;
+	border-radius: 6px;
+	overflow-x: auto;
+	margin: 15px 0;
+	font-family: var(--at-font-mono);
+	font-size: 11px;
+	line-height: 1.6;
+}
+.aitamer-code-block pre {
+	margin: 0;
+	color: #72aee6; /* WP Blue highlight variant */
+}
+.aitamer-badge-pro {
+	background: var(--at-red);
+	color: #fff;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 2px 6px;
+	border-radius: 3px;
+	vertical-align: middle;
+	margin-left: 8px;
+	text-transform: uppercase;
+}
+
+.aitamer-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+}
+
+@media screen and (max-width: 782px) {
+	.aitamer-grid {
+		grid-template-columns: 1fr;
+	}
+}

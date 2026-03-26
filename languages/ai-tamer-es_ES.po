@@ -327,3 +327,90 @@ msgstr ""
 #: admin/views/licensing.php:152
 msgid "Learn more →"
 msgstr "Saber más →"
+#: includes/class-meta-box.php:123
+msgid "Block Text Tracking"
+msgstr "Bloquear rastreo de Texto"
+
+#: includes/class-meta-box.php:127
+msgid "Block Image Training"
+msgstr "Bloquear entrenamiento de Imágenes"
+
+#: includes/class-meta-box.php:131
+msgid "Block Video Ingestion"
+msgstr "Bloquear ingesta de Vídeo"
+
+#: includes/class-meta-box.php:104
+msgid "⚙️ Custom / Granular Control"
+msgstr "⚙️ Control Granular / Personalizado"
+
+#: includes/class-meta-box.php:120
+msgid "Granular Protections (Internal Targets)"
+msgstr "Protecciones Granulares (Objetivos Internos)"
+
+#: admin/views/monetization.php:18
+msgid "Monetization"
+msgstr "Monetización"
+
+#: admin/views/monetization.php:19
+msgid "Set up automated licensing. Allow AI agents to purchase access tokens via Stripe."
+msgstr "Configura el licenciamiento automático. Permite que los agentes de IA compren tokens de acceso vía Stripe."
+
+#: admin/views/monetization.php:28
+msgid "Stripe Configuration"
+msgstr "Configuración de Stripe"
+
+#: admin/views/monetization.php:32
+msgid "Enable Monetization"
+msgstr "Activar Monetización"
+
+#: admin/views/monetization.php:35
+msgid "If enabled, bots will see \"Purchase\" options in the license document."
+msgstr "Si se activa, los bots verán opciones de \"Compra\" en el documento de licencia."
+
+#: admin/views/monetization.php:42
+msgid "Test Mode"
+msgstr "Modo de Prueba"
+
+#: admin/views/monetization.php:43
+msgid "Live Mode"
+msgstr "Modo Real"
+
+#: admin/views/monetization.php:84
+msgid "Stripe Price ID"
+msgstr "ID de Precio de Stripe"
+
+#: admin/views/monetization.php:87
+msgid "How to find this:"
+msgstr "Cómo encontrar esto:"
+
+#: admin/views/monetization.php:88
+msgid "Go to Stripe Dashboard > Products > [Your Product] > Price ID (starts with price_)."
+msgstr "Ve al Panel de Stripe > Productos > [Tu Producto] > Price ID (empieza por price_)."
+
+#: admin/views/monetization.php:94
+msgid "Pricing Recommendations"
+msgstr "Recomendaciones de Precios"
+
+#: admin/views/monetization.php:96
+msgid "Micro-payments:"
+msgstr "Micro-pagos:"
+
+#: admin/views/monetization.php:96
+msgid "Charge roughly $0.05 - $0.10 per full article ingestion to avoid price friction."
+msgstr "Cobra aproximadamente $0.05 - $0.10 por ingesta de artículo completo para evitar fricción."
+
+#: admin/views/monetization.php:97
+msgid "Monthly Access:"
+msgstr "Acceso Mensual:"
+
+#: admin/views/monetization.php:97
+msgid "Standard SaaS rates ($19 - $49/mo) are recommended for high-authority niche sites."
+msgstr "Se recomiendan tarifas de SaaS estándar ($19 - $49/mes) para sitios de nicho de alta autoridad."
+
+#: admin/views/monetization.php:98
+msgid "Note:"
+msgstr "Nota:"
+
+#: admin/views/monetization.php:98
+msgid "Stripe supports fixed prices or usage-based billing. Ensure your Price ID matches your business model."
+msgstr "Stripe soporta precios fijos o facturación basada en el uso. Asegúrate de que tu Price ID coincida con tu modelo de negocio."

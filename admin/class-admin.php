@@ -30,6 +30,7 @@ use function submit_button;
 use function wp_nonce_url;
 use function wp_safe_redirect;
 use function wp_delete_file;
+use function wp_cache_delete;
 use function __;
 use function esc_attr;
 use function esc_html;
@@ -68,6 +69,7 @@ class Admin
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_post_aitamer_download_report', array($this, 'handle_download_report'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action('save_post', array($this, 'clear_api_cache'));
 	}
 
 	/**
@@ -139,6 +141,17 @@ class Admin
 			'ai-tamer-licensing',
 			array($this, 'render_licensing_page')
 		);
+
+
+		// Monetization submenu (Pro).
+		add_submenu_page(
+			'ai-tamer',
+			__('Monetization', 'ai-tamer'),
+			__('Monetization', 'ai-tamer'),
+			'manage_options',
+			'ai-tamer-monetization',
+			array($this, 'render_monetization_page')
+		);
 	}
 
 	/**
@@ -151,6 +164,14 @@ class Admin
 			'aitamer_settings',
 			array(
 				'sanitize_callback' => array($this, 'sanitize_settings'),
+			)
+		);
+
+		register_setting(
+			'aitamer_settings_group',
+			'aitamer_stripe_settings',
+			array(
+				'sanitize_callback' => array($this, 'sanitize_stripe_settings'),
 			)
 		);
 
@@ -283,8 +304,11 @@ class Admin
 	 * @param array $input Raw form input.
 	 * @return array Sanitized values.
 	 */
-	public function sanitize_settings(array $input): array
+	public function sanitize_settings($input): array
 	{
+		if (! is_array($input)) {
+			return get_option('aitamer_settings', array());
+		}
 		$allowed_policies = array('no-training', 'allow', 'allow-with-attribution');
 		$policy           = $input['license_policy'] ?? 'no-training';
 		if (! in_array($policy, $allowed_policies, true)) {
@@ -292,6 +316,7 @@ class Admin
 		}
 		return array(
 			'block_training_bots'     => ! empty($input['block_training_bots']),
+			'auto_update_bots'        => ! empty($input['auto_update_bots']),
 			'inject_meta_tags'        => ! empty($input['inject_meta_tags']),
 			'inject_http_headers'     => ! empty($input['inject_http_headers']),
 			'crawl_delay_enabled'     => ! empty($input['crawl_delay_enabled']),
@@ -301,6 +326,29 @@ class Admin
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
+		);
+	}
+
+	/**
+	 * Sanitizes Stripe-specific settings.
+	 *
+	 * @param mixed $input Raw form input.
+	 * @return array Sanitized values.
+	 */
+	public function sanitize_stripe_settings($input): array
+	{
+		if (! is_array($input)) {
+			return get_option('aitamer_stripe_settings', array());
+		}
+
+		return array(
+			'enabled'          => (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no',
+			'test_mode'        => (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes',
+			'test_publishable' => sanitize_text_field($input['test_publishable'] ?? ''),
+			'test_secret'      => sanitize_text_field($input['test_secret'] ?? ''),
+			'live_publishable' => sanitize_text_field($input['live_publishable'] ?? ''),
+			'live_secret'      => sanitize_text_field($input['live_secret'] ?? ''),
+			'price_id'         => sanitize_text_field($input['price_id'] ?? ''),
 		);
 	}
 
@@ -409,6 +457,18 @@ class Admin
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/licensing.php';
 	}
 
+
+	/**
+	 * Renders the Monetization page (Pro).
+	 */
+	public function render_monetization_page(): void
+	{
+		if (! current_user_can('manage_options')) {
+			return;
+		}
+		require_once AITAMER_PLUGIN_DIR . 'admin/views/monetization.php';
+	}
+
 	/**
 	 * Handles the admin-post action to generate and stream a CSV report download.
 	 */
@@ -441,5 +501,18 @@ class Admin
 		// Security: Delete the file after it has been streamed to the user.
 		wp_delete_file($file);
 		exit;
+	}
+	/**
+	 * Clears the REST API content cache for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public function clear_api_cache($post_id): void
+	{
+		// Clear all 8 possible combinations of granular blocking.
+		for ($i = 0; $i < 8; $i++) {
+			$key = 'aitamer_content_' . (int) $post_id . '_' . ($i & 4 ? '1' : '0') . ($i & 2 ? '1' : '0') . ($i & 1 ? '1' : '0');
+			wp_cache_delete($key, 'ai-tamer');
+		}
 	}
 }

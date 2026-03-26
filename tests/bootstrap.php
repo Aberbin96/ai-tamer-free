@@ -27,3 +27,6 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 register_shutdown_function( function() {
 	Brain\Monkey\tearDown();
 } );
+
+// Load WP stubs.
+require_once __DIR__ . '/Unit/stubs.php';
