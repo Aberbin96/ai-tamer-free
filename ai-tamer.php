@@ -8,7 +8,7 @@
  * Author URI:      https://github.com/Aberbin96/
  * Text Domain:     ai-tamer
  * Domain Path:     /languages
- * Version:         0.1.1
+ * Version:         0.1.2
  * License:         GPL-2.0-or-later
  * License URI:     https://www.gnu.org/licenses/gpl-2.0.html
  *
@@ -18,7 +18,7 @@
 defined('ABSPATH') || exit;
 
 // Plugin constants.
-define('AITAMER_VERSION', '0.1.1');
+define('AITAMER_VERSION', '0.1.2');
 define('AITAMER_PLUGIN_FILE', __FILE__);
 define('AITAMER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AITAMER_PLUGIN_URL', plugin_dir_url(__FILE__));

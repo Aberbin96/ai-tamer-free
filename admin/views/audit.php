@@ -1,6 +1,6 @@
 <?php
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 /**
  * Audit Reports page view — Official Customs Logbook.
@@ -21,19 +21,20 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 
 	<div class="aitamer-page-header">
 		<div>
-			<h1 class="aitamer-page-title"><?php esc_html_e( 'Audit Reports', 'ai-tamer' ); ?></h1>
-			<p class="aitamer-page-desc"><?php esc_html_e( 'Transparent AI bot forensics. Immutable evidence for security auditing.', 'ai-tamer' ); ?></p>
+			<h1 class="aitamer-page-title"><?php esc_html_e('Audit Reports', 'ai-tamer'); ?></h1>
+			<p class="aitamer-page-desc"><?php esc_html_e('Transparent AI bot forensics. Immutable evidence for security auditing.', 'ai-tamer'); ?></p>
 		</div>
 		<div style="display:flex;gap:10px;align-items:center;flex-shrink:0;">
-			<a href="<?php echo esc_url( AuditReport::get_download_url( 30 ) ); ?>" class="aitamer-btn-primary">
-				&#8659; <?php esc_html_e( 'Generate Evidence (CSV)', 'ai-tamer' ); ?>
+			<a href="<?php echo esc_url(AuditReport::get_download_url(30)); ?>" class="aitamer-btn-primary">
+				&#8659; <?php esc_html_e('Generate Evidence (CSV)', 'ai-tamer'); ?>
 			</a>
 		</div>
 	</div>
 
-	<?php if ( isset( $_GET['aitamer_error'] ) ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+	<?php if (isset($_GET['aitamer_error'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended 
+	?>
 		<div class="notice notice-error">
-			<p><?php esc_html_e( 'Could not generate the report. Please check file system permissions.', 'ai-tamer' ); ?></p>
+			<p><?php esc_html_e('Could not generate the report. Please check file system permissions.', 'ai-tamer'); ?></p>
 		</div>
 	<?php endif; ?>
 
@@ -43,47 +44,47 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 		"SELECT created_at FROM `{$aitamer_table}` ORDER BY id ASC LIMIT 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	);
 	$aitamer_days = 0;
-	if ( $aitamer_oldest ) {
-		$aitamer_diff = time() - strtotime( $aitamer_oldest );
-		$aitamer_days = min( 30, max( 1, ceil( $aitamer_diff / DAY_IN_SECONDS ) ) );
+	if ($aitamer_oldest) {
+		$aitamer_diff = time() - strtotime($aitamer_oldest);
+		$aitamer_days = min(30, max(1, ceil($aitamer_diff / DAY_IN_SECONDS)));
 	}
 	?>
 	<div class="aitamer-metrics">
 		<div class="aitamer-metric green">
-			<div class="aitamer-metric-label"><?php esc_html_e( 'Secure Logs', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $aitamer_total ) ); ?></div>
-			<div class="aitamer-metric-sub"><?php esc_html_e( 'Protected access records', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-label"><?php esc_html_e('Secure Logs', 'ai-tamer'); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n($aitamer_total)); ?></div>
+			<div class="aitamer-metric-sub"><?php esc_html_e('Protected access records', 'ai-tamer'); ?></div>
 		</div>
 		<div class="aitamer-metric amber">
-			<div class="aitamer-metric-label"><?php esc_html_e( 'Audit History', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( $aitamer_days ); ?> <?php echo esc_html( _n( 'Day', 'Days', $aitamer_days, 'ai-tamer' ) ); ?></div>
-			<div class="aitamer-metric-sub"><?php esc_html_e( 'Activity period recorded', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-label"><?php esc_html_e('Audit History', 'ai-tamer'); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html($aitamer_days); ?> <?php echo esc_html(_n('Day', 'Days', $aitamer_days, 'ai-tamer')); ?></div>
+			<div class="aitamer-metric-sub"><?php esc_html_e('Activity period recorded', 'ai-tamer'); ?></div>
 		</div>
 	</div>
 
 	<!-- Download Options -->
 	<div class="aitamer-card">
 		<div class="aitamer-card-header">
-			<h2><?php esc_html_e( 'Download Evidence Report', 'ai-tamer' ); ?></h2>
+			<h2><?php esc_html_e('Download Evidence Report', 'ai-tamer'); ?></h2>
 		</div>
-		<p><?php esc_html_e( 'Select a time period to generate a downloadable CSV audit file.', 'ai-tamer' ); ?></p>
+		<p><?php esc_html_e('Select a time period to generate a downloadable CSV audit file.', 'ai-tamer'); ?></p>
 		<div style="display:flex;gap:10px;flex-wrap:wrap;">
-			<a href="<?php echo esc_url( AuditReport::get_download_url( 7 ) ); ?>" class="aitamer-btn-ghost">
-				<?php esc_html_e( 'Last 7 days', 'ai-tamer' ); ?>
+			<a href="<?php echo esc_url(AuditReport::get_download_url(7)); ?>" class="aitamer-btn-ghost">
+				<?php esc_html_e('Last 7 days', 'ai-tamer'); ?>
 			</a>
-			<a href="<?php echo esc_url( AuditReport::get_download_url( 30 ) ); ?>" class="aitamer-btn-primary">
-				<?php esc_html_e( 'Last 30 days', 'ai-tamer' ); ?>
+			<a href="<?php echo esc_url(AuditReport::get_download_url(30)); ?>" class="aitamer-btn-primary">
+				<?php esc_html_e('Last 30 days', 'ai-tamer'); ?>
 			</a>
-			<a href="<?php echo esc_url( AuditReport::get_download_url( 90 ) ); ?>" class="aitamer-btn-ghost">
-				<?php esc_html_e( 'Last 90 days', 'ai-tamer' ); ?>
+			<a href="<?php echo esc_url(AuditReport::get_download_url(90)); ?>" class="aitamer-btn-ghost">
+				<?php esc_html_e('Last 90 days', 'ai-tamer'); ?>
 			</a>
 		</div>
 		<p style="margin-top:16px;font-size:11px;">
 			<?php
 			printf(
 				/* translators: %s: total records */
-				esc_html__( 'There are currently %s access records available in the log database.', 'ai-tamer' ),
-				'<strong style="color:var(--at-green);">' . esc_html( number_format_i18n( $aitamer_total ) ) . '</strong>'
+				esc_html__('There are currently %s access records available in the log database.', 'ai-tamer'),
+				'<strong style="color:var(--at-green);">' . esc_html(number_format_i18n($aitamer_total)) . '</strong>'
 			);
 			?>
 		</p>
@@ -102,46 +103,46 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 	?>
 	<div class="aitamer-card">
 		<div class="aitamer-card-header">
-			<h2><?php esc_html_e( 'Recent Activity Log', 'ai-tamer' ); ?></h2>
+			<h2><?php esc_html_e('Recent Activity Log', 'ai-tamer'); ?></h2>
 			<span style="font-size:11px;color:var(--at-muted);">
 				<span class="aitamer-status-dot" style="width:6px;height:6px;"></span>
-				<?php esc_html_e( 'Live', 'ai-tamer' ); ?>
+				<?php esc_html_e('Live', 'ai-tamer'); ?>
 			</span>
 		</div>
-		<?php if ( empty( $aitamer_recent ) ) : ?>
+		<?php if (empty($aitamer_recent)) : ?>
 			<div class="aitamer-empty">
-				<p><?php esc_html_e( 'No activity recorded yet. Logs will appear after the first detected bot visit.', 'ai-tamer' ); ?></p>
+				<p><?php esc_html_e('No activity recorded yet. Logs will appear after the first detected bot visit.', 'ai-tamer'); ?></p>
 			</div>
 		<?php else : ?>
 			<div class="aitamer-table-responsive">
 				<table class="aitamer-table">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'Timestamp', 'ai-tamer' ); ?></th>
-							<th><?php esc_html_e( 'Bot Identity', 'ai-tamer' ); ?></th>
-							<th><?php esc_html_e( 'IP Hash', 'ai-tamer' ); ?></th>
-							<th><?php esc_html_e( 'URI Accessed', 'ai-tamer' ); ?></th>
-							<th><?php esc_html_e( 'Intent', 'ai-tamer' ); ?></th>
-							<th><?php esc_html_e( 'Protection', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e('Timestamp', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Bot Identity', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('IP Hash', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('URI Accessed', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Intent', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Protection', 'ai-tamer'); ?></th>
 						</tr>
 					</thead>
 					<tbody>
-						<?php foreach ( $aitamer_recent as $aitamer_entry ) :
+						<?php foreach ($aitamer_recent as $aitamer_entry) :
 							$aitamer_type = $aitamer_entry['bot_type'] ?? 'search';
 						?>
-						<tr>
-							<td class="mono" style="font-size:10px;"><?php echo esc_html( $aitamer_entry['created_at'] ); ?></td>
-							<td>
-								<strong><?php echo esc_html( $aitamer_entry['bot_name'] ); ?></strong>
-								<div style="font-size:9px;color:var(--at-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?php echo esc_attr($aitamer_entry['user_agent']); ?>">
-									<?php echo esc_html( $aitamer_entry['user_agent'] ); ?>
-								</div>
-							</td>
-							<td class="mono" style="font-size:9px;"><?php echo esc_html( substr($aitamer_entry['ip_hash'], 0, 8) ); ?>...</td>
-							<td class="mono"><?php echo esc_html( $aitamer_entry['request_uri'] ); ?></td>
-							<td><span class="aitamer-badge-status <?php echo esc_attr( $aitamer_type ); ?>"><?php echo esc_html( $aitamer_type ); ?></span></td>
-							<td><span class="aitamer-badge-status" style="background:var(--at-border);color:var(--at-text);"><?php echo esc_html( $aitamer_entry['protection'] ?? 'none' ); ?></span></td>
-						</tr>
+							<tr>
+								<td class="mono" style="font-size:10px;"><?php echo esc_html($aitamer_entry['created_at']); ?></td>
+								<td>
+									<strong><?php echo esc_html($aitamer_entry['bot_name']); ?></strong>
+									<div style="font-size:9px;color:var(--at-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?php echo esc_attr($aitamer_entry['user_agent']); ?>">
+										<?php echo esc_html($aitamer_entry['user_agent']); ?>
+									</div>
+								</td>
+								<td class="mono" style="font-size:9px;"><?php echo esc_html(substr($aitamer_entry['ip_hash'], 0, 8)); ?>...</td>
+								<td class="mono"><?php echo esc_html($aitamer_entry['request_uri']); ?></td>
+								<td><span class="aitamer-badge-status <?php echo esc_attr($aitamer_type); ?>"><?php echo esc_html($aitamer_type); ?></span></td>
+								<td><span class="aitamer-badge-status" style="background:var(--at-border);color:var(--at-text);"><?php echo esc_html($aitamer_entry['protection'] ?? 'none'); ?></span></td>
+							</tr>
 						<?php endforeach; ?>
 					</tbody>
 				</table>
