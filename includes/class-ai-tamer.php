@@ -88,10 +88,24 @@ class Plugin {
 		$this->meta_box          = new MetaBox();
 		$this->bot_updater       = new BotUpdater();
 		$this->license_manager   = new LicenseManager();
-		$this->rest_api          = new RestApi( $this->detector, $this->logger );
-		$this->stripe_manager    = new StripeManager();
-		$this->c2pa_manager      = new C2paManager();
+		if ( class_exists( 'AiTamer\RestApiPro' ) ) {
+			$this->rest_api = new RestApiPro( $this->detector, $this->logger );
+		} else {
+			$this->rest_api = new RestApi( $this->detector, $this->logger );
+		}
+
+		$this->stripe_manager    = class_exists( 'AiTamer\StripeManager' ) ? new StripeManager() : null;
+		$this->c2pa_manager      = class_exists( 'AiTamer\C2paManager' ) ? new C2paManager() : null;
 		$this->register_hooks();
+	}
+
+	/**
+	 * Returns the Stripe manager.
+	 *
+	 * @return StripeManager
+	 */
+	public function get_stripe_manager(): StripeManager {
+		return $this->stripe_manager;
 	}
 
 	/**
@@ -104,6 +118,9 @@ class Plugin {
 		// Auto-create/upgrade the DB table if needed (no deactivation required).
 		if ( get_option( 'aitamer_db_version' ) !== '1.1' ) {
 			Logger::install_table();
+		}
+		if ( get_option( 'aitamer_billing_db_version' ) !== '1.0' ) {
+			StripeManager::install_table();
 		}
 
 		// Rate-limit bots before anything else runs.
@@ -173,6 +190,7 @@ class Plugin {
 	public static function activate(): void {
 		// Install the logging DB table.
 		Logger::install_table();
+		StripeManager::install_table();
 
 		// Set default options on first activation.
 		if ( false === get_option( 'aitamer_settings' ) ) {

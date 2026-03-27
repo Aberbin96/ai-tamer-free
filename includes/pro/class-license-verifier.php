@@ -24,6 +24,7 @@
 
 namespace AiTamer;
 
+use AiTamer\Enums\LicenseScope;
 use function base64_decode;
 use function base64_encode;
 use function get_option;
@@ -37,6 +38,7 @@ use function time;
 use function update_option;
 use function wp_generate_password;
 use function wp_unslash;
+use function has_category;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -67,9 +69,10 @@ class LicenseVerifier {
 	/**
 	 * Checks the current request for a valid `X-AI-License-Token` header.
 	 *
-	 * @return bool True if a valid, unexpired token is present.
+	 * @param string $required_scope Optional scope required (e.g. 'post:123').
+	 * @return bool True if a valid, unexpired, and authorized token is present.
 	 */
-	public static function has_valid_token(): bool {
+	public static function has_valid_token( string $required_scope = '' ): bool {
 		// Retrieve the header value (Apache/Nginx/WP-specific lookup).
 		$header = '';
 		if ( isset( $_SERVER['HTTP_X_AI_LICENSE_TOKEN'] ) ) {
@@ -107,7 +110,27 @@ class LicenseVerifier {
 			self::get_secret()
 		);
 
-		return hash_equals( $expected, $payload['sig'] );
+		if ( ! hash_equals( $expected, $payload['sig'] ) ) {
+			return false;
+		}
+
+		// Scope verification.
+		if ( ! empty( $required_scope ) ) {
+			$token_scope = $payload['scp'] ?? 'global';
+			if ( ! self::is_scope_authorized( $token_scope, $required_scope ) ) {
+				return false;
+			}
+		}
+
+		// Real-time subscription check (if linked).
+		if ( ! empty( $payload['sid'] ) ) {
+			$stripe = new StripeManager();
+			if ( ! $stripe->verify_subscription( $payload['sid'] ) ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/**
@@ -115,9 +138,14 @@ class LicenseVerifier {
 	 *
 	 * @param string $agent_name Name of the licensed agent (e.g. "GPTBot").
 	 * @param int    $days       Number of days until expiry (default 365).
+	 * @param string $sub_id     Optional Stripe subscription ID.
+	 * @param string $scope      Optional access scope (default 'global').
 	 * @return string base64url-encoded token string.
 	 */
-	public static function issue_token( string $agent_name, int $days = 365 ): string {
+	public static function issue_token( string $agent_name, int $days = 365, string $sub_id = '', string $scope = 'global' ): string {
+		if ( 'global' === $scope ) {
+			$scope = LicenseScope::GLOBAL->value;
+		}
 		$exp = time() + ( $days * DAY_IN_SECONDS );
 		$iss = home_url( '/' );
 		$sig = hash_hmac( 'sha256', $agent_name . '|' . $iss . '|' . $exp, self::get_secret() );
@@ -126,6 +154,8 @@ class LicenseVerifier {
 			'sub' => $agent_name,
 			'iss' => $iss,
 			'exp' => $exp,
+			'sid' => $sub_id,
+			'scp' => $scope,
 			'sig' => $sig,
 		) );
 
@@ -137,6 +167,8 @@ class LicenseVerifier {
 		$tokens[] = array(
 			'agent'     => $agent_name,
 			'exp'       => $exp,
+			'sub_id'    => $sub_id,
+			'scope'     => $scope,
 			'issued_at' => time(),
 			'token'     => $token,
 		);
@@ -166,5 +198,36 @@ class LicenseVerifier {
 			array_splice( $tokens, $index, 1 );
 			update_option( 'aitamer_license_tokens', $tokens, false );
 		}
+	}
+
+	/**
+	 * Helper: checks if a token scope covers a required resource.
+	 *
+	 * @param string $token_scope    The scope from the token (e.g. 'global', 'post:12').
+	 * @param string $required_scope The required resource (e.g. 'post:12').
+	 * @return bool
+	 */
+	public static function is_scope_authorized( string $token_scope, string $required_scope ): bool {
+		// Global tokens are always authorized.
+		if ( LicenseScope::GLOBAL->value === $token_scope ) {
+			return true;
+		}
+
+		// Exact match (e.g. 'post:123' == 'post:123').
+		if ( $token_scope === $required_scope ) {
+			return true;
+		}
+
+		// Category check: 'cat:10' should authorize 'post:5' if post 5 is in category 10.
+		if ( 0 === strpos( $token_scope, 'cat:' ) && 0 === strpos( $required_scope, 'post:' ) ) {
+			$cat_id  = (int) substr( $token_scope, 4 );
+			$post_id = (int) substr( $required_scope, 5 );
+
+			if ( $cat_id > 0 && $post_id > 0 ) {
+				return has_category( $cat_id, $post_id );
+			}
+		}
+
+		return false;
 	}
 }

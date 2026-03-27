@@ -2,9 +2,9 @@
 
 namespace AiTamer\Tests\Unit;
 
-require_once __DIR__ . '/../../includes/class-watermarker.php';
-require_once __DIR__ . '/../../includes/class-c2pa-manager.php';
-require_once __DIR__ . '/../../includes/class-heuristic-detector.php';
+require_once __DIR__ . '/../../includes/pro/class-watermarker.php';
+require_once __DIR__ . '/../../includes/pro/class-c2pa-manager.php';
+require_once __DIR__ . '/../../includes/pro/class-heuristic-detector.php';
 
 use AiTamer\Watermarker;
 use AiTamer\C2paManager;

@@ -12,7 +12,7 @@ use Brain\Monkey;
 
 // Manually require classes if autoloader fails
 require_once dirname( dirname( __DIR__ ) ) . '/includes/class-license-manager.php';
-require_once dirname( dirname( __DIR__ ) ) . '/includes/class-license-verifier.php';
+require_once dirname( dirname( __DIR__ ) ) . '/includes/pro/class-license-verifier.php';
 require_once dirname( dirname( __DIR__ ) ) . '/includes/class-meta-box.php';
 
 use AiTamer\LicenseManager;

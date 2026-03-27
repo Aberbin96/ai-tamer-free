@@ -53,8 +53,7 @@
 - [x] **C2PA Implementation**: Cryptographic "Proof of Human Origin" using the latest `DigitalDocument` / `CreativeWork` schema standards.
 - [x] **IPTC Certification**: Manual "Human Origin" certification for media assets (IPTC 2:228) via the WordPress Media Library.
 - [x] **Grammatical Watermarking**: Dual-layer invisible stylistic DNA to track content attribution in AI outputs.
-- [ ] **Micropayments (Protocol 402)**: Real-time billing for massive database access.
-- [ ] **Subscription-Linked Tokens**: Tokens that stay active as long as the Stripe subscription is `active`.
-- [ ] **Scoped Access**: Ability to issue tokens restricted to a single post or category (pay-per-article).
-- [ ] **Billing History**: Integrated transaction log for AI license purchases and automated vouchers.
-
+- [x] **Micropayments (Protocol 402)**: Real-time billing for high-volume database access.
+- [x] **Subscription-Linked Tokens**: Tokens validated against real-time Stripe subscription status.
+- [x] **Scoped Access**: Granular control (Global vs. Post vs. Category).
+- [x] **Billing History**: Integrated transaction log for AI license purchases and automated vouchers.

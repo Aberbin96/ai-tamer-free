@@ -13,10 +13,12 @@ use Brain\Monkey;
 
 // Manually require classes if autoloader fails
 require_once dirname(dirname(__DIR__)) . '/includes/class-rest-api.php';
+require_once dirname(dirname(__DIR__)) . '/includes/pro/class-rest-api-pro.php';
 require_once dirname(dirname(__DIR__)) . '/includes/class-meta-box.php';
 require_once dirname(dirname(__DIR__)) . '/includes/class-poisoner.php';
 
 use AiTamer\RestApi;
+use AiTamer\RestApiPro;
 use AiTamer\MetaBox;
 
 class RestApiTest extends TestCase
@@ -59,15 +61,11 @@ class RestApiTest extends TestCase
 			->once()
 			->andReturn('allow_all');
 
-		Monkey\Functions\expect('wp_strip_all_tags')
-			->atLeast()->once()
-			->andReturnArg(0);
-
 		Monkey\Functions\expect('home_url')
 			->atLeast()->once()
 			->andReturn('https://example.com');
 
-		$api = new RestApi();
+		$api = new RestApiPro();
 		$response = $api->handle_catalog();
 		$data = $response->get_data();
 
@@ -135,7 +133,7 @@ class RestApiTest extends TestCase
 			},
 		));
 
-		$api = new RestApi();
+		$api = new RestApiPro();
 		$response = $api->handle_content($request);
 		$data = $response->get_data();
 
@@ -198,7 +196,7 @@ class RestApiTest extends TestCase
 			},
 		));
 
-		$api = new RestApi();
+		$api = new RestApiPro();
 		$response = $api->handle_content($request);
 		$data = $response->get_data();
 

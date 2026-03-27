@@ -29,4 +29,12 @@ interface PaymentProvider {
 	 * @return string
 	 */
 	public function get_checkout_url( string $bot_name ): string;
+
+	/**
+	 * Verifies if a subscription is active.
+	 *
+	 * @param string $subscription_id The provider-specific subscription ID.
+	 * @return bool
+	 */
+	public function verify_subscription( string $subscription_id ): bool;
 }

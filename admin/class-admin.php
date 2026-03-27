@@ -8,6 +8,10 @@
 
 namespace AiTamer;
 
+use AiTamer\Enums\DefenseStrategy;
+use AiTamer\Enums\LicensePolicy;
+use AiTamer\Enums\LicenseScope;
+
 use function add_action;
 use function add_menu_page;
 use function add_submenu_page;
@@ -293,6 +297,15 @@ class Admin
 			'aitamer_general',
 			array()
 		);
+		
+		add_settings_field(
+			'enable_micropayments',
+			__('Enable Micropayments (Protocol 402)', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array('key' => 'enable_micropayments', 'description' => __('When unauthorized bots access content, return a 402 Payment Required status with a direct checkout link.', 'ai-tamer'))
+		);
 
 		// Rate Limiting section.
 		add_settings_section(
@@ -402,11 +415,18 @@ class Admin
 		if (! is_array($input)) {
 			return get_option('aitamer_settings', array());
 		}
-		$allowed_policies = array('no-training', 'allow', 'allow-with-attribution');
-		$policy           = $input['license_policy'] ?? 'no-training';
+		$allowed_policies = array_map(fn($case) => $case->value, LicensePolicy::cases());
+		$policy           = $input['license_policy'] ?? LicensePolicy::NO_TRAINING->value;
 		if (! in_array($policy, $allowed_policies, true)) {
-			$policy = 'no-training';
+			$policy = LicensePolicy::NO_TRAINING->value;
 		}
+
+		$allowed_defenses = array_map(fn($case) => $case->value, DefenseStrategy::cases());
+		$defense          = $input['active_defense'] ?? DefenseStrategy::BLOCK->value;
+		if (! in_array($defense, $allowed_defenses, true)) {
+			$defense = DefenseStrategy::BLOCK->value;
+		}
+
 		return array(
 			'block_training_bots'     => ! empty($input['block_training_bots']),
 			'auto_update_bots'        => ! empty($input['auto_update_bots']),
@@ -419,7 +439,8 @@ class Admin
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
-			'active_defense'          => in_array($input['active_defense'] ?? 'block', array('block', 'poison'), true) ? $input['active_defense'] : 'block',
+			'active_defense'          => $defense,
+			'enable_micropayments'    => ! empty($input['enable_micropayments']),
 			'enable_watermarking'     => ! empty($input['enable_watermarking']),
 			'active_stylistic_dna'    => ! empty($input['active_stylistic_dna']),
 			'enable_c2pa'             => ! empty($input['enable_c2pa']),
@@ -495,18 +516,19 @@ class Admin
 	public function render_license_policy_field(): void
 	{
 		$settings = get_option('aitamer_settings', array());
-		$selected = $settings['license_policy'] ?? 'no-training';
-		$options  = array(
-			'no-training'              => __('No Training (default)', 'ai-tamer'),
-			'allow'                    => __('Allow all AI use', 'ai-tamer'),
-			'allow-with-attribution'   => __('Allow with attribution', 'ai-tamer'),
-		);
+		$selected = $settings['license_policy'] ?? LicensePolicy::NO_TRAINING->value;
+		
 		echo '<select id="license_policy" name="aitamer_settings[license_policy]">';
-		foreach ($options as $value => $label) {
+		foreach (LicensePolicy::cases() as $case) {
+			$label = match($case) {
+				LicensePolicy::NO_TRAINING => __('No Training (default)', 'ai-tamer'),
+				LicensePolicy::ALLOW       => __('Allow all AI use', 'ai-tamer'),
+				LicensePolicy::ATTRIBUTION => __('Allow with attribution', 'ai-tamer'),
+			};
 			printf(
 				'<option value="%s" %s>%s</option>',
-				esc_attr($value),
-				selected($selected, $value, false),
+				esc_attr($case->value),
+				selected($selected, $case->value, false),
 				esc_html($label)
 			);
 		}
@@ -520,11 +542,23 @@ class Admin
 	public function render_active_defense_field(): void
 	{
 		$settings = get_option('aitamer_settings', array());
-		$selected = $settings['active_defense'] ?? 'block';
-		$options  = array(
-			'block'  => __('Block (Return 401 Unauthorized)', 'ai-tamer'),
-			'poison' => __('Poison (Serve truncated/degraded preview)', 'ai-tamer'),
-		);
+		$selected = $settings['active_defense'] ?? DefenseStrategy::BLOCK->value;
+		
+		echo '<select id="active_defense" name="aitamer_settings[active_defense]">';
+		foreach (DefenseStrategy::cases() as $case) {
+			$label = match($case) {
+				DefenseStrategy::BLOCK  => __('Block (Return 401 Unauthorized)', 'ai-tamer'),
+				DefenseStrategy::POISON => __('Poison (Serve truncated/degraded preview)', 'ai-tamer'),
+			};
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr($case->value),
+				selected($selected, $case->value, false),
+				esc_html($label)
+			);
+		}
+		echo '</select>';
+
 		$latest_post = get_posts(array(
 			'numberposts' => 1,
 			'post_status' => 'publish',
@@ -535,16 +569,12 @@ class Admin
 			$preview_url = add_query_arg('aitamer_preview_poison', '1', get_permalink($latest_post[0]->ID));
 		}
 
-		echo '<select id="active_defense" name="aitamer_settings[active_defense]">';
-		foreach ($options as $value => $label) {
-			printf(
-				'<option value="%s" %s>%s</option>',
-				esc_attr($value),
-				selected($selected, $value, false),
-				esc_html($label)
-			);
-		}
-		echo '</select>';
+		echo '<p class="description">' . esc_html__('Choose how to handle unauthorized AI agents trying to access protected content. "Poison" will serve a degraded teaser version of the text and inject decoy media from the plugin, ensuring your real images, videos, and full text are NEVER leaked to the scraper.', 'ai-tamer') . '</p>';
+		printf(
+			'<p><a href="%s" target="_blank" class="button button-secondary">%s</a></p>',
+			esc_url($preview_url),
+			__('Preview Poisoned Content (Frontend)', 'ai-tamer')
+		);
 		echo '<p class="description">' . esc_html__('Choose how to handle unauthorized AI agents trying to access protected content. "Poison" will serve a degraded teaser version of the text and inject decoy media from the plugin, ensuring your real images, videos, and full text are NEVER leaked to the scraper.', 'ai-tamer') . '</p>';
 		printf(
 			'<p><a href="%s" target="_blank" class="button button-secondary">%s</a></p>',
@@ -594,7 +624,7 @@ class Admin
 		if (! current_user_can('manage_options')) {
 			return;
 		}
-		require_once AITAMER_PLUGIN_DIR . 'admin/views/licensing.php';
+		require_once AITAMER_PLUGIN_DIR . 'admin/pro/views/licensing.php';
 	}
 
 
@@ -606,7 +636,7 @@ class Admin
 		if (! current_user_can('manage_options')) {
 			return;
 		}
-		require_once AITAMER_PLUGIN_DIR . 'admin/views/monetization.php';
+		require_once AITAMER_PLUGIN_DIR . 'admin/pro/views/monetization.php';
 	}
 
 	/**
@@ -617,7 +647,7 @@ class Admin
 		if (! current_user_can('manage_options')) {
 			return;
 		}
-		require_once AITAMER_PLUGIN_DIR . 'admin/views/standards.php';
+		require_once AITAMER_PLUGIN_DIR . 'admin/pro/views/standards.php';
 	}
 
 

@@ -7,6 +7,7 @@
  */
 
 use AiTamer\LicenseVerifier;
+use AiTamer\Enums\LicenseScope;
 
 defined('ABSPATH') || exit;
 
@@ -30,7 +31,18 @@ if (
 ) {
 	$aitamer_agent_name   = sanitize_text_field(wp_unslash($_POST['agent_name'] ?? ''));
 	$aitamer_days         = absint($_POST['days'] ?? 365) ?: 365;
-	$aitamer_issued_token = LicenseVerifier::issue_token($aitamer_agent_name, $aitamer_days);
+	$aitamer_sub_id       = sanitize_text_field(wp_unslash($_POST['sub_id'] ?? ''));
+	$aitamer_scope_type   = sanitize_text_field(wp_unslash($_POST['scope_type'] ?? LicenseScope::GLOBAL->value));
+	$aitamer_scope_id     = sanitize_text_field(wp_unslash($_POST['scope_id'] ?? ''));
+	
+	$aitamer_final_scope = LicenseScope::GLOBAL->value;
+	if (LicenseScope::POST->value === $aitamer_scope_type && !empty($aitamer_scope_id)) {
+		$aitamer_final_scope = LicenseScope::POST->value . ':' . $aitamer_scope_id;
+	} elseif (LicenseScope::CATEGORY->value === $aitamer_scope_type && !empty($aitamer_scope_id)) {
+		$aitamer_final_scope = LicenseScope::CATEGORY->value . ':' . $aitamer_scope_id;
+	}
+
+	$aitamer_issued_token = LicenseVerifier::issue_token($aitamer_agent_name, $aitamer_days, $aitamer_sub_id, $aitamer_final_scope);
 }
 
 $aitamer_tokens = LicenseVerifier::get_tokens();
@@ -84,6 +96,8 @@ $aitamer_sample_token = 'your-hmac-token-here';
 							<th><?php esc_html_e('Agent', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Issued', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Expires', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Scope', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Subscription', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Status', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Token (preview)', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Actions', 'ai-tamer'); ?></th>
@@ -97,6 +111,25 @@ $aitamer_sample_token = 'your-hmac-token-here';
 								<td><strong><?php echo esc_html($aitamer_t['agent']); ?></strong></td>
 								<td class="mono"><?php echo esc_html(wp_date('Y-m-d', $aitamer_t['issued_at'])); ?></td>
 								<td class="mono"><?php echo esc_html(wp_date('Y-m-d', $aitamer_t['exp'])); ?></td>
+								<td>
+									<?php 
+										$aitamer_scope = $aitamer_t['scope'] ?? LicenseScope::GLOBAL->value;
+										if (LicenseScope::GLOBAL->value === $aitamer_scope) {
+											echo '<span class="aitamer-badge-pro" style="background:var(--at-surface-2);color:var(--at-text);border:1px solid var(--at-border);">' . esc_html__('Global', 'ai-tamer') . '</span>';
+										} else {
+											echo '<code>' . esc_html($aitamer_scope) . '</code>';
+										}
+									?>
+								</td>
+								<td class="mono">
+									<?php if (!empty($aitamer_t['sub_id'])) : ?>
+										<span title="<?php echo esc_attr($aitamer_t['sub_id']); ?>">
+											<?php echo esc_html(substr($aitamer_t['sub_id'], 0, 8) . '…'); ?>
+										</span>
+									<?php else : ?>
+										<span style="color:var(--at-muted);"><?php esc_html_e('Direct', 'ai-tamer'); ?></span>
+									<?php endif; ?>
+								</td>
 								<td>
 									<span class="aitamer-badge-status <?php echo $aitamer_is_expired ? 'expired' : 'active'; ?>">
 										<?php echo $aitamer_is_expired ? esc_html__('Expired', 'ai-tamer') : esc_html__('Active', 'ai-tamer'); ?>
@@ -142,6 +175,43 @@ $aitamer_sample_token = 'your-hmac-token-here';
 					</th>
 					<td>
 						<input type="number" id="days" name="days" value="365" min="1" max="3650" class="small-text">
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="sub_id"><?php esc_html_e('Stripe Subscription ID', 'ai-tamer'); ?></label>
+					</th>
+					<td>
+						<input type="text" id="sub_id" name="sub_id" class="regular-text" placeholder="sub_1...">
+						<p class="description"><?php esc_html_e('Optional. If provided, the token will be invalidated automatically if the subscription is canceled.', 'ai-tamer'); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="scope_type"><?php esc_html_e('Access Scope', 'ai-tamer'); ?></label>
+					</th>
+					<td>
+						<select id="scope_type" name="scope_type" onchange="document.getElementById('scope_id_row').style.display = (this.value === '<?php echo esc_attr(LicenseScope::GLOBAL->value); ?>') ? 'none' : 'table-row';">
+							<?php
+								foreach (LicenseScope::cases() as $case) {
+									$label = match($case) {
+										LicenseScope::GLOBAL   => __('Global (All Content)', 'ai-tamer'),
+										LicenseScope::POST     => __('Single Post/Page', 'ai-tamer'),
+										LicenseScope::CATEGORY => __('Category', 'ai-tamer'),
+									};
+									printf('<option value="%s" %s>%s</option>', esc_attr($case->value), selected($aitamer_scope_type, $case->value, false), esc_html($label));
+								}
+							?>
+						</select>
+					</td>
+				</tr>
+				<tr id="scope_id_row" style="display:none;">
+					<th scope="row">
+						<label for="scope_id"><?php esc_html_e('Scope ID (Post or Category ID)', 'ai-tamer'); ?></label>
+					</th>
+					<td>
+						<input type="number" id="scope_id" name="scope_id" class="small-text">
+						<p class="description"><?php esc_html_e('Enter the numeric ID of the post or category you want to authorize.', 'ai-tamer'); ?></p>
 					</td>
 				</tr>
 			</table>
