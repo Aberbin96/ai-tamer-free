@@ -8,6 +8,9 @@
 
 namespace AiTamer;
 
+use AiTamer\Enums\DefenseStrategy;
+use AiTamer\Enums\LicensePolicy;
+
 use function add_action;
 use function add_menu_page;
 use function add_submenu_page;
@@ -22,6 +25,9 @@ use function current_user_can;
 use function do_settings_sections;
 use function get_admin_page_title;
 use function get_option;
+use function get_posts;
+use function get_permalink;
+use function home_url;
 use function number_format_i18n;
 use function register_setting;
 use function settings_fields;
@@ -30,12 +36,20 @@ use function submit_button;
 use function wp_nonce_url;
 use function wp_safe_redirect;
 use function wp_delete_file;
+use function wp_cache_delete;
+use function delete_transient;
 use function __;
 use function esc_attr;
 use function esc_html;
 use function esc_html__;
+use function esc_url;
 use function plugin_dir_url;
 use function selected;
+use function wp_enqueue_script;
+use function wp_localize_script;
+use function rest_url;
+use function wp_create_nonce;
+use function sanitize_text_field;
 
 defined('ABSPATH') || exit;
 
@@ -68,7 +82,11 @@ class Admin
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_post_aitamer_download_report', array($this, 'handle_download_report'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action('save_post', array($this, 'clear_api_cache'));
+		add_filter('attachment_fields_to_edit', array($this, 'add_certification_field'), 10, 2);
+		add_action('edit_attachment', array($this, 'save_certification_field'));
 	}
+
 
 	/**
 	 * Enqueue admin assets only on AI Tamer pages.
@@ -77,11 +95,12 @@ class Admin
 	 */
 	public function enqueue_assets(string $hook): void
 	{
-		if (false === strpos($hook, 'ai-tamer')) {
-			return;
+		// General Admin Pages
+		// Admin style (shared).
+		if (false !== strpos($hook, 'ai-tamer')) {
+			$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
+			wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 		}
-		$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
-		wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 	}
 
 	/**
@@ -130,16 +149,10 @@ class Admin
 			array($this, 'render_audit_page')
 		);
 
-		// Licensing submenu.
-		add_submenu_page(
-			'ai-tamer',
-			__('Licensing', 'ai-tamer'),
-			__('Licensing', 'ai-tamer'),
-			'manage_options',
-			'ai-tamer-licensing',
-			array($this, 'render_licensing_page')
-		);
+		// Register Pro submenus via hook (obfuscated from Free).
+		do_action('aitamer_admin_register_menus', $this);
 	}
+
 
 	/**
 	 * Registers settings using the Settings API.
@@ -151,6 +164,14 @@ class Admin
 			'aitamer_settings',
 			array(
 				'sanitize_callback' => array($this, 'sanitize_settings'),
+			)
+		);
+
+		register_setting(
+			'aitamer_settings_group',
+			'aitamer_stripe_settings',
+			array(
+				'sanitize_callback' => array($this, 'sanitize_stripe_settings'),
 			)
 		);
 
@@ -217,12 +238,24 @@ class Admin
 
 		add_settings_field(
 			'auto_update_bots',
-			__( 'Auto-update bot list from GitHub', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Auto-update bot list from GitHub', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'auto_update_bots' )
+			array('key' => 'auto_update_bots')
 		);
+
+		add_settings_field(
+			'active_defense',
+			__('Active Defense Strategy', 'ai-tamer'),
+			array($this, 'render_active_defense_field'),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array()
+		);
+
+		// Register Pro settings via hook (obfuscated from Free).
+		do_action('aitamer_admin_register_settings', $this);
 
 		// Rate Limiting section.
 		add_settings_section(
@@ -283,25 +316,65 @@ class Admin
 	 * @param array $input Raw form input.
 	 * @return array Sanitized values.
 	 */
-	public function sanitize_settings(array $input): array
+	public function sanitize_settings($input): array
 	{
-		$allowed_policies = array('no-training', 'allow', 'allow-with-attribution');
-		$policy           = $input['license_policy'] ?? 'no-training';
-		if (! in_array($policy, $allowed_policies, true)) {
-			$policy = 'no-training';
+		if (! is_array($input)) {
+			return get_option('aitamer_settings', array());
 		}
-		return array(
+		$allowed_defenses = array_map(fn($case) => $case->value, DefenseStrategy::cases());
+		$defense          = $input['active_defense'] ?? DefenseStrategy::BLOCK->value;
+		if (! in_array($defense, $allowed_defenses, true)) {
+			$defense = DefenseStrategy::BLOCK->value;
+		}
+
+		$settings = array(
 			'block_training_bots'     => ! empty($input['block_training_bots']),
+			'auto_update_bots'        => ! empty($input['auto_update_bots']),
 			'inject_meta_tags'        => ! empty($input['inject_meta_tags']),
 			'inject_http_headers'     => ! empty($input['inject_http_headers']),
 			'crawl_delay_enabled'     => ! empty($input['crawl_delay_enabled']),
 			'crawl_delay'             => absint($input['crawl_delay'] ?? 10) ?: 10,
-			'license_policy'          => $policy,
 			'rate_limit_enabled'      => ! empty($input['rate_limit_enabled']),
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
-			'auto_update_bots'        => ! empty($input['auto_update_bots']),
+			'active_defense'          => $defense,
+			'license_policy'          => LicensePolicy::NO_TRAINING->value,
+		);
+
+		if (isset($input['license_policy'])) {
+			$allowed_policies = array_map(fn($case) => $case->value, LicensePolicy::cases());
+			if (in_array($input['license_policy'], $allowed_policies, true)) {
+				$settings['license_policy'] = $input['license_policy'];
+			}
+		}
+
+		// Let Pro handle extra sanitization.
+		$settings = apply_filters('aitamer_admin_sanitize_settings', $settings, $input);
+
+		return $settings;
+	}
+
+	/**
+	 * Sanitizes Stripe-specific settings.
+	 *
+	 * @param mixed $input Raw form input.
+	 * @return array Sanitized values.
+	 */
+	public function sanitize_stripe_settings($input): array
+	{
+		if (! is_array($input)) {
+			return get_option('aitamer_stripe_settings', array());
+		}
+
+		return array(
+			'enabled'          => (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no',
+			'test_mode'        => (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes',
+			'test_publishable' => sanitize_text_field($input['test_publishable'] ?? ''),
+			'test_secret'      => sanitize_text_field($input['test_secret'] ?? ''),
+			'live_publishable' => sanitize_text_field($input['live_publishable'] ?? ''),
+			'live_secret'      => sanitize_text_field($input['live_secret'] ?? ''),
+			'price_id'         => sanitize_text_field($input['price_id'] ?? ''),
 		);
 	}
 
@@ -320,6 +393,9 @@ class Admin
 			esc_attr($key),
 			checked($checked, true, false)
 		);
+		if (! empty($args['description'])) {
+			echo '<p class="description">' . esc_html($args['description']) . '</p>';
+		}
 	}
 
 	/**
@@ -342,19 +418,48 @@ class Admin
 	}
 
 	/**
-	 * Renders the AI license policy select field.
+	 * Renders the AI License Policy select field.
 	 */
 	public function render_license_policy_field(): void
 	{
 		$settings = get_option('aitamer_settings', array());
-		$selected = $settings['license_policy'] ?? 'no-training';
-		$options  = array(
-			'no-training'              => __('No Training (default)', 'ai-tamer'),
-			'allow'                    => __('Allow all AI use', 'ai-tamer'),
-			'allow-with-attribution'   => __('Allow with attribution', 'ai-tamer'),
-		);
+		$selected = $settings['license_policy'] ?? LicensePolicy::NO_TRAINING->value;
+
 		echo '<select id="license_policy" name="aitamer_settings[license_policy]">';
-		foreach ($options as $value => $label) {
+		foreach (LicensePolicy::cases() as $case) {
+			$label = match ($case) {
+				LicensePolicy::NO_TRAINING => __('No Training (default)', 'ai-tamer'),
+				LicensePolicy::ALLOW       => __('Allow all AI use', 'ai-tamer'),
+				LicensePolicy::ATTRIBUTION => __('Allow with attribution', 'ai-tamer'),
+			};
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr($case->value),
+				selected($selected, $case->value, false),
+				esc_html($label)
+			);
+		}
+		echo '</select>';
+		echo '<p class="description">' . esc_html__('Select the default license for AI agents visiting your site.', 'ai-tamer') . '</p>';
+	}
+
+	/**
+	 * Renders the active defense strategy select field.
+	 */
+	public function render_active_defense_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		$selected = $settings['active_defense'] ?? DefenseStrategy::BLOCK->value;
+
+		$strategies = array(
+			DefenseStrategy::BLOCK->value => __('Block (Return 401 Unauthorized)', 'ai-tamer'),
+		);
+
+		// Let Pro add more strategies (like Poison).
+		$strategies = apply_filters('aitamer_admin_defense_strategies', $strategies);
+
+		echo '<select id="active_defense" name="aitamer_settings[active_defense]">';
+		foreach ($strategies as $value => $label) {
 			printf(
 				'<option value="%s" %s>%s</option>',
 				esc_attr($value),
@@ -363,7 +468,9 @@ class Admin
 			);
 		}
 		echo '</select>';
-		echo '<p class="description">' . esc_html__('Controls the value of the <meta name="ai-license"> tag output on frontend pages.', 'ai-tamer') . '</p>';
+
+		// Let Pro render extra description or preview buttons.
+		do_action('aitamer_admin_render_defense_footer', $selected);
 	}
 
 	/**
@@ -399,16 +506,7 @@ class Admin
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/audit.php';
 	}
 
-	/**
-	 * Renders the Licensing page.
-	 */
-	public function render_licensing_page(): void
-	{
-		if (! current_user_can('manage_options')) {
-			return;
-		}
-		require_once AITAMER_PLUGIN_DIR . 'admin/views/licensing.php';
-	}
+
 
 	/**
 	 * Handles the admin-post action to generate and stream a CSV report download.
@@ -442,5 +540,78 @@ class Admin
 		// Security: Delete the file after it has been streamed to the user.
 		wp_delete_file($file);
 		exit;
+	}
+	/**
+	 * Clears the REST API content cache for a post.
+	 *
+	 * @param int $post_id Post ID.
+	 */
+	public function clear_api_cache($post_id): void
+	{
+		// 1. Clear REST API granular caches.
+		for ($i = 0; $i < 8; $i++) {
+			$suffix = ($i & 4 ? '1' : '0') . ($i & 2 ? '1' : '0') . ($i & 1 ? '1' : '0');
+			$key    = 'ait_c_' . (int) $post_id . '_' . $suffix;
+
+			wp_cache_delete($key, 'ai-tamer');
+			delete_transient($key);
+		}
+
+		// 2. Clear Frontend Poisoned cache.
+		$p_key = 'ait_p_' . (int) $post_id;
+		wp_cache_delete($p_key, 'ai-tamer');
+		delete_transient($p_key);
+	}
+
+	/**
+	 * Adds a "Certify Human Origin" checkbox to the media edit screen.
+	 *
+	 * @param array   $form_fields Form fields.
+	 * @param \WP_Post $post        Attachment post.
+	 * @return array Modified fields.
+	 */
+	public function add_certification_field(array $form_fields, \WP_Post $post): array
+	{
+		if (strpos($post->post_mime_type, 'image/') !== 0) {
+			return $form_fields;
+		}
+
+		$certified = get_post_meta($post->ID, '_aitamer_iptc_certified', true) === 'yes';
+		$form_fields['aitamer_certify_human'] = array(
+			'label' => __('AI Tamer: Human Origin', 'ai-tamer'),
+			'input' => 'html',
+			'html'  => sprintf(
+				'<input type="checkbox" name="attachments[%1$d][aitamer_certify_human]" id="attachments[%1$d][aitamer_certify_human]" value="yes" %2$s> %3$s',
+				$post->ID,
+				checked($certified, true, false),
+				__('Certify this media has human origin (Injects IPTC metadata on save)', 'ai-tamer')
+			),
+		);
+
+		return $form_fields;
+	}
+
+	/**
+	 * Saves the certification field and triggers IPTC injection.
+	 *
+	 * @param int $post_id Attachment ID.
+	 */
+	public function save_certification_field(int $post_id): void
+	{
+		if (! empty($_REQUEST['attachments'][$post_id]['aitamer_certify_human'])) {
+			$was_certified = get_post_meta($post_id, '_aitamer_iptc_certified', true) === 'yes';
+
+			if (!$was_certified) {
+				update_post_meta($post_id, '_aitamer_iptc_certified', 'yes');
+
+				// Trigger IPTC injection.
+				$file = get_attached_file($post_id);
+				if ($file && file_exists($file) && class_exists('AiTamer\Watermarker')) {
+					Watermarker::apply_iptc_metadata($file, 'originalMediaDigitalSource');
+				}
+			}
+		} else {
+			delete_post_meta($post_id, '_aitamer_iptc_certified');
+		}
 	}
 }

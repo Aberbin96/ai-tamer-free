@@ -48,7 +48,7 @@ class Logger {
 			PRIMARY KEY  (id),
 			KEY bot_idx (bot_name(50), created_at),
 			KEY post_idx (post_id, created_at)
-		) {$charset_collate};"; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
+		) {$charset_collate};"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
@@ -88,7 +88,7 @@ class Logger {
 			array(
 				'bot_name'    => $agent['name'],
 				'bot_type'    => $agent['type'],
-				'post_id'     => $post_id ?: ( get_the_ID() ?: null ),
+				'post_id'     => $post_id ?: (get_the_ID() ?: null),
 				'request_uri' => $uri,
 				'ip_hash'     => hash( 'sha256', $ip ), // GDPR: never store raw IPs.
 				'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),

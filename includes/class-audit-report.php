@@ -39,7 +39,7 @@ class AuditReport {
 		$table   = $wpdb->prefix . Logger::TABLE;
 		$results = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT bot_name, bot_type, post_id, request_uri, ip_hash, created_at FROM `{$table}` WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY) ORDER BY created_at DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				"SELECT bot_name, bot_type, post_id, request_uri, ip_hash, user_agent, protection, created_at FROM `{$table}` WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY) ORDER BY created_at DESC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$days_back
 			),
 			ARRAY_A
@@ -81,7 +81,7 @@ class AuditReport {
 		}
 
 		// Header row.
-		fputcsv( $fp, array( 'Bot Name', 'Type', 'Post ID', 'Request URI', 'IP Hash', 'Date (UTC)' ) );
+		fputcsv( $fp, array( 'Bot Name', 'Type', 'Post ID', 'Request URI', 'IP Hash', 'User Agent', 'Protection', 'Date (UTC)' ) );
 
 		// Summary header block.
 		$total    = count( $results );
@@ -105,7 +105,7 @@ class AuditReport {
 			return false;
 		}
 
-		fputcsv( $fp, array( 'Bot Name', 'Type', 'Post ID', 'Request URI', 'IP Hash', 'Date (UTC)' ) );
+		fputcsv( $fp, array( 'Bot Name', 'Type', 'Post ID', 'Request URI', 'IP Hash', 'User Agent', 'Protection', 'Date (UTC)' ) );
 
 		foreach ( $results as $row ) {
 			fputcsv( $fp, array(
@@ -114,6 +114,8 @@ class AuditReport {
 				$row['post_id'] ?? '',
 				$row['request_uri'],
 				$row['ip_hash'],
+				$row['user_agent'] ?? '',
+				$row['protection'] ?? 'none',
 				$row['created_at'],
 			) );
 		}

@@ -9,8 +9,7 @@
 use AiTamer\AuditReport;
 use AiTamer\Logger;
 
-defined( 'ABSPATH' ) || exit;
-
+global $wpdb;
 $aitamer_table = $wpdb->prefix . Logger::TABLE;
 $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	"SELECT COUNT(*) FROM `{$aitamer_table}`" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -83,7 +82,7 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 	// Fetch recent 20 log entries for preview.
 	$aitamer_recent = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$wpdb->prepare(
-			"SELECT bot_name, bot_type, request_uri, created_at FROM `{$aitamer_table}` ORDER BY id DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			"SELECT bot_name, bot_type, request_uri, ip_hash, user_agent, protection, created_at FROM `{$aitamer_table}` ORDER BY id DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			20
 		),
 		ARRAY_A
@@ -108,8 +107,10 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 						<tr>
 							<th><?php esc_html_e( 'Timestamp', 'ai-tamer' ); ?></th>
 							<th><?php esc_html_e( 'Bot Identity', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'IP Hash', 'ai-tamer' ); ?></th>
 							<th><?php esc_html_e( 'URI Accessed', 'ai-tamer' ); ?></th>
 							<th><?php esc_html_e( 'Intent', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'Protection', 'ai-tamer' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -117,10 +118,17 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 							$aitamer_type = $aitamer_entry['bot_type'] ?? 'search';
 						?>
 						<tr>
-							<td class="mono"><?php echo esc_html( $aitamer_entry['created_at'] ); ?></td>
-							<td><strong><?php echo esc_html( $aitamer_entry['bot_name'] ); ?></strong></td>
+							<td class="mono" style="font-size:10px;"><?php echo esc_html( $aitamer_entry['created_at'] ); ?></td>
+							<td>
+								<strong><?php echo esc_html( $aitamer_entry['bot_name'] ); ?></strong>
+								<div style="font-size:9px;color:var(--at-muted);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?php echo esc_attr($aitamer_entry['user_agent']); ?>">
+									<?php echo esc_html( $aitamer_entry['user_agent'] ); ?>
+								</div>
+							</td>
+							<td class="mono" style="font-size:9px;"><?php echo esc_html( substr($aitamer_entry['ip_hash'], 0, 8) ); ?>...</td>
 							<td class="mono"><?php echo esc_html( $aitamer_entry['request_uri'] ); ?></td>
 							<td><span class="aitamer-badge-status <?php echo esc_attr( $aitamer_type ); ?>"><?php echo esc_html( $aitamer_type ); ?></span></td>
+							<td><span class="aitamer-badge-status" style="background:var(--at-border);color:var(--at-text);"><?php echo esc_html( $aitamer_entry['protection'] ?? 'none' ); ?></span></td>
 						</tr>
 						<?php endforeach; ?>
 					</tbody>

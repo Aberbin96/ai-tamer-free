@@ -24,6 +24,9 @@ define('AITAMER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AITAMER_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Autoload classes.
+require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-defense-strategy.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-license-policy.php';
+
 require_once AITAMER_PLUGIN_DIR . 'includes/class-ai-tamer.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-detector.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-protector.php';
@@ -35,8 +38,13 @@ require_once AITAMER_PLUGIN_DIR . 'includes/class-meta-box.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-content-filter.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-bot-updater.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-license-manager.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/class-license-verifier.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-rest-api.php';
 require_once AITAMER_PLUGIN_DIR . 'admin/class-admin.php';
+
+// Pro Features - Load only in Pro version.
+if (file_exists(AITAMER_PLUGIN_DIR . 'includes/pro/loader.php')) {
+	require_once AITAMER_PLUGIN_DIR . 'includes/pro/loader.php';
+}
 
 // Activation / Deactivation hooks.
 register_activation_hook(__FILE__, array('AiTamer\\Plugin', 'activate'));

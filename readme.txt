@@ -22,7 +22,6 @@ Key Features:
 * **Bandwidth Limiting**: Cap the amount of data AI bots can consume from your site daily.
 * **Visibility**: Track AI consumption logs to understand how models are using your content.
 * **Audit Reports**: Generate CSV evidence of AI bot activity on your site.
-* **License Management**: Issue signed tokens to trusted AI agents for controlled access.
 
 == Installation ==
 
@@ -67,5 +66,4 @@ No, AI Tamer allows you to distinguish between Google Search indexing and Google
 1. **Dashboard**: Overview of AI bot activity and protection status.
 2. **General Settings**: Configure robots.txt and meta tag protection.
 3. **Audit Reports**: Generate CSV evidence of crawler access.
-4. **License Management**: Issue and revoke access tokens for trusted agents.
 5. **Post Protection**: Granular AI control for individual posts.

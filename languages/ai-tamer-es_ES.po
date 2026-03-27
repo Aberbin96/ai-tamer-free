@@ -327,3 +327,130 @@ msgstr ""
 #: admin/views/licensing.php:152
 msgid "Learn more →"
 msgstr "Saber más →"
+#: includes/class-meta-box.php:123
+msgid "Block Text Tracking"
+msgstr "Bloquear rastreo de Texto"
+
+#: includes/class-meta-box.php:127
+msgid "Block Image Training"
+msgstr "Bloquear entrenamiento de Imágenes"
+
+#: includes/class-meta-box.php:131
+msgid "Block Video Ingestion"
+msgstr "Bloquear ingesta de Vídeo"
+
+#: includes/class-meta-box.php:104
+msgid "⚙️ Custom / Granular Control"
+msgstr "⚙️ Control Granular / Personalizado"
+
+#: includes/class-meta-box.php:120
+msgid "Granular Protections (Internal Targets)"
+msgstr "Protecciones Granulares (Objetivos Internos)"
+
+#: admin/views/monetization.php:18
+msgid "Monetization"
+msgstr "Monetización"
+
+#: admin/views/monetization.php:19
+msgid "Set up automated licensing. Allow AI agents to purchase access tokens via Stripe."
+msgstr "Configura el licenciamiento automático. Permite que los agentes de IA compren tokens de acceso vía Stripe."
+
+#: admin/views/monetization.php:28
+msgid "Stripe Configuration"
+msgstr "Configuración de Stripe"
+
+#: admin/views/monetization.php:32
+msgid "Enable Monetization"
+msgstr "Activar Monetización"
+
+#: admin/views/monetization.php:35
+msgid "If enabled, bots will see \"Purchase\" options in the license document."
+msgstr "Si se activa, los bots verán opciones de \"Compra\" en el documento de licencia."
+
+#: admin/views/monetization.php:42
+msgid "Test Mode"
+msgstr "Modo de Prueba"
+
+#: admin/views/monetization.php:43
+msgid "Live Mode"
+msgstr "Modo Real"
+
+#: admin/views/monetization.php:84
+msgid "Stripe Price ID"
+msgstr "ID de Precio de Stripe"
+
+#: admin/views/monetization.php:87
+msgid "How to find this:"
+msgstr "Cómo encontrar esto:"
+
+#: admin/views/monetization.php:88
+msgid "Go to Stripe Dashboard > Products > [Your Product] > Price ID (starts with price_)."
+msgstr "Ve al Panel de Stripe > Productos > [Tu Producto] > Price ID (empieza por price_)."
+
+#: admin/views/monetization.php:94
+msgid "Pricing Recommendations"
+msgstr "Recomendaciones de Precios"
+
+#: admin/views/monetization.php:96
+msgid "Micro-payments:"
+msgstr "Micro-pagos:"
+
+#: admin/views/monetization.php:96
+msgid "Charge roughly $0.05 - $0.10 per full article ingestion to avoid price friction."
+msgstr "Cobra aproximadamente $0.05 - $0.10 por ingesta de artículo completo para evitar fricción."
+
+#: admin/views/monetization.php:97
+msgid "Monthly Access:"
+msgstr "Acceso Mensual:"
+
+#: admin/views/monetization.php:97
+msgid "Standard SaaS rates ($19 - $49/mo) are recommended for high-authority niche sites."
+msgstr "Se recomiendan tarifas de SaaS estándar ($19 - $49/mes) para sitios de nicho de alta autoridad."
+
+#: admin/views/monetization.php:98
+msgid "Note:"
+msgstr "Nota:"
+
+#: admin/views/monetization.php:98
+msgid "Stripe supports fixed prices or usage-based billing. Ensure your Price ID matches your business model."
+msgstr "Stripe soporta precios fijos o facturación basada en el uso. Asegúrate de que tu Price ID coincida con tu modelo de negocio."
+
+#: admin/class-admin.php:342
+msgid "Enable C2PA Origin Proof (Experimental)"
+msgstr "Activar Prueba de Origen C2PA (Experimental)"
+
+#: admin/class-admin.php:346
+msgid "Generates a verifiable digital manifest (JSON-LD) to prove \"Proof of Human Origin\". Note: Automated heuristic detection is experimental and may not be 100% accurate."
+msgstr "Genera un manifiesto digital verificable (JSON-LD) para demostrar el \"Origen Humano\". Nota: La detección heurística automática es experimental y puede no ser 100% precisa."
+
+#: includes/class-meta-box.php:129
+msgid "Certify Human Origin (Manual Override)"
+msgstr "Certificar Origen Humano (Sobrescritura Manual)"
+
+#: includes/class-meta-box.php:141
+msgid "Likely AI Generator"
+msgstr "Generador de IA probable"
+
+#: includes/class-meta-box.php:141
+msgid "AI-Assisted?"
+msgstr "¿Asistido por IA?"
+
+#: includes/class-meta-box.php:141
+msgid "Likely Human"
+msgstr "Humano probable"
+
+#: includes/class-meta-box.php:145
+msgid "AI Detection Status"
+msgstr "Estado de detección de IA"
+
+#: includes/class-meta-box.php:152
+msgid "Based on pattern analysis (Updated on save)."
+msgstr "Basado en análisis de patrones (Actualizado al guardar)."
+
+#: includes/class-meta-box.php:159
+msgid "Manual Override Active"
+msgstr "Sobrescritura Manual Activa"
+
+#: includes/class-meta-box.php:160
+msgid "Content is certified as human-origin for the manifest."
+msgstr "El contenido está certificado como origen humano para el manifiesto."

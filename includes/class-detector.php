@@ -81,7 +81,7 @@ class Detector {
 
 		// Advanced fingerprinting: Check for "stealth" bots via Sec-Fetch headers.
 		// Legit browsers send Sec-Fetch-Dest, Sec-Fetch-Mode, etc.
-		// If these are missing or anomalous while claiming to be a browser, it's likely a bot.
+		// If these are missing or anomalous while claimining to be a browser, it's likely a bot.
 		if ( $this->is_anomalous_request( $ua ) ) {
 			$this->current = array(
 				'name'    => 'stealth_bot',
