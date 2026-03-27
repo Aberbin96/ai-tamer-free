@@ -12,8 +12,6 @@ use function current_time;
 use function get_the_ID;
 use function sanitize_text_field;
 use function wp_parse_args;
-use function wp_unslash;
-use function update_option;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -50,7 +48,7 @@ class Logger {
 			PRIMARY KEY  (id),
 			KEY bot_idx (bot_name(50), created_at),
 			KEY post_idx (post_id, created_at)
-		) {$charset_collate};"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		) {$charset_collate};"; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
@@ -79,7 +77,7 @@ class Logger {
 		if ( ! $agent['matched'] ) {
 			return; // Never log human visitors.
 		}
- 
+
 		global $wpdb;
 
 		$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
@@ -90,10 +88,10 @@ class Logger {
 			array(
 				'bot_name'    => $agent['name'],
 				'bot_type'    => $agent['type'],
-				'post_id'     => $post_id ?: (get_the_ID() ?: null),
+				'post_id'     => $post_id ?: ( get_the_ID() ?: null ),
 				'request_uri' => $uri,
 				'ip_hash'     => hash( 'sha256', $ip ), // GDPR: never store raw IPs.
-				'user_agent'  => substr( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ), 0, 255 ),
+				'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),
 				'protection'  => sanitize_text_field( $protection ),
 				'created_at'  => current_time( 'mysql' ),
 			),

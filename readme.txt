@@ -36,6 +36,12 @@ This plugin utilizes the following third-party service to maintain an up-to-date
 
 * **GitHub Bot List**: The plugin daily fetches a curated list of known AI agents and training bots from our public GitHub repository (`https://raw.githubusercontent.com/Aberbin96/ai-tamer/main/data/bots.json`). This is used to ensure the detection engine stays effective against newly discovered scrapers. No site information or user data is transmitted during this request.
 
+== Third-Party Services ==
+
+This plugin utilizes the following third-party service to maintain an up-to-date protection engine:
+
+* **GitHub Bot List**: The plugin daily fetches a curated list of known AI agents and training bots from our public GitHub repository (`https://raw.githubusercontent.com/Aberbin96/ai-tamer/main/data/bots.json`). This is used to ensure the detection engine stays effective against newly discovered scrapers. No site information or user data is transmitted during this request.
+
 == Frequently Asked Questions ==
 
 = Does this block Google? =
@@ -46,7 +52,6 @@ No, AI Tamer allows you to distinguish between Google Search indexing and Google
 = 0.1.1 =
 * Improved AI detection engine with stealth bot recognition.
 * Enhanced logging with protection levels and full User-Agent strings.
-
 
 = 0.1.0 =
 * Initial Version.

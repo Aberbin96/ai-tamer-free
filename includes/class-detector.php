@@ -81,7 +81,7 @@ class Detector {
 
 		// Advanced fingerprinting: Check for "stealth" bots via Sec-Fetch headers.
 		// Legit browsers send Sec-Fetch-Dest, Sec-Fetch-Mode, etc.
-		// If these are missing or anomalous while claimining to be a browser, it's likely a bot.
+		// If these are missing or anomalous while claiming to be a browser, it's likely a bot.
 		if ( $this->is_anomalous_request( $ua ) ) {
 			$this->current = array(
 				'name'    => 'stealth_bot',
@@ -108,8 +108,8 @@ class Detector {
 
 		// Modern browsers sending these headers since 2019/2020.
 		// If missing completely on a "Chrome" request, it's suspicious.
-		$dest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
-		$mode = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+		$dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
+		$mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
 
 		if ( empty( $dest ) || empty( $mode ) ) {
 			// Most simple scrapers (python-requests, axios, curl) don't send these.

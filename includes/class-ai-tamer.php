@@ -13,7 +13,6 @@ use function add_option;
 use function get_option;
 use function update_option;
 use function is_admin;
-use function wp_unslash;
 
 use function wp_schedule_event;
 use function wp_next_scheduled;

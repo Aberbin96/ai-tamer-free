@@ -301,6 +301,7 @@ class Admin
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
+			'auto_update_bots'        => ! empty($input['auto_update_bots']),
 		);
 	}
 
