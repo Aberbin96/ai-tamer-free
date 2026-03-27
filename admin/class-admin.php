@@ -8,6 +8,8 @@
 
 namespace AiTamer;
 
+defined('ABSPATH') || exit;
+
 use AiTamer\Enums\DefenseStrategy;
 use AiTamer\Enums\LicensePolicy;
 
@@ -51,7 +53,7 @@ use function rest_url;
 use function wp_create_nonce;
 use function sanitize_text_field;
 
-defined('ABSPATH') || exit;
+
 
 /**
  * Admin class.
@@ -581,10 +583,12 @@ class Admin
 			'label' => __('AI Tamer: Human Origin', 'ai-tamer'),
 			'input' => 'html',
 			'html'  => sprintf(
-				'<input type="checkbox" name="attachments[%1$d][aitamer_certify_human]" id="attachments[%1$d][aitamer_certify_human]" value="yes" %2$s> %3$s',
+				'<input type="checkbox" name="attachments[%1$d][aitamer_certify_human]" id="attachments[%1$d][aitamer_certify_human]" value="yes" %2$s> %3$s' .
+					'<input type="hidden" name="aitamer_media_nonce_%1$d" value="%4$s">',
 				$post->ID,
 				checked($certified, true, false),
-				__('Certify this media has human origin (Injects IPTC metadata on save)', 'ai-tamer')
+				__('Certify this media has human origin (Injects IPTC metadata on save)', 'ai-tamer'),
+				wp_create_nonce('aitamer_save_media_' . $post->ID)
 			),
 		);
 
@@ -598,6 +602,13 @@ class Admin
 	 */
 	public function save_certification_field(int $post_id): void
 	{
+		// Nonce verification.
+		$nonce = isset($_REQUEST["aitamer_media_nonce_{$post_id}"]) ? sanitize_key(wp_unslash($_REQUEST["aitamer_media_nonce_{$post_id}"])) : '';
+
+		if (! wp_verify_nonce($nonce, 'aitamer_save_media_' . $post_id)) {
+			return;
+		}
+
 		if (! empty($_REQUEST['attachments'][$post_id]['aitamer_certify_human'])) {
 			$was_certified = get_post_meta($post_id, '_aitamer_iptc_certified', true) === 'yes';
 
