@@ -78,7 +78,45 @@ class Detector {
 			'type'    => 'human',
 			'matched' => false,
 		);
+
+		// Advanced fingerprinting: Check for "stealth" bots via Sec-Fetch headers.
+		// Legit browsers send Sec-Fetch-Dest, Sec-Fetch-Mode, etc.
+		// If these are missing or anomalous while claimining to be a browser, it's likely a bot.
+		if ( $this->is_anomalous_request( $ua ) ) {
+			$this->current = array(
+				'name'    => 'stealth_bot',
+				'type'    => 'scraper',
+				'matched' => true,
+			);
+		}
+
 		return $this->current;
+	}
+
+	/**
+	 * Checks if the request is anomalous based on browser headers.
+	 *
+	 * @param string $ua User Agent.
+	 * @return bool
+	 */
+	private function is_anomalous_request( string $ua ): bool {
+		// Only check if it claims to be a common browser (Chrome, Firefox, Safari, Edge).
+		$is_browser_ua = preg_match( '/(Chrome|Safari|Firefox|Edg)\//i', $ua );
+		if ( ! $is_browser_ua ) {
+			return false;
+		}
+
+		// Modern browsers sending these headers since 2019/2020.
+		// If missing completely on a "Chrome" request, it's suspicious.
+		$dest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
+		$mode = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+
+		if ( empty( $dest ) || empty( $mode ) ) {
+			// Most simple scrapers (python-requests, axios, curl) don't send these.
+			return true;
+		}
+
+		return false;
 	}
 
 	/**

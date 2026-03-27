@@ -13,6 +13,7 @@ use function add_option;
 use function get_option;
 use function update_option;
 use function is_admin;
+use function wp_unslash;
 
 use function wp_schedule_event;
 use function wp_next_scheduled;
@@ -87,7 +88,7 @@ class Plugin {
 	 */
 	private function register_hooks(): void {
 		// Auto-create/upgrade the DB table if needed (no deactivation required).
-		if ( get_option( 'aitamer_db_version' ) !== '1.0' ) {
+		if ( get_option( 'aitamer_db_version' ) !== '1.1' ) {
 			Logger::install_table();
 		}
 
@@ -143,7 +144,9 @@ class Plugin {
 	 */
 	public function log_request(): void {
 		$agent = $this->detector->classify();
-		$this->logger->log( $agent );
+		// On the frontend, if it's a bot, we apply at least header/meta protection.
+		$protection = $agent['matched'] ? 'headers' : 'none';
+		$this->logger->log( $agent, $protection );
 	}
 
 	/**
