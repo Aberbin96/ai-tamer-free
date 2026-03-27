@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: AI Tamer 0.1.0\n"
+"Project-Id-Version: AI Tamer 0.1.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-03-24 23:44+0100\n"
 "PO-Revision-Date: 2026-03-26 00:27+0100\n"
