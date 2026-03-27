@@ -21,6 +21,10 @@ class BotUpdaterTest extends TestCase {
 		Monkey\setUp();
 		
 		Monkey\Functions\expect( 'update_option' )->andReturn( true );
+		Monkey\Functions\expect( 'get_option' )
+			->with( 'aitamer_settings' )
+			->andReturn( array( 'auto_update_bots' => true ) );
+
 		if ( ! defined( 'AITAMER_PLUGIN_DIR' ) ) {
 			define( 'AITAMER_PLUGIN_DIR', '/tmp/' );
 		}

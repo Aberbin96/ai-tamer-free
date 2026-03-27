@@ -42,16 +42,18 @@ class Logger {
 			post_id     BIGINT(20) UNSIGNED          DEFAULT NULL,
 			request_uri TEXT                NOT NULL,
 			ip_hash     VARCHAR(64)         NOT NULL DEFAULT '',
+			user_agent  VARCHAR(255)        NOT NULL DEFAULT '',
+			protection  VARCHAR(50)         NOT NULL DEFAULT 'none',
 			created_at  DATETIME            NOT NULL,
 			PRIMARY KEY  (id),
 			KEY bot_idx (bot_name(50), created_at),
 			KEY post_idx (post_id, created_at)
-		) {$charset_collate};"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		) {$charset_collate};"; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
 
-		update_option( 'aitamer_db_version', '1.0' );
+		update_option( 'aitamer_db_version', '1.1' );
 	}
 
 	/**
@@ -67,9 +69,11 @@ class Logger {
 	/**
 	 * Logs the current request if it comes from an AI agent.
 	 *
-	 * @param array $agent Result from Detector::classify().
+	 * @param array  $agent      Result from Detector::classify().
+	 * @param string $protection Protection level applied (e.g. 'none', 'blocked', 'filtered').
+	 * @param int    $post_id    Optional post ID if known.
 	 */
-	public function log( array $agent ): void {
+	public function log( array $agent, string $protection = 'none', int $post_id = 0 ): void {
 		if ( ! $agent['matched'] ) {
 			return; // Never log human visitors.
 		}
@@ -84,12 +88,14 @@ class Logger {
 			array(
 				'bot_name'    => $agent['name'],
 				'bot_type'    => $agent['type'],
-				'post_id'     => get_the_ID() ?: null,
+				'post_id'     => $post_id ?: ( get_the_ID() ?: null ),
 				'request_uri' => $uri,
 				'ip_hash'     => hash( 'sha256', $ip ), // GDPR: never store raw IPs.
+				'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),
+				'protection'  => sanitize_text_field( $protection ),
 				'created_at'  => current_time( 'mysql' ),
 			),
-			array( '%s', '%s', '%d', '%s', '%s', '%s' )
+			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
 		);
 	}
 
