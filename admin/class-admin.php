@@ -22,6 +22,9 @@ use function current_user_can;
 use function do_settings_sections;
 use function get_admin_page_title;
 use function get_option;
+use function get_posts;
+use function get_permalink;
+use function home_url;
 use function number_format_i18n;
 use function register_setting;
 use function settings_fields;
@@ -36,8 +39,13 @@ use function __;
 use function esc_attr;
 use function esc_html;
 use function esc_html__;
+use function esc_url;
 use function plugin_dir_url;
 use function selected;
+use function wp_enqueue_script;
+use function wp_localize_script;
+use function rest_url;
+use function wp_create_nonce;
 
 defined('ABSPATH') || exit;
 
@@ -71,7 +79,10 @@ class Admin
 		add_action('admin_post_aitamer_download_report', array($this, 'handle_download_report'));
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 		add_action('save_post', array($this, 'clear_api_cache'));
+		add_filter('attachment_fields_to_edit', array($this, 'add_certification_field'), 10, 2);
+		add_action('edit_attachment', array($this, 'save_certification_field'));
 	}
+
 
 	/**
 	 * Enqueue admin assets only on AI Tamer pages.
@@ -80,11 +91,28 @@ class Admin
 	 */
 	public function enqueue_assets(string $hook): void
 	{
-		if (false === strpos($hook, 'ai-tamer')) {
-			return;
+		// General Admin Pages
+		if (false !== strpos($hook, 'ai-tamer')) {
+			$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
+			wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 		}
-		$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
-		wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
+
+		// Real-time AI detection in the Post Editor
+		if (in_array($hook, array('post.php', 'post-new.php'), true)) {
+			$js_url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'assets/js/admin-editor.js';
+			wp_enqueue_script(
+				'aitamer-admin-editor',
+				$js_url,
+				array('jquery', 'wp-data', 'wp-editor', 'wp-edit-post'),
+				AITAMER_VERSION,
+				true
+			);
+
+			wp_localize_script('aitamer-admin-editor', 'aitamer_admin', array(
+				'rest_url' => esc_url_raw(rest_url()),
+				'nonce'    => wp_create_nonce('wp_rest'),
+			));
+		}
 	}
 
 	/**
@@ -153,7 +181,18 @@ class Admin
 			'ai-tamer-monetization',
 			array($this, 'render_monetization_page')
 		);
+
+		// Standards submenu.
+		add_submenu_page(
+			'ai-tamer',
+			__('Technical Standards', 'ai-tamer'),
+			__('Technical Standards', 'ai-tamer'),
+			'manage_options',
+			'ai-tamer-standards',
+			array($this, 'render_standards_page')
+		);
 	}
+
 
 	/**
 	 * Registers settings using the Settings API.
@@ -239,11 +278,20 @@ class Admin
 
 		add_settings_field(
 			'auto_update_bots',
-			__( 'Auto-update bot list from GitHub', 'ai-tamer' ),
-			array( $this, 'render_checkbox_field' ),
+			__('Auto-update bot list from GitHub', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
-			array( 'key' => 'auto_update_bots' )
+			array('key' => 'auto_update_bots')
+		);
+
+		add_settings_field(
+			'active_defense',
+			__('Active Defense Strategy', 'ai-tamer'),
+			array($this, 'render_active_defense_field'),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array()
 		);
 
 		// Rate Limiting section.
@@ -297,6 +345,50 @@ class Admin
 			'aitamer_bandwidth',
 			array('key' => 'bandwidth_kb_limit', 'min' => 100, 'max' => 102400)
 		);
+
+		// Content Authenticity section (v3).
+		add_settings_section(
+			'aitamer_authenticity',
+			__('Content Authenticity & Attribution', 'ai-tamer'),
+			null,
+			'ai-tamer-settings'
+		);
+
+		add_settings_field(
+			'enable_watermarking',
+			__('Enable Invisible Watermarking', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_authenticity',
+			array('key' => 'enable_watermarking', 'description' => __('Injects an invisible cryptographic signature (Zero-Width characters) into your content. Visual appearance remains unchanged.', 'ai-tamer'))
+		);
+
+		add_settings_field(
+			'active_stylistic_dna',
+			__('Active Stylistic DNA (Experimental)', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_authenticity',
+			array('key' => 'active_stylistic_dna', 'description' => __('Deep defense: subtly alters word choices using synonyms (e.g., "perhaps" vs "maybe") to track content even if rephrased by AI.', 'ai-tamer'))
+		);
+
+		add_settings_field(
+			'enable_c2pa',
+			__('Enable C2PA Origin Proof (Experimental)', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_authenticity',
+			array('key' => 'enable_c2pa', 'description' => __('Generates a verifiable digital manifest (JSON-LD) to prove "Proof of Human Origin". Note: Automated heuristic detection is experimental and may not be 100% accurate.', 'ai-tamer'))
+		);
+
+		add_settings_field(
+			'show_c2pa_badge',
+			__('Show Verified Human Badge (Frontend)', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_authenticity',
+			array('key' => 'show_c2pa_badge', 'description' => __('Display a visual "Verified Human" shield at the bottom of authenticated posts.', 'ai-tamer'))
+		);
 	}
 
 	/**
@@ -327,6 +419,11 @@ class Admin
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
+			'active_defense'          => in_array($input['active_defense'] ?? 'block', array('block', 'poison'), true) ? $input['active_defense'] : 'block',
+			'enable_watermarking'     => ! empty($input['enable_watermarking']),
+			'active_stylistic_dna'    => ! empty($input['active_stylistic_dna']),
+			'enable_c2pa'             => ! empty($input['enable_c2pa']),
+			'show_c2pa_badge'         => ! empty($input['show_c2pa_badge']),
 		);
 	}
 
@@ -368,6 +465,9 @@ class Admin
 			esc_attr($key),
 			checked($checked, true, false)
 		);
+		if (! empty($args['description'])) {
+			echo '<p class="description">' . esc_html($args['description']) . '</p>';
+		}
 	}
 
 	/**
@@ -412,6 +512,45 @@ class Admin
 		}
 		echo '</select>';
 		echo '<p class="description">' . esc_html__('Controls the value of the <meta name="ai-license"> tag output on frontend pages.', 'ai-tamer') . '</p>';
+	}
+
+	/**
+	 * Renders the active defense strategy select field.
+	 */
+	public function render_active_defense_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		$selected = $settings['active_defense'] ?? 'block';
+		$options  = array(
+			'block'  => __('Block (Return 401 Unauthorized)', 'ai-tamer'),
+			'poison' => __('Poison (Serve truncated/degraded preview)', 'ai-tamer'),
+		);
+		$latest_post = get_posts(array(
+			'numberposts' => 1,
+			'post_status' => 'publish',
+		));
+
+		$preview_url = home_url('/?aitamer_preview_poison=1');
+		if (! empty($latest_post)) {
+			$preview_url = add_query_arg('aitamer_preview_poison', '1', get_permalink($latest_post[0]->ID));
+		}
+
+		echo '<select id="active_defense" name="aitamer_settings[active_defense]">';
+		foreach ($options as $value => $label) {
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr($value),
+				selected($selected, $value, false),
+				esc_html($label)
+			);
+		}
+		echo '</select>';
+		echo '<p class="description">' . esc_html__('Choose how to handle unauthorized AI agents trying to access protected content. "Poison" will serve a degraded teaser version of the text and inject decoy media from the plugin, ensuring your real images, videos, and full text are NEVER leaked to the scraper.', 'ai-tamer') . '</p>';
+		printf(
+			'<p><a href="%s" target="_blank" class="button button-secondary">%s</a></p>',
+			esc_url($preview_url),
+			__('Preview Poisoned Content (Frontend)', 'ai-tamer')
+		);
 	}
 
 	/**
@@ -471,6 +610,18 @@ class Admin
 	}
 
 	/**
+	 * Renders the Technical Standards page.
+	 */
+	public function render_standards_page(): void
+	{
+		if (! current_user_can('manage_options')) {
+			return;
+		}
+		require_once AITAMER_PLUGIN_DIR . 'admin/views/standards.php';
+	}
+
+
+	/**
 	 * Handles the admin-post action to generate and stream a CSV report download.
 	 */
 	public function handle_download_report(): void
@@ -510,13 +661,70 @@ class Admin
 	 */
 	public function clear_api_cache($post_id): void
 	{
-		// Clear all 8 possible combinations of granular blocking.
+		// 1. Clear REST API granular caches.
 		for ($i = 0; $i < 8; $i++) {
 			$suffix = ($i & 4 ? '1' : '0') . ($i & 2 ? '1' : '0') . ($i & 1 ? '1' : '0');
 			$key    = 'ait_c_' . (int) $post_id . '_' . $suffix;
-			
+
 			wp_cache_delete($key, 'ai-tamer');
 			delete_transient($key);
+		}
+
+		// 2. Clear Frontend Poisoned cache.
+		$p_key = 'ait_p_' . (int) $post_id;
+		wp_cache_delete($p_key, 'ai-tamer');
+		delete_transient($p_key);
+	}
+
+	/**
+	 * Adds a "Certify Human Origin" checkbox to the media edit screen.
+	 *
+	 * @param array   $form_fields Form fields.
+	 * @param \WP_Post $post        Attachment post.
+	 * @return array Modified fields.
+	 */
+	public function add_certification_field(array $form_fields, \WP_Post $post): array
+	{
+		if (strpos($post->post_mime_type, 'image/') !== 0) {
+			return $form_fields;
+		}
+
+		$certified = get_post_meta($post->ID, '_aitamer_iptc_certified', true) === 'yes';
+		$form_fields['aitamer_certify_human'] = array(
+			'label' => __('AI Tamer: Human Origin', 'ai-tamer'),
+			'input' => 'html',
+			'html'  => sprintf(
+				'<input type="checkbox" name="attachments[%1$d][aitamer_certify_human]" id="attachments[%1$d][aitamer_certify_human]" value="yes" %2$s> %3$s',
+				$post->ID,
+				checked($certified, true, false),
+				__('Certify this media has human origin (Injects IPTC metadata on save)', 'ai-tamer')
+			),
+		);
+
+		return $form_fields;
+	}
+
+	/**
+	 * Saves the certification field and triggers IPTC injection.
+	 *
+	 * @param int $post_id Attachment ID.
+	 */
+	public function save_certification_field(int $post_id): void
+	{
+		if (! empty($_REQUEST['attachments'][$post_id]['aitamer_certify_human'])) {
+			$was_certified = get_post_meta($post_id, '_aitamer_iptc_certified', true) === 'yes';
+
+			if (!$was_certified) {
+				update_post_meta($post_id, '_aitamer_iptc_certified', 'yes');
+
+				// Trigger IPTC injection.
+				$file = get_attached_file($post_id);
+				if ($file && file_exists($file)) {
+					Watermarker::apply_iptc_metadata($file, 'originalMediaDigitalSource');
+				}
+			}
+		} else {
+			delete_post_meta($post_id, '_aitamer_iptc_certified');
 		}
 	}
 }

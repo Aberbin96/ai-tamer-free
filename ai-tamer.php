@@ -33,12 +33,16 @@ require_once AITAMER_PLUGIN_DIR . 'includes/class-bandwidth-limiter.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-audit-report.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-meta-box.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-content-filter.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-poisoner.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-bot-updater.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-license-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-license-verifier.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-rest-api.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/interface-payment-provider.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-stripe-manager.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-watermarker.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-heuristic-detector.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-c2pa-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'admin/class-admin.php';
 
 // Activation / Deactivation hooks.

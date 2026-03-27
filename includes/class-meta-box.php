@@ -107,36 +107,72 @@ class MetaBox
 			</select>
 		</p>
 
-		<div id="aitamer-granular-options" style="margin-top:10px; padding:10px; background:#f0f0f1; border: 1px solid #ccd0d4; border-radius:4px; <?php echo ( 'custom' === $value ) ? '' : 'display:none;'; ?>">
+		<div id="aitamer-granular-options" style="margin-top:10px; padding:10px; background:#f0f0f1; border: 1px solid #ccd0d4; border-radius:4px; <?php echo ('custom' === $value) ? '' : 'display:none;'; ?>">
 			<label style="display:block; margin-bottom:8px; font-weight:600; font-size:12px;">
-				<?php esc_html_e( 'Granular Protections (Internal Targets)', 'ai-tamer' ); ?>
+				<?php esc_html_e('Granular Protections (Internal Targets)', 'ai-tamer'); ?>
 			</label>
-			
+
 			<?php
-			$block_text   = get_post_meta( $post->ID, '_aitamer_block_text', true ) === 'yes';
-			$block_images = get_post_meta( $post->ID, '_aitamer_block_images', true ) === 'yes';
-			$block_video  = get_post_meta( $post->ID, '_aitamer_block_video', true ) === 'yes';
+			$block_text   = get_post_meta($post->ID, '_aitamer_block_text', true) === 'yes';
+			$block_images = get_post_meta($post->ID, '_aitamer_block_images', true) === 'yes';
+			$block_video  = get_post_meta($post->ID, '_aitamer_block_video', true) === 'yes';
 			?>
 
 			<p style="margin:5px 0;">
-				<input type="checkbox" name="aitamer_block_text" id="aitamer_block_text" value="yes" <?php checked( $block_text ); ?> />
-				<label for="aitamer_block_text"><?php esc_html_e( 'Block Text Training', 'ai-tamer' ); ?></label>
+				<input type="checkbox" name="aitamer_block_text" id="aitamer_block_text" value="yes" <?php checked($block_text); ?> />
+				<label for="aitamer_block_text"><?php esc_html_e('Block Text Training', 'ai-tamer'); ?></label>
 			</p>
 			<p style="margin:5px 0;">
-				<input type="checkbox" name="aitamer_block_images" id="aitamer_block_images" value="yes" <?php checked( $block_images ); ?> />
-				<label for="aitamer_block_images"><?php esc_html_e( 'Block Image Training', 'ai-tamer' ); ?></label>
+				<input type="checkbox" name="aitamer_block_images" id="aitamer_block_images" value="yes" <?php checked($block_images); ?> />
+				<label for="aitamer_block_images"><?php esc_html_e('Block Image Training', 'ai-tamer'); ?></label>
 			</p>
 			<p style="margin:5px 0;">
-				<input type="checkbox" name="aitamer_block_video" id="aitamer_block_video" value="yes" <?php checked( $block_video ); ?> />
-				<label for="aitamer_block_video"><?php esc_html_e( 'Block Video Training', 'ai-tamer' ); ?></label>
+				<input type="checkbox" name="aitamer_block_video" id="aitamer_block_video" value="yes" <?php checked($block_video); ?> />
+				<label for="aitamer_block_video"><?php esc_html_e('Block Video Training', 'ai-tamer'); ?></label>
 			</p>
 		</div>
 
+		<hr style="border:0;border-top:1px solid #ccd0d4;margin:15px 0;" />
+
+		<!-- AI Detection Feedback -->
+		<?php
+		$score = HeuristicDetector::get_ai_score($post->post_content);
+		$color = ($score > 80) ? '#d63638' : (($score > 40) ? '#dba617' : '#2271b1');
+		$label = ($score > 90) ? __('Likely AI Generator', 'ai-tamer') : (($score > 40) ? __('AI-Assisted?', 'ai-tamer') : __('Likely Human', 'ai-tamer'));
+		?>
+		<div id="aitamer-ai-status" style="margin-bottom:15px; padding:8px 12px; background:#fff; border-left:4px solid <?php echo $color; ?>; box-shadow:0 1px 1px rgba(0,0,0,0.04); transition: opacity 0.3s ease;">
+			<span style="display:block; font-size:11px; color:#64748b; text-transform:uppercase; font-weight:600; letter-spacing:0.05em;">
+				<?php esc_html_e('AI Detection Status', 'ai-tamer'); ?>
+			</span>
+			<div style="display:flex; align-items:baseline; gap:6px; margin-top:2px;">
+				<strong class="aitamer-label-value" style="font-size:14px; color:<?php echo $color; ?>;"><?php echo esc_html($label); ?></strong>
+				<span class="aitamer-score-value" style="font-size:12px; color:#94a3b8;"><?php echo (int)$score; ?>%</span>
+			</div>
+			<p style="margin:4px 0 0; font-size:10px; color:#94a3b8; line-height:1.3;">
+				<?php esc_html_e('Based on pattern analysis (Updated on save).', 'ai-tamer'); ?>
+			</p>
+		</div>
+
+		<p style="margin:10px 0;">
+			<?php
+			$certified = get_post_meta($post->ID, '_aitamer_certified_human', true) === 'yes';
+			?>
+			<label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
+				<input type="checkbox" name="aitamer_certified_human" value="yes" <?php checked($certified); ?> style="margin-top:3px;" />
+				<span>
+					<strong><?php esc_html_e('Certify Human Origin (Manual Override)', 'ai-tamer'); ?></strong><br />
+					<small style="color:#666; font-size:11px; display:block; line-height:1.2; margin-top:2px;">
+						<?php esc_html_e('Experimental (English & Spanish): Declare this content as original human work. Recommended if automated detection is inaccurate.', 'ai-tamer'); ?>
+					</small>
+				</span>
+			</label>
+		</p>
+
 		<script>
-		document.getElementById('aitamer_protection').addEventListener('change', function() {
-			var granular = document.getElementById('aitamer-granular-options');
-			granular.style.display = (this.value === 'custom') ? 'block' : 'none';
-		});
+			document.getElementById('aitamer_protection').addEventListener('change', function() {
+				var granular = document.getElementById('aitamer-granular-options');
+				granular.style.display = (this.value === 'custom') ? 'block' : 'none';
+			});
 		</script>
 		<p style="font-size:11px;color:#777;margin-bottom:0;">
 			<?php esc_html_e('Override global AI protection for this specific post.', 'ai-tamer'); ?>
@@ -153,7 +189,7 @@ class MetaBox
 	public function save(int $post_id, $post): void
 	{
 		// Verify nonce.
-		$nonce = isset( $_POST[ self::NONCE_FIELD ] ) ? sanitize_text_field( wp_unslash( $_POST[ self::NONCE_FIELD ] ) ) : '';
+		$nonce = isset($_POST[self::NONCE_FIELD]) ? sanitize_text_field(wp_unslash($_POST[self::NONCE_FIELD])) : '';
 		if (! wp_verify_nonce($nonce, self::NONCE_ACTION)) {
 			return;
 		}
@@ -178,9 +214,12 @@ class MetaBox
 		update_post_meta($post_id, self::META_KEY, $value);
 
 		// Save granular options.
-		update_post_meta( $post_id, '_aitamer_block_text', isset( $_POST['aitamer_block_text'] ) ? 'yes' : 'no' );
-		update_post_meta( $post_id, '_aitamer_block_images', isset( $_POST['aitamer_block_images'] ) ? 'yes' : 'no' );
-		update_post_meta( $post_id, '_aitamer_block_video', isset( $_POST['aitamer_block_video'] ) ? 'yes' : 'no' );
+		update_post_meta($post_id, '_aitamer_block_text', isset($_POST['aitamer_block_text']) ? 'yes' : 'no');
+		update_post_meta($post_id, '_aitamer_block_images', isset($_POST['aitamer_block_images']) ? 'yes' : 'no');
+		update_post_meta($post_id, '_aitamer_block_video', isset($_POST['aitamer_block_video']) ? 'yes' : 'no');
+
+		// Save certification.
+		update_post_meta($post_id, '_aitamer_certified_human', isset($_POST['aitamer_certified_human']) ? 'yes' : 'no');
 	}
 
 	/**

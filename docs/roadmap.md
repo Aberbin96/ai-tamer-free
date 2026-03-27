@@ -31,6 +31,8 @@
 - [x] Integration with future licensing protocols (Web 3.0 / Digital Signatures).
 - [x] Token Registry for manual license issuance and revocation.
 
+
+
 > [!NOTE]
 > All phases up to Phase 5 are complete. The following phases represent the future vision for the plugin and development has not yet started.
 
@@ -42,16 +44,17 @@
 - [x] **Discovery Protocol (MCP)**: Implementation of Model Context Protocol for autonomous agent discovery (Endpoint `/catalog`).
 - [x] **Smart Tolls**: Integration with payment gateways (Stripe) for per-query monetization.
 
-## Phase 7: Active Defense & Origin Proof (v3) 🚀 [/]
+## Phase 7: Active Defense & Origin Proof (v3) ✅
 
 - [x] **Performance Fallback**: Multi-tier caching (Object Cache + Transients) for all environments.
 - [x] **Advanced Auditing**: Enriched logs with IP, User-Agent, and protection metadata.
 - [x] **Smart Fingerprinting**: Beyond UA matching—checking browser headers (`Sec-Fetch-*`).
-- [ ] **Data Poisoning**: Serving altered or "marked" content to hostile scrapers.
-- [ ] **C2PA Implementation**: Cryptographic "Proof of Human Origin" for all published content.
+- [x] **Data Poisoning**: Serving altered or "marked" content to hostile scrapers.
+- [x] **C2PA Implementation**: Cryptographic "Proof of Human Origin" using the latest `DigitalDocument` / `CreativeWork` schema standards.
+- [x] **IPTC Certification**: Manual "Human Origin" certification for media assets (IPTC 2:228) via the WordPress Media Library.
+- [x] **Grammatical Watermarking**: Dual-layer invisible stylistic DNA to track content attribution in AI outputs.
 - [ ] **Micropayments (Protocol 402)**: Real-time billing for massive database access.
 - [ ] **Subscription-Linked Tokens**: Tokens that stay active as long as the Stripe subscription is `active`.
 - [ ] **Scoped Access**: Ability to issue tokens restricted to a single post or category (pay-per-article).
 - [ ] **Billing History**: Integrated transaction log for AI license purchases and automated vouchers.
-- [ ] **Grammatical Watermarking**: Invisible stylistic DNA to track content attribution in AI outputs.
 

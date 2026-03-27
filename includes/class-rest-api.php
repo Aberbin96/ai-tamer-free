@@ -55,7 +55,7 @@ class RestApi
 	 * REST namespace for all v1 endpoints.
 	 */
 	const NAMESPACE = 'ai-tamer/v1';
-	
+
 	/** @var Detector */
 	private $detector;
 
@@ -137,6 +137,25 @@ class RestApi
 				'permission_callback' => '__return_true', // El catalogo es publico (muestra solo meta).
 			)
 		);
+
+		// Admin: real-time AI detection for the editor.
+		register_rest_route(
+			self::NAMESPACE,
+			'/detect',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array($this, 'handle_detect'),
+				'permission_callback' => function () {
+					return current_user_can('edit_posts');
+				},
+				'args'                => array(
+					'content' => array(
+						'type'              => 'string',
+						'sanitize_callback' => 'wp_kses_post',
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -151,14 +170,28 @@ class RestApi
 	{
 		$agent = $this->detector ? $this->detector->classify() : array('matched' => false);
 		$is_valid = LicenseVerifier::has_valid_token();
+		$settings = get_option('aitamer_settings', array());
+		$defense  = $settings['active_defense'] ?? 'block';
 
 		if ($agent['matched'] && $this->logger) {
 			$post_id = (int) $request->get_param('id');
 			$protection = $is_valid ? 'api_content' : 'unauthorized';
+
+			// If poisoning is active and token is invalid, we log as poisoning.
+			if (!$is_valid && 'poison' === $defense) {
+				$protection = 'unauthorized-poison';
+			}
+
 			$this->logger->log($agent, $protection, $post_id);
 		}
 
 		if ($is_valid) {
+			return true;
+		}
+
+		// If strategy is 'poison' and we matched a bot, allow it but mark for degradation.
+		if ('poison' === $defense && $agent['matched']) {
+			$request->set_param('aitamer_poison', true);
 			return true;
 		}
 
@@ -279,10 +312,10 @@ class RestApi
 
 		// Multi-tier Cache Check.
 		$cache_key = 'ait_c_' . (int) $post->ID . '_' . ($block_images ? '1' : '0') . ($block_video ? '1' : '0') . ($block_text ? '1' : '0');
-		
+
 		// 1. Try Object Cache (fastest, but might be non-persistent on basic hosts).
 		$content = wp_cache_get($cache_key, 'ai-tamer');
-		
+
 		// 2. Fallback to Transients API (guaranteed persistent in DB).
 		if (false === $content) {
 			$content = get_transient($cache_key);
@@ -295,140 +328,146 @@ class RestApi
 			// Found in some tier of cache.
 		} else {
 
-		/**
-		 * Advanced Gutenberg Block Filter.
-		 * Temporarily hooks into render_block to suppress entire blocks if they contain restricted media.
-		 */
-		$filter_blocks = function($block_content, $block) use ($block_images, $block_video) {
-			$block_name = $block['blockName'] ?? '';
-			
-			// If images are blocked, suppress only blocks that are primarily or exclusively images.
-			if ($block_images) {
-				$pure_image_blocks = array(
-					'core/image',
-					'core/gallery',
-					'core/cover',
-				);
-				
-				if (in_array($block_name, $pure_image_blocks, true)) {
-					return '';
+			/**
+			 * Advanced Gutenberg Block Filter.
+			 * Temporarily hooks into render_block to suppress entire blocks if they contain restricted media.
+			 */
+			$filter_blocks = function ($block_content, $block) use ($block_images, $block_video) {
+				$block_name = $block['blockName'] ?? '';
+
+				// If images are blocked, suppress only blocks that are primarily or exclusively images.
+				if ($block_images) {
+					$pure_image_blocks = array(
+						'core/image',
+						'core/gallery',
+						'core/cover',
+					);
+
+					if (in_array($block_name, $pure_image_blocks, true)) {
+						return '';
+					}
 				}
-			}
 
-			// If video is blocked, suppress only core video and embed blocks.
-			if ($block_video) {
-				$pure_video_blocks = array(
-					'core/video',
-					'core/embed',
-				);
-				
-				// Handle both generic core/embed and specific core-embed/youtube etc.
-				if (in_array($block_name, $pure_video_blocks, true) || 0 === strpos($block_name, 'core-embed/')) {
-					return '';
+				// If video is blocked, suppress only core video and embed blocks.
+				if ($block_video) {
+					$pure_video_blocks = array(
+						'core/video',
+						'core/embed',
+					);
+
+					// Handle both generic core/embed and specific core-embed/youtube etc.
+					if (in_array($block_name, $pure_video_blocks, true) || 0 === strpos($block_name, 'core-embed/')) {
+						return '';
+					}
 				}
-			}
 
-			// For any other block (including custom ones), we return the content.
-			// Restricted tags (like <img>) will be stripped later by wp_kses or the extraction logic.
-			return $block_content;
-		};
+				// For any other block (including custom ones), we return the content.
+				// Restricted tags (like <img>) will be stripped later by wp_kses or the extraction logic.
+				return $block_content;
+			};
 
-		// Apply the filter only during this block rendering process.
-		add_filter('render_block', $filter_blocks, 10, 2);
-		$rendered_content = do_blocks($post->post_content);
-		$rendered_content = do_shortcode($rendered_content);
-		remove_filter('render_block', $filter_blocks);
+			// Apply the filter only during this block rendering process.
+			add_filter('render_block', $filter_blocks, 10, 2);
+			$rendered_content = do_blocks($post->post_content);
+			$rendered_content = do_shortcode($rendered_content);
+			remove_filter('render_block', $filter_blocks);
 
-		if ($block_text) {
-			// If text is blocked, we only want to serve the allowed media.
-			$media_tags = array();
-			
-			// Match all allowed media tags that haven't been stripped yet.
-			$tags_to_extract = array();
-			if (!$block_images) {
-				$tags_to_extract[] = 'img';
-				$tags_to_extract[] = 'figure';
-			}
-			if (!$block_video) {
-				$tags_to_extract[] = 'video';
-				$tags_to_extract[] = 'iframe';
-				$tags_to_extract[] = 'embed';
-				$tags_to_extract[] = 'object';
-			}
+			if ($block_text) {
+				// If text is blocked, we only want to serve the allowed media.
+				$media_tags = array();
 
-			if (!empty($tags_to_extract)) {
-				// Pattern to match full tags including inner content (for video/iframe/figure) or self-closing tags (img).
-				$pattern = '/<(' . implode('|', $tags_to_extract) . ')[^>]*>.*?<\/\1>|<(' . implode('|', $tags_to_extract) . ')[^>]*\/>|<(' . implode('|', $tags_to_extract) . ')[^>]*>/is';
-				if (preg_match_all($pattern, $rendered_content, $matches)) {
-					$media_tags = $matches[0];
+				// Match all allowed media tags that haven't been stripped yet.
+				$tags_to_extract = array();
+				if (!$block_images) {
+					$tags_to_extract[] = 'img';
+					$tags_to_extract[] = 'figure';
 				}
+				if (!$block_video) {
+					$tags_to_extract[] = 'video';
+					$tags_to_extract[] = 'iframe';
+					$tags_to_extract[] = 'embed';
+					$tags_to_extract[] = 'object';
+				}
+
+				if (!empty($tags_to_extract)) {
+					// Pattern to match full tags including inner content (for video/iframe/figure) or self-closing tags (img).
+					$pattern = '/<(' . implode('|', $tags_to_extract) . ')[^>]*>.*?<\/\1>|<(' . implode('|', $tags_to_extract) . ')[^>]*\/>|<(' . implode('|', $tags_to_extract) . ')[^>]*>/is';
+					if (preg_match_all($pattern, $rendered_content, $matches)) {
+						$media_tags = $matches[0];
+					}
+				}
+
+				$content = __('[Text content restricted by author]', 'ai-tamer') . "\n\n" . implode("\n", $media_tags);
+			} else {
+				// Define allowed tags for "clean" but complete-as-authorized content.
+				$allowed_tags = array(
+					'p'          => array('class' => array()),
+					'br'         => array(),
+					'strong'     => array(),
+					'em'         => array(),
+					'ul'         => array('class' => array()),
+					'ol'         => array('class' => array()),
+					'li'         => array('class' => array()),
+					'blockquote' => array('class' => array()),
+					'div'        => array('class' => array(), 'id' => array()),
+					'span'       => array('class' => array()),
+					'h1'         => array('class' => array()),
+					'h2'         => array('class' => array()),
+					'h3'         => array('class' => array()),
+					'h4'         => array('class' => array()),
+					'h5'         => array('class' => array()),
+					'h6'         => array('class' => array()),
+				);
+
+				if (!$block_images) {
+					$allowed_tags['img'] = array(
+						'src'    => array(),
+						'alt'    => array(),
+						'title'  => array(),
+						'width'  => array(),
+						'height' => array(),
+						'class'  => array(),
+					);
+					$allowed_tags['figure'] = array('class' => array());
+					$allowed_tags['figcaption'] = array();
+				}
+
+				if (!$block_video) {
+					$allowed_tags['video'] = array(
+						'src'      => array(),
+						'poster'   => array(),
+						'controls' => array(),
+						'width'    => array(),
+						'height'   => array(),
+					);
+					$allowed_tags['iframe'] = array(
+						'src'             => array(),
+						'width'           => array(),
+						'height'          => array(),
+						'frameborder'     => array(),
+						'allowfullscreen' => array(),
+						'title'           => array(),
+					);
+					$allowed_tags['embed'] = array('src' => array(), 'type' => array(), 'width' => array(), 'height' => array());
+				}
+
+				// Process with the whitelist.
+				$content = wp_kses($rendered_content, $allowed_tags);
+
+				// Normalise excessive whitespace.
+				$content = preg_replace('/\n{3,}/', "\n\n", trim($content));
 			}
 
-			$content = __('[Text content restricted by author]', 'ai-tamer') . "\n\n" . implode("\n", $media_tags);
-		} else {
-			// Define allowed tags for "clean" but complete-as-authorized content.
-			$allowed_tags = array(
-				'p'          => array('class' => array()),
-				'br'         => array(),
-				'strong'     => array(),
-				'em'         => array(),
-				'ul'         => array('class' => array()),
-				'ol'         => array('class' => array()),
-				'li'         => array('class' => array()),
-				'blockquote' => array('class' => array()),
-				'div'        => array('class' => array(), 'id' => array()),
-				'span'       => array('class' => array()),
-				'h1'         => array('class' => array()),
-				'h2'         => array('class' => array()),
-				'h3'         => array('class' => array()),
-				'h4'         => array('class' => array()),
-				'h5'         => array('class' => array()),
-				'h6'         => array('class' => array()),
-			);
-
-			if (!$block_images) {
-				$allowed_tags['img'] = array(
-					'src'    => array(),
-					'alt'    => array(),
-					'title'  => array(),
-					'width'  => array(),
-					'height' => array(),
-					'class'  => array(),
-				);
-				$allowed_tags['figure'] = array('class' => array());
-				$allowed_tags['figcaption'] = array();
-			}
-
-			if (!$block_video) {
-				$allowed_tags['video'] = array(
-					'src'      => array(),
-					'poster'   => array(),
-					'controls' => array(),
-					'width'    => array(),
-					'height'   => array(),
-				);
-				$allowed_tags['iframe'] = array(
-					'src'             => array(),
-					'width'           => array(),
-					'height'          => array(),
-					'frameborder'     => array(),
-					'allowfullscreen' => array(),
-					'title'           => array(),
-				);
-				$allowed_tags['embed'] = array('src' => array(), 'type' => array(), 'width' => array(), 'height' => array());
-			}
-
-			// Process with the whitelist.
-			$content = wp_kses($rendered_content, $allowed_tags);
-
-			// Normalise excessive whitespace.
-			$content = preg_replace('/\n{3,}/', "\n\n", trim($content));
+			// Save to multi-tier cache for 1 hour.
+			wp_cache_set($cache_key, $content, 'ai-tamer', 3600);
+			set_transient($cache_key, $content, 3600);
 		}
 
-		// Save to multi-tier cache for 1 hour.
-		wp_cache_set($cache_key, $content, 'ai-tamer', 3600);
-		set_transient($cache_key, $content, 3600);
-	}
+		// Apply Poisoning Filter if requested or Preview mode for admins.
+		$is_preview = $request->get_param('aitamer_preview_poison') && current_user_can('manage_options');
+		if ($request->get_param('aitamer_poison') || $is_preview) {
+			$content = Poisoner::poison($content);
+		}
 
 		$author_name = get_the_author_meta('display_name', (int) $post->post_author);
 
@@ -442,6 +481,10 @@ class RestApi
 			'excerpt'   => wp_strip_all_tags($post->post_excerpt),
 			'content'   => $content,
 			'license'   => $protection ?: 'all-rights-reserved',
+			'c2pa'      => array(
+				'verified_human'  => (get_post_meta((int) $post->ID, '_aitamer_certify_human', true) === 'yes') || (HeuristicDetector::is_likely_human($content)),
+				'heuristic_score' => HeuristicDetector::get_ai_score($content),
+			),
 		);
 
 		$response = new WP_REST_Response($body, 200);
@@ -512,5 +555,41 @@ class RestApi
 		);
 
 		return new WP_REST_Response($body, 200);
+	}
+
+	/**
+	 * POST /ai-tamer/v1/detect
+	 *
+	 * Analyzes provided content and returns an AI probability score and UI metadata.
+	 *
+	 * @param WP_REST_Request $request The REST request object.
+	 * @return WP_REST_Response
+	 */
+	public function handle_detect(WP_REST_Request $request): WP_REST_Response
+	{
+		$content = $request->get_param('content') ?: '';
+		$score   = HeuristicDetector::get_ai_score($content);
+		
+		$color = ($score > 80) ? '#d63638' : (($score > 40) ? '#dba617' : '#2271b1');
+		$label = ($score > 90) ? __('Likely AI Generator', 'ai-tamer') : (($score > 40) ? __('AI-Assisted?', 'ai-tamer') : __('Likely Human', 'ai-tamer'));
+
+		return new WP_REST_Response(array(
+			'score' => $score,
+			'label' => $label,
+			'color' => $color,
+		), 200);
+	}
+
+	/**
+	 * Degrades content for unauthorized scrapers (Data Poisoning).
+	 * Truncates text and injects a protection notice.
+	 *
+	 * @param string $content Original HTML content.
+	 * @return string Altered content.
+	 * @deprecated 0.1.0 Use Poisoner::poison instead.
+	 */
+	private function apply_poisoning_filter(string $content): string
+	{
+		return Poisoner::poison($content);
 	}
 }

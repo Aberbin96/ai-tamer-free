@@ -1,4 +1,5 @@
 <?php
+
 /**
  * ContentFilter — selectively hides content from AI training agents.
  *
@@ -10,16 +11,21 @@
 
 namespace AiTamer;
 
-use function add_filter;
 use function get_the_ID;
 use function is_singular;
+use function get_option;
+use function get_transient;
+use function set_transient;
+use function wp_cache_get;
+use function wp_cache_set;
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 /**
  * ContentFilter class.
  */
-class ContentFilter {
+class ContentFilter
+{
 
 	/** @var Detector */
 	private Detector $detector;
@@ -27,15 +33,17 @@ class ContentFilter {
 	/**
 	 * @param Detector $detector
 	 */
-	public function __construct( Detector $detector ) {
+	public function __construct(Detector $detector)
+	{
 		$this->detector = $detector;
 	}
 
 	/**
 	 * Registers the content filter hook.
 	 */
-	public function register(): void {
-		add_filter( 'the_content', array( $this, 'filter_content' ), 99 );
+	public function register(): void
+	{
+		add_filter('the_content', array($this, 'filter_content'), 99);
 	}
 
 	/**
@@ -44,21 +52,27 @@ class ContentFilter {
 	 * @param string $content Original post content.
 	 * @return string Filtered content.
 	 */
-	public function filter_content( string $content ): string {
+	public function filter_content(string $content): string
+	{
 		// Only filter on singular post views.
-		if ( ! is_singular() ) {
+		if (! is_singular()) {
 			return $content;
+		}
+
+		// Allow Admin Preview.
+		if (! empty($_GET['aitamer_preview_poison']) && current_user_can('manage_options')) {
+			return Poisoner::poison($content);
 		}
 
 		$agent   = $this->detector->classify();
 		$post_id = (int) get_the_ID();
 
 		// Determine effective protection level.
-		$level = MetaBox::get_setting( $post_id );
+		$level = MetaBox::get_setting($post_id);
 
 		// Resolve "inherit" to the actual outcome.
-		if ( 'inherit' === $level ) {
-			if ( $agent['type'] === 'training' || $agent['type'] === 'scraper' ) {
+		if ('inherit' === $level) {
+			if ($agent['type'] === 'training' || $agent['type'] === 'scraper') {
 				$level = 'block_training';
 			} else {
 				return $content; // No filtering for search bots or humans.
@@ -66,23 +80,51 @@ class ContentFilter {
 		}
 
 		// If explicitly allow_all, skip all filtering.
-		if ( 'allow_all' === $level ) {
+		if ('allow_all' === $level) {
 			return $content;
 		}
 
 		$should_filter = false;
-		if ( 'block_all' === $level && $agent['matched'] ) {
+		if ('block_all' === $level && $agent['matched']) {
 			$should_filter = true; // Block any known bot.
-		} elseif ( 'block_training' === $level && $this->detector->is_training_agent() ) {
+		} elseif ('block_training' === $level && $this->detector->is_training_agent()) {
 			$should_filter = true; // Block only training/scraper bots.
 		}
 
-		if ( ! $should_filter ) {
+		if (! $should_filter) {
 			return $content;
 		}
 
+		// Active Defense: Poisoning.
+		$settings = get_option('aitamer_settings', array());
+		$defense  = $settings['active_defense'] ?? 'block';
+
+		if ('poison' === $defense) {
+			$cache_key = 'ait_p_' . $post_id;
+			$cached    = wp_cache_get($cache_key, 'ai-tamer');
+			if (false === $cached) {
+				$cached = get_transient($cache_key);
+			}
+
+			if (false !== $cached) {
+				return $cached;
+			}
+
+			$poisoned = Poisoner::poison($content);
+
+			// Cache for 24 hours.
+			wp_cache_set($cache_key, $poisoned, 'ai-tamer', DAY_IN_SECONDS);
+			set_transient($cache_key, $poisoned, DAY_IN_SECONDS);
+
+			return $poisoned;
+		}
+
+		// Standard blocking or no filtering for researchers.
 		// Strip elements marked with data-noai attribute.
-		$content = $this->strip_noai_elements( $content );
+		$content = $this->strip_noai_elements($content);
+
+		// Apply Watermarking (Invisible Signature + Optional Stylistic DNA).
+		$content = Watermarker::apply($content, $post_id);
 
 		return $content;
 	}
@@ -97,7 +139,8 @@ class ContentFilter {
 	 * @param string $content HTML content.
 	 * @return string Filtered HTML.
 	 */
-	private function strip_noai_elements( string $content ): string {
+	private function strip_noai_elements(string $content): string
+	{
 		// Use regex to remove block-level elements with data-noai attribute.
 		// This handles divs, figures, sections, articles, asides.
 		$tags = 'div|figure|section|article|aside|p|blockquote';
@@ -108,7 +151,7 @@ class ContentFilter {
 		);
 
 		// Also strip <img> tags with data-noai.
-		$content = preg_replace( '/<img[^>]*\bdata-noai\b[^>]*\/?>/i', '', $content );
+		$content = preg_replace('/<img[^>]*\bdata-noai\b[^>]*\/?>/i', '', $content);
 
 		return $content ?? '';
 	}

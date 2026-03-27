@@ -60,6 +60,9 @@ class Plugin {
 	/** @var StripeManager */
 	private $stripe_manager;
 
+	/** @var C2paManager */
+	private $c2pa_manager;
+
 	/**
 	 * Returns the single instance, creating it on first call.
 	 *
@@ -87,6 +90,7 @@ class Plugin {
 		$this->license_manager   = new LicenseManager();
 		$this->rest_api          = new RestApi( $this->detector, $this->logger );
 		$this->stripe_manager    = new StripeManager();
+		$this->c2pa_manager      = new C2paManager();
 		$this->register_hooks();
 	}
 
@@ -131,6 +135,7 @@ class Plugin {
 			// Content filter and licensing headers only run on the frontend.
 			$this->content_filter->register();
 			$this->license_manager->register(); // Phase 5: inject license headers + JSON-LD.
+			$this->c2pa_manager->register();    // Phase 7: C2PA origin proof.
 		}
 
 		// Bot updater: register handler and schedule daily cron.
@@ -138,7 +143,10 @@ class Plugin {
 		if ( ! wp_next_scheduled( 'aitamer_update_bots' ) ) {
 			wp_schedule_event( time(), 'daily', 'aitamer_update_bots' );
 		}
+		add_action( 'aitamer_update_bots', array( $this->bot_updater, 'run' ) );
 	}
+
+
 
 	/**
 	 * Runs the rate limiter for the current request.
@@ -177,6 +185,9 @@ class Plugin {
 					'rate_limit_enabled'   => true,
 					'rpm'                  => 30,
 					'auto_update_bots'     => true,
+					'enable_watermarking'  => true,
+					'enable_c2pa'         => true,
+					'show_c2pa_badge'      => false,
 				)
 			);
 		}
