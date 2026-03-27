@@ -447,6 +447,10 @@ msgstr "Estado de detección de IA"
 msgid "Based on pattern analysis (Updated on save)."
 msgstr "Basado en análisis de patrones (Actualizado al guardar)."
 
-#: includes/class-meta-box.php:165
-msgid "Experimental (English & Spanish): Declare this content as original human work. Recommended if automated detection is inaccurate."
-msgstr "Experimental (Inglés y Español): Declara este contenido como obra humana original. Recomendado si la detección automática es imprecisa."
+#: includes/class-meta-box.php:159
+msgid "Manual Override Active"
+msgstr "Sobrescritura Manual Activa"
+
+#: includes/class-meta-box.php:160
+msgid "Content is certified as human-origin for the manifest."
+msgstr "El contenido está certificado como origen humano para el manifiesto."

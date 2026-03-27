@@ -151,6 +151,13 @@ class MetaBox
 			<p style="margin:4px 0 0; font-size:10px; color:#94a3b8; line-height:1.3;">
 				<?php esc_html_e('Based on pattern analysis (Updated on save).', 'ai-tamer'); ?>
 			</p>
+			<?php
+			$certified = get_post_meta($post->ID, '_aitamer_certified_human', true) === 'yes';
+			?>
+			<div id="aitamer-manual-note" style="margin-top:10px; font-size:10px; color:#16a34a; background:#f0fdf4; padding:6px 10px; border-radius:3px; border:1px solid #bbf7d0; <?php echo $certified ? '' : 'display:none;'; ?>">
+				<strong>✅ <?php esc_html_e('Manual Override Active', 'ai-tamer'); ?></strong><br/>
+				<?php esc_html_e('Content is certified as human-origin for the manifest.', 'ai-tamer'); ?>
+			</div>
 		</div>
 
 		<p style="margin:10px 0;">
@@ -158,7 +165,7 @@ class MetaBox
 			$certified = get_post_meta($post->ID, '_aitamer_certified_human', true) === 'yes';
 			?>
 			<label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
-				<input type="checkbox" name="aitamer_certified_human" value="yes" <?php checked($certified); ?> style="margin-top:3px;" />
+				<input type="checkbox" name="aitamer_certified_human" id="aitamer_certified_human" value="yes" <?php checked($certified); ?> style="margin-top:3px;" />
 				<span>
 					<strong><?php esc_html_e('Certify Human Origin (Manual Override)', 'ai-tamer'); ?></strong><br />
 					<small style="color:#666; font-size:11px; display:block; line-height:1.2; margin-top:2px;">

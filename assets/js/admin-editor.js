@@ -26,12 +26,21 @@
                     $statusContainer.find('.aitamer-label-value').text(response.label).css('color', response.color);
                     $statusContainer.css('border-left-color', response.color); // Update border color too
                     $statusContainer.css('opacity', '1');
+                    
+                    // Maintain manual note visibility
+                    const isManual = $('#aitamer_certified_human').is(':checked');
+                    $('#aitamer-manual-note').toggle(isManual);
                 },
                 error: function() {
                     $statusContainer.css('opacity', '1');
                 }
             });
         };
+
+        // Toggle manual note visibility
+        $('#aitamer_certified_human').on('change', function() {
+            $('#aitamer-manual-note').toggle($(this).is(':checked'));
+        });
 
         // Debounce function to avoid too many API calls
         let debounceTimer;
