@@ -108,8 +108,8 @@ class Detector {
 
 		// Modern browsers sending these headers since 2019/2020.
 		// If missing completely on a "Chrome" request, it's suspicious.
-		$dest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
-		$mode = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+		$dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
+		$mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
 
 		if ( empty( $dest ) || empty( $mode ) ) {
 			// Most simple scrapers (python-requests, axios, curl) don't send these.

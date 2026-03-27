@@ -91,7 +91,7 @@ class Logger {
 				'post_id'     => $post_id ?: (get_the_ID() ?: null),
 				'request_uri' => $uri,
 				'ip_hash'     => hash( 'sha256', $ip ), // GDPR: never store raw IPs.
-				'user_agent'  => substr( (string) ( $_SERVER['HTTP_USER_AGENT'] ?? '' ), 0, 255 ),
+				'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),
 				'protection'  => sanitize_text_field( $protection ),
 				'created_at'  => current_time( 'mysql' ),
 			),
