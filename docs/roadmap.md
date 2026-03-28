@@ -31,8 +31,6 @@
 - [x] Integration with future licensing protocols (Web 3.0 / Digital Signatures).
 - [x] Token Registry for manual license issuance and revocation.
 
-
-
 > [!NOTE]
 > All phases up to Phase 5 are complete. The following phases represent the future vision for the plugin and development has not yet started.
 
@@ -57,3 +55,27 @@
 - [x] **Subscription-Linked Tokens**: Tokens validated against real-time Stripe subscription status.
 - [x] **Scoped Access**: Granular control (Global vs. Post vs. Category).
 - [x] **Billing History**: Integrated transaction log for AI license purchases and automated vouchers.
+- [ ] **Stripe Return URLs**: Make success/cancel URLs configurable or dynamic for better integration (e.g., custom landing pages).
+
+## Strategic Vision (2026-2027)
+
+### V1: Control & Visibility (Complete ✅)
+
+- [x] Advanced blocking, granular headers, and detailed logs.
+
+### V2: Volume Licensing (Prepaid & Subscriptions) — Next Focus 🚀
+
+- [ ] **Reading Vouchers**: Vouchers based on request count (e.g. 1k readings) to avoid Stripe transaction minimums.
+- [ ] **Quantity-based Validation**: Tokens authorized by request quota rather than time/post scope.
+- [ ] **Agent Balance API**: Allow bots to query their remaining credits via REST.
+
+### V3: Real-time Streaming (Lightning/L402) — Future 🌐
+
+- [ ] **Micro-payments per Post**: Settlement of fractions of a cent per request.
+- [ ] **Frictionless Protocols**: L402 implementation for autonomous agents.
+
+## Phase 10: UI Scalability & Advanced UX
+
+- [ ] **Data Pagination**: Implement pagination for "Recent Activity Log" and "Billing History" to handle high-volume sites.
+- [ ] **Advanced Filtering**: Filter logs by bot type, protection applied, or specific date ranges.
+- [ ] **Real-time Notifications**: Webhook or Email alerts for specific "High Intensity" bot activity.
