@@ -100,9 +100,13 @@ msgstr "Activar cupo diario de ancho de banda"
 msgid "Max KB served per bot per day"
 msgstr "Máximo KB servidos por bot al día"
 
-#: admin/views/dashboard.php:21
-msgid "Total AI Requests Detected"
-msgstr "Total de Peticiones de IA Detectadas"
+#: admin/views/dashboard.php:39
+msgid "Total Detections"
+msgstr "Detecciones totales"
+
+#: admin/views/dashboard.php:41
+msgid "AI requests logged"
+msgstr "Solicitudes de IA registradas"
 
 #: admin/views/dashboard.php:29
 msgid "Protection Status"
@@ -112,9 +116,29 @@ msgstr "Estado de Protección"
 msgid "Active"
 msgstr "Activo"
 
-#: admin/views/dashboard.php:34
-msgid "Headers, meta tags and robots.txt rules are live."
-msgstr "Cabeceras, etiquetas meta y reglas de robots.txt están activas."
+#: admin/views/dashboard.php:56
+msgid "Live"
+msgstr "En vivo"
+
+#: admin/views/dashboard.php:58
+msgid "Headers, meta & robots.txt"
+msgstr "Cabeceras, etiquetas meta y robots.txt"
+
+#: admin/views/dashboard.php:44
+msgid "Bots Intercepted"
+msgstr "Bots interceptados"
+
+#: admin/views/dashboard.php:46
+msgid "Training bots deterred"
+msgstr "Bots de entrenamiento detenidos"
+
+#: admin/views/dashboard.php:49
+msgid "Audit Coverage"
+msgstr "Cobertura de auditoría"
+
+#: admin/views/dashboard.php:51
+msgid "Continuous protection active"
+msgstr "Protección activa continua"
 
 #: admin/views/dashboard.php:42
 msgid "Top AI Bots by Activity"
@@ -182,9 +206,13 @@ msgstr "Descargar Informe"
 msgid "Select the time period and download the audit CSV file."
 msgstr "Selecciona el periodo y descarga el archivo CSV de auditoría."
 
-#: admin/views/audit.php:35
+#: admin/views/audit.php:35 admin/views/monetization.php:45
 msgid "Period"
 msgstr "Periodo"
+
+#: admin/views/audit.php:58
+msgid "Audit History"
+msgstr "Historial de auditoría"
 
 #: admin/views/audit.php:38
 msgid "Last 7 days"

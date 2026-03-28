@@ -81,12 +81,20 @@ $settings = StripeManager::get_settings();
 				
 				<table class="form-table">
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Stripe Price ID', 'ai-tamer' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Monthly Subscription Price ID', 'ai-tamer' ); ?></th>
 						<td>
 							<input type="text" name="aitamer_stripe_settings[price_id]" value="<?php echo esc_attr( $settings['price_id'] ); ?>" class="regular-text" placeholder="price_..." />
 							<p class="description">
-								<strong><?php esc_html_e( 'How to find this:', 'ai-tamer' ); ?></strong><br>
-								<?php esc_html_e( 'Go to Stripe Dashboard > Products > [Your Product] > Price ID (starts with price_).', 'ai-tamer' ); ?>
+								<?php esc_html_e( 'The Price ID for a recurring monthly subscription.', 'ai-tamer' ); ?>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Per-Article Price ID (Micropayment)', 'ai-tamer' ); ?></th>
+						<td>
+							<input type="text" name="aitamer_stripe_settings[price_id_micropayment]" value="<?php echo esc_attr( $settings['price_id_micropayment'] ?? '' ); ?>" class="regular-text" placeholder="price_..." />
+							<p class="description">
+								<?php esc_html_e( 'The Price ID for a one-time payment for a single article (1-hour access).', 'ai-tamer' ); ?>
 							</p>
 						</td>
 					</tr>
@@ -113,9 +121,59 @@ $settings = StripeManager::get_settings();
 		<?php submit_button(); ?>
 	</form>
 
+	<hr />
+
+	<div class="aitamer-card">
+		<div class="aitamer-card-header">
+			<h2 class="aitamer-card-title"><?php esc_html_e( 'Billing History', 'ai-tamer' ); ?></h2>
+			<span class="aitamer-badge"><?php esc_html_e( 'Recent Transactions', 'ai-tamer' ); ?></span>
+		</div>
+
+		<?php
+		$stripe_manager = \AiTamer\Plugin::get_instance()->get_component('stripe_manager');
+		$transactions   = $stripe_manager ? $stripe_manager->get_transactions( 20 ) : array();
+
+		if ( ! empty( $transactions ) ) :
+			?>
+			<div class="aitamer-table-responsive">
+				<table class="aitamer-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Date', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'Agent / Customer', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'Amount', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'Reference', 'ai-tamer' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'ai-tamer' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $transactions as $tx ) : ?>
+							<tr>
+								<td class="mono"><?php echo esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $tx['created_at'] ) ) ); ?></td>
+								<td><strong><?php echo esc_html( $tx['agent_name'] ); ?></strong></td>
+								<td><?php echo esc_html( $tx['amount'] . ' ' . $tx['currency'] ); ?></td>
+								<td class="mono"><?php echo esc_html( $tx['provider_id'] ); ?></td>
+								<td>
+									<span class="aitamer-badge-status <?php echo ( 'completed' === $tx['status'] ) ? 'allowed' : 'expired'; ?>">
+										<?php echo esc_html( $tx['status'] ); ?>
+									</span>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php else : ?>
+			<div class="aitamer-empty">
+				<p><?php esc_html_e( 'No transactions found yet. Once a bot purchases a license, it will appear here.', 'ai-tamer' ); ?></p>
+			</div>
+		<?php endif; ?>
+	</div>
+
 </div>
 
 <style>
+/* ... existing styles ... */
 .aitamer-info-box {
 	background: #f0f6fb;
 	padding: 15px;

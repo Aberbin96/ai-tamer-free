@@ -54,14 +54,16 @@ class ContentFilter
 	 */
 	public function filter_content(string $content): string
 	{
-		// Only filter on singular post views.
-		if (! is_singular()) {
+		// Only filter on singular 'post' post type views.
+		if (! is_singular('post')) {
 			return $content;
 		}
 
 		// Allow Admin Preview.
-		if (! empty($_GET['aitamer_preview_poison']) && current_user_can('manage_options')) {
-			return Poisoner::poison($content);
+		// Advanced defense preview (via Pro).
+		$preview_content = apply_filters('aitamer_preview_defense', $content);
+		if ($preview_content !== $content) {
+			return $preview_content;
 		}
 
 		$agent   = $this->detector->classify();
@@ -99,33 +101,29 @@ class ContentFilter
 		$settings = get_option('aitamer_settings', array());
 		$defense  = $settings['active_defense'] ?? 'block';
 
-		if ('poison' === $defense) {
-			$cache_key = 'ait_p_' . $post_id;
-			$cached    = wp_cache_get($cache_key, 'ai-tamer');
-			if (false === $cached) {
-				$cached = get_transient($cache_key);
-			}
-
-			if (false !== $cached) {
-				return $cached;
-			}
-
-			$poisoned = Poisoner::poison($content);
-
-			// Cache for 24 hours.
-			wp_cache_set($cache_key, $poisoned, 'ai-tamer', DAY_IN_SECONDS);
-			set_transient($cache_key, $poisoned, DAY_IN_SECONDS);
-
-			return $poisoned;
+		// Active Defense strategies (can be extended by Pro).
+		$defended_content = apply_filters('aitamer_active_defense', $content, $defense, $post_id);
+		if ($defended_content !== $content) {
+			return $defended_content;
 		}
 
 		// Standard blocking or no filtering for researchers.
 		// Strip elements marked with data-noai attribute.
 		$content = $this->strip_noai_elements($content);
 
-		// Apply Watermarking (Invisible Signature + Optional Stylistic DNA).
-		$content = Watermarker::apply($content, $post_id);
+		return $this->apply_additional_pro_filters($content, $post_id, false);
+	}
 
+	/**
+	 * Hook for Pro classes to apply additional filtering (like watermarking).
+	 *
+	 * @param string $content     Current content.
+	 * @param int    $post_id     Current post ID.
+	 * @param bool   $is_poisoned Whether the content was poisoned.
+	 * @return string Modified content.
+	 */
+	protected function apply_additional_pro_filters(string $content, int $post_id, bool $is_poisoned): string
+	{
 		return $content;
 	}
 

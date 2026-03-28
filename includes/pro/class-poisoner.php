@@ -110,7 +110,7 @@ class Poisoner
 
 		$html = '';
 		foreach ($pick as $filename) {
-			$url   = AITAMER_PLUGIN_URL . 'assets/media/' . $filename;
+			$url   = AITAMER_PLUGIN_URL . 'admin/pro/assets/media/' . $filename;
 			$html .= sprintf(
 				'<div class="ait-decoy-media" style="margin: 20px 0; text-align: center;">' .
 					'<img src="%s" alt="Content Illustration" style="max-width: 100%%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">' .

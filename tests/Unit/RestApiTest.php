@@ -15,7 +15,7 @@ use Brain\Monkey;
 require_once dirname(dirname(__DIR__)) . '/includes/class-rest-api.php';
 require_once dirname(dirname(__DIR__)) . '/includes/pro/class-rest-api-pro.php';
 require_once dirname(dirname(__DIR__)) . '/includes/class-meta-box.php';
-require_once dirname(dirname(__DIR__)) . '/includes/class-poisoner.php';
+require_once dirname(dirname(__DIR__)) . '/includes/pro/class-poisoner.php';
 
 use AiTamer\RestApi;
 use AiTamer\RestApiPro;

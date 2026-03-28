@@ -5,7 +5,7 @@ Tags: ai, protection, scraper, training, seo
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,7 +22,6 @@ Key Features:
 * **Bandwidth Limiting**: Cap the amount of data AI bots can consume from your site daily.
 * **Visibility**: Track AI consumption logs to understand how models are using your content.
 * **Audit Reports**: Generate CSV evidence of AI bot activity on your site.
-* **License Management**: Issue signed tokens to trusted AI agents for controlled access.
 
 == Installation ==
 
@@ -36,12 +35,22 @@ This plugin utilizes the following third-party service to maintain an up-to-date
 
 * **GitHub Bot List**: The plugin daily fetches a curated list of known AI agents and training bots from our public GitHub repository (`https://raw.githubusercontent.com/Aberbin96/ai-tamer/main/data/bots.json`). This is used to ensure the detection engine stays effective against newly discovered scrapers. No site information or user data is transmitted during this request.
 
+== Third-Party Services ==
+
+This plugin utilizes the following third-party service to maintain an up-to-date protection engine:
+
+* **GitHub Bot List**: The plugin daily fetches a curated list of known AI agents and training bots from our public GitHub repository (`https://raw.githubusercontent.com/Aberbin96/ai-tamer/main/data/bots.json`). This is used to ensure the detection engine stays effective against newly discovered scrapers. No site information or user data is transmitted during this request.
+
 == Frequently Asked Questions ==
 
 = Does this block Google? =
 No, AI Tamer allows you to distinguish between Google Search indexing and Google Extended (AI training).
 
 == Changelog ==
+
+= 0.1.1 =
+* Improved AI detection engine with stealth bot recognition.
+* Enhanced logging with protection levels and full User-Agent strings.
 
 = 0.1.0 =
 * Initial Version.
@@ -57,5 +66,4 @@ No, AI Tamer allows you to distinguish between Google Search indexing and Google
 1. **Dashboard**: Overview of AI bot activity and protection status.
 2. **General Settings**: Configure robots.txt and meta tag protection.
 3. **Audit Reports**: Generate CSV evidence of crawler access.
-4. **License Management**: Issue and revoke access tokens for trusted agents.
 5. **Post Protection**: Granular AI control for individual posts.

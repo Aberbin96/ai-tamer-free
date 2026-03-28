@@ -88,7 +88,7 @@ class RestApiPro extends RestApi
 	public function check_token(WP_REST_Request $request): bool|WP_Error
 	{
 		$agent = $this->detector ? $this->detector->classify() : array('matched' => false);
-		
+
 		$required_scope = '';
 		$identifier     = $request->get_param('id');
 		if ($identifier) {
@@ -140,7 +140,7 @@ class RestApiPro extends RestApi
 					header('X-Payment-Link: ' . $payment_url);
 					return new WP_Error(
 						'rest_payment_required',
-						__('Payment Required: This content requires a valid license token. Purchase access via the payment link in headers.', 'ai-tamer'),
+						__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. Purchase access via the payment link in headers.', 'ai-tamer'),
 						array('status' => 402, 'payment_url' => $payment_url)
 					);
 				}
@@ -148,7 +148,7 @@ class RestApiPro extends RestApi
 
 			return new WP_Error(
 				'rest_forbidden',
-				__('Unauthorized: This content is protected by AI Tamer. Please provide a valid X-AI-License-Token.', 'ai-tamer'),
+				__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. This content is protected against AI training agents.', 'ai-tamer'),
 				array('status' => 401)
 			);
 		}
@@ -163,6 +163,35 @@ class RestApiPro extends RestApi
 			'A valid X-AI-License-Token is required to access this endpoint. Visit ' . home_url('/wp-json/ai-tamer/v1/license') . ' to view usage terms.',
 			array('status' => 401)
 		);
+	}
+
+	/**
+	 * GET /ai-tamer/v1/license
+	 * Overrides the base license to add Stripe integration.
+	 *
+	 * @return WP_REST_Response
+	 */
+	public function handle_license(): WP_REST_Response
+	{
+		$response = parent::handle_license();
+		$body     = $response->get_data();
+
+		$stripe = Plugin::get_instance()->get_stripe_manager();
+		if ($stripe && $stripe->is_enabled()) {
+			$checkout_url = $stripe->create_checkout_session('AI Agent', 0); // site-wide subscription.
+			if ($checkout_url) {
+				$body['potentialAction'] = array(
+					'@type' => 'BuyAction',
+					'name'  => 'Monthly Subscription',
+					'url'   => $checkout_url,
+				);
+				// Shorthand for easier discovery
+				$body['subscription_url'] = $checkout_url;
+			}
+		}
+
+		$response->set_data($body);
+		return $response;
 	}
 
 	/**
@@ -227,8 +256,15 @@ class RestApiPro extends RestApi
 			if ($block_text) {
 				$media_tags = array();
 				$tags_to_extract = array();
-				if (!$block_images) { $tags_to_extract[] = 'img'; $tags_to_extract[] = 'figure'; }
-				if (!$block_video) { $tags_to_extract[] = 'video'; $tags_to_extract[] = 'iframe'; $tags_to_extract[] = 'embed'; }
+				if (!$block_images) {
+					$tags_to_extract[] = 'img';
+					$tags_to_extract[] = 'figure';
+				}
+				if (!$block_video) {
+					$tags_to_extract[] = 'video';
+					$tags_to_extract[] = 'iframe';
+					$tags_to_extract[] = 'embed';
+				}
 				if (!empty($tags_to_extract)) {
 					$pattern = '/<(' . implode('|', $tags_to_extract) . ')[^>]*>.*?<\/\1>|<(' . implode('|', $tags_to_extract) . ')[^>]*\/>|<(' . implode('|', $tags_to_extract) . ')[^>]*>/is';
 					if (preg_match_all($pattern, $rendered_content, $matches)) $media_tags = $matches[0];
@@ -236,13 +272,27 @@ class RestApiPro extends RestApi
 				$content = __('[Text content restricted by author]', 'ai-tamer') . "\n\n" . implode("\n", $media_tags);
 			} else {
 				$allowed_tags = array(
-					'p' => array(), 'br' => array(), 'strong' => array(), 'em' => array(), 'ul' => array(), 'ol' => array(), 'li' => array(),
-					'blockquote' => array(), 'div' => array(), 'span' => array(), 'h1' => array(), 'h2' => array(), 'h3' => array(),
-					'h4' => array(), 'h5' => array(), 'h6' => array(),
+					'p' => array(),
+					'br' => array(),
+					'strong' => array(),
+					'em' => array(),
+					'ul' => array(),
+					'ol' => array(),
+					'li' => array(),
+					'blockquote' => array(),
+					'div' => array(),
+					'span' => array(),
+					'h1' => array(),
+					'h2' => array(),
+					'h3' => array(),
+					'h4' => array(),
+					'h5' => array(),
+					'h6' => array(),
 				);
 				if (!$block_images) {
 					$allowed_tags['img'] = array('src' => array(), 'alt' => array(), 'title' => array(), 'width' => array(), 'height' => array());
-					$allowed_tags['figure'] = array(); $allowed_tags['figcaption'] = array();
+					$allowed_tags['figure'] = array();
+					$allowed_tags['figcaption'] = array();
 				}
 				if (!$block_video) {
 					$allowed_tags['video'] = array('src' => array(), 'poster' => array(), 'controls' => array());
@@ -285,9 +335,10 @@ class RestApiPro extends RestApi
 	 */
 	public function handle_stripe_webhook(WP_REST_Request $request): WP_REST_Response
 	{
-		$plugin = $GLOBALS['ai_tamer'] ?? null;
-		if ($plugin && isset($plugin->stripe_manager)) {
-			$plugin->stripe_manager->handle_webhook($request->get_body(), $request->get_header('Stripe-Signature') ?: '');
+		$plugin = Plugin::get_instance();
+		$stripe = $plugin->get_stripe_manager();
+		if ($stripe) {
+			$stripe->handle_webhook($request->get_body(), $request->get_header('Stripe-Signature') ?: '');
 		}
 		return new WP_REST_Response(array('received' => true), 200);
 	}
@@ -302,8 +353,11 @@ class RestApiPro extends RestApi
 		foreach ($posts_data as $post) {
 			$protection = MetaBox::get_setting((int) $post->ID);
 			$catalog[] = array(
-				'id' => $post->ID, 'slug' => $post->post_name ?? '', 'title' => $post->post_title,
-				'published' => gmdate('c', strtotime($post->post_date_gmt)), 'protection' => $protection ?: 'all-rights-reserved',
+				'id' => $post->ID,
+				'slug' => $post->post_name ?? '',
+				'title' => $post->post_title,
+				'published' => gmdate('c', strtotime($post->post_date_gmt)),
+				'protection' => $protection ?: 'all-rights-reserved',
 				'full_content_url' => home_url('/wp-json/ai-tamer/v1/content/' . $post->ID),
 			);
 		}

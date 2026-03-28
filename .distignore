@@ -49,3 +49,5 @@ v3.md
 sync-public.sh
 dist/
 docs/
+includes/pro/
+admin/pro/

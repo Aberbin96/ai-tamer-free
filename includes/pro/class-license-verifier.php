@@ -1,4 +1,5 @@
 <?php
+
 /**
  * LicenseVerifier — validates an AI agent's stated license claim.
  *
@@ -40,12 +41,13 @@ use function wp_generate_password;
 use function wp_unslash;
 use function has_category;
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 /**
  * LicenseVerifier class.
  */
-class LicenseVerifier {
+class LicenseVerifier
+{
 
 	/**
 	 * The wp_options key where the HMAC secret is stored.
@@ -57,11 +59,12 @@ class LicenseVerifier {
 	 *
 	 * @return string
 	 */
-	public static function get_secret(): string {
-		$secret = get_option( self::SECRET_OPTION, '' );
-		if ( empty( $secret ) ) {
-			$secret = wp_generate_password( 64, true, true );
-			update_option( self::SECRET_OPTION, $secret, false );
+	public static function get_secret(): string
+	{
+		$secret = get_option(self::SECRET_OPTION, '');
+		if (empty($secret)) {
+			$secret = wp_generate_password(64, true, true);
+			update_option(self::SECRET_OPTION, $secret, false);
 		}
 		return $secret;
 	}
@@ -72,34 +75,35 @@ class LicenseVerifier {
 	 * @param string $required_scope Optional scope required (e.g. 'post:123').
 	 * @return bool True if a valid, unexpired, and authorized token is present.
 	 */
-	public static function has_valid_token( string $required_scope = '' ): bool {
+	public static function has_valid_token(string $required_scope = ''): bool
+	{
 		// Retrieve the header value (Apache/Nginx/WP-specific lookup).
 		$header = '';
-		if ( isset( $_SERVER['HTTP_X_AI_LICENSE_TOKEN'] ) ) {
-			$header = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_AI_LICENSE_TOKEN'] ) );
+		if (isset($_SERVER['HTTP_X_AI_LICENSE_TOKEN'])) {
+			$header = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_AI_LICENSE_TOKEN']));
 		}
 
-		if ( empty( $header ) ) {
+		if (empty($header)) {
 			return false;
 		}
 
 		// Decode base64url → JSON.
-		$json    = base64_decode( strtr( $header, '-_', '+/' ) );
-		$payload = json_decode( $json, true );
+		$json    = base64_decode(strtr($header, '-_', '+/'));
+		$payload = json_decode($json, true);
 
-		if ( ! is_array( $payload ) ) {
+		if (! is_array($payload)) {
 			return false;
 		}
 
 		// Required fields.
-		foreach ( array( 'sub', 'iss', 'exp', 'sig' ) as $field ) {
-			if ( empty( $payload[ $field ] ) ) {
+		foreach (array('sub', 'iss', 'exp', 'sig') as $field) {
+			if (empty($payload[$field])) {
 				return false;
 			}
 		}
 
 		// Token expiry check.
-		if ( (int) $payload['exp'] < time() ) {
+		if ((int) $payload['exp'] < time()) {
 			return false;
 		}
 
@@ -110,22 +114,22 @@ class LicenseVerifier {
 			self::get_secret()
 		);
 
-		if ( ! hash_equals( $expected, $payload['sig'] ) ) {
+		if (! hash_equals($expected, $payload['sig'])) {
 			return false;
 		}
 
 		// Scope verification.
-		if ( ! empty( $required_scope ) ) {
+		if (! empty($required_scope)) {
 			$token_scope = $payload['scp'] ?? 'global';
-			if ( ! self::is_scope_authorized( $token_scope, $required_scope ) ) {
+			if (! self::is_scope_authorized($token_scope, $required_scope)) {
 				return false;
 			}
 		}
 
 		// Real-time subscription check (if linked).
-		if ( ! empty( $payload['sid'] ) ) {
+		if (! empty($payload['sid'])) {
 			$stripe = new StripeManager();
-			if ( ! $stripe->verify_subscription( $payload['sid'] ) ) {
+			if (! $stripe->verify_subscription($payload['sid'])) {
 				return false;
 			}
 		}
@@ -142,25 +146,28 @@ class LicenseVerifier {
 	 * @param string $scope      Optional access scope (default 'global').
 	 * @return string base64url-encoded token string.
 	 */
-	public static function issue_token( string $agent_name, int $days = 365, string $sub_id = '', string $scope = 'global' ): string {
-		if ( 'global' === $scope ) {
+	public static function issue_token(string $agent_name, int $days = 365, string $sub_id = '', string $scope = 'global'): string
+	{
+		Plugin::log("AI Tamer: issue_token called for {$agent_name}, scope: {$scope}");
+
+		if ('global' === $scope) {
 			$scope = LicenseScope::GLOBAL->value;
 		}
-		$exp = time() + ( $days * DAY_IN_SECONDS );
-		$iss = home_url( '/' );
-		$sig = hash_hmac( 'sha256', $agent_name . '|' . $iss . '|' . $exp, self::get_secret() );
+		$exp = time() + ($days * DAY_IN_SECONDS);
+		$iss = home_url('/');
+		$sig = hash_hmac('sha256', $agent_name . '|' . $iss . '|' . $exp, self::get_secret());
 
-		$payload = json_encode( array( // phpcs:ignore WordPress.WP.AlternativeFunctions
+		$payload = json_encode(array( // phpcs:ignore WordPress.WP.AlternativeFunctions
 			'sub' => $agent_name,
 			'iss' => $iss,
 			'exp' => $exp,
 			'sid' => $sub_id,
 			'scp' => $scope,
 			'sig' => $sig,
-		) );
+		));
 
 		// base64url encode.
-		$token = rtrim( strtr( base64_encode( $payload ), '+/', '-_' ), '=' );
+		$token = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
 
 		// Persist the token in the registry.
 		$tokens   = self::get_tokens();
@@ -172,7 +179,13 @@ class LicenseVerifier {
 			'issued_at' => time(),
 			'token'     => $token,
 		);
-		update_option( 'aitamer_license_tokens', $tokens, false );
+		$updated = update_option('aitamer_license_tokens', $tokens, false);
+
+		if ($updated) {
+			Plugin::log("AI Tamer: Token saved successfully for {$agent_name}.");
+		} else {
+			Plugin::log("AI Tamer: ERROR - Failed to save token for {$agent_name} in update_option.");
+		}
 
 		return $token;
 	}
@@ -182,9 +195,10 @@ class LicenseVerifier {
 	 *
 	 * @return array
 	 */
-	public static function get_tokens(): array {
-		$tokens = get_option( 'aitamer_license_tokens', array() );
-		return is_array( $tokens ) ? $tokens : array();
+	public static function get_tokens(): array
+	{
+		$tokens = get_option('aitamer_license_tokens', array());
+		return is_array($tokens) ? $tokens : array();
 	}
 
 	/**
@@ -192,11 +206,12 @@ class LicenseVerifier {
 	 *
 	 * @param int $index Zero-based index in the stored tokens array.
 	 */
-	public static function revoke_token( int $index ): void {
+	public static function revoke_token(int $index): void
+	{
 		$tokens = self::get_tokens();
-		if ( isset( $tokens[ $index ] ) ) {
-			array_splice( $tokens, $index, 1 );
-			update_option( 'aitamer_license_tokens', $tokens, false );
+		if (isset($tokens[$index])) {
+			array_splice($tokens, $index, 1);
+			update_option('aitamer_license_tokens', $tokens, false);
 		}
 	}
 
@@ -207,24 +222,25 @@ class LicenseVerifier {
 	 * @param string $required_scope The required resource (e.g. 'post:12').
 	 * @return bool
 	 */
-	public static function is_scope_authorized( string $token_scope, string $required_scope ): bool {
+	public static function is_scope_authorized(string $token_scope, string $required_scope): bool
+	{
 		// Global tokens are always authorized.
-		if ( LicenseScope::GLOBAL->value === $token_scope ) {
+		if (LicenseScope::GLOBAL->value === $token_scope) {
 			return true;
 		}
 
 		// Exact match (e.g. 'post:123' == 'post:123').
-		if ( $token_scope === $required_scope ) {
+		if ($token_scope === $required_scope) {
 			return true;
 		}
 
 		// Category check: 'cat:10' should authorize 'post:5' if post 5 is in category 10.
-		if ( 0 === strpos( $token_scope, 'cat:' ) && 0 === strpos( $required_scope, 'post:' ) ) {
-			$cat_id  = (int) substr( $token_scope, 4 );
-			$post_id = (int) substr( $required_scope, 5 );
+		if (0 === strpos($token_scope, 'cat:') && 0 === strpos($required_scope, 'post:')) {
+			$cat_id  = (int) substr($token_scope, 4);
+			$post_id = (int) substr($required_scope, 5);
 
-			if ( $cat_id > 0 && $post_id > 0 ) {
-				return has_category( $cat_id, $post_id );
+			if ($cat_id > 0 && $post_id > 0) {
+				return has_category($cat_id, $post_id);
 			}
 		}
 

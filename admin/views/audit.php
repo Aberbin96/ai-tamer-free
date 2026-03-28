@@ -1,5 +1,7 @@
 <?php
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Audit Reports page view — Official Customs Logbook.
  *
@@ -36,6 +38,16 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 	<?php endif; ?>
 
 	<!-- Metrics -->
+	<?php
+	$aitamer_oldest = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		"SELECT created_at FROM `{$aitamer_table}` ORDER BY id ASC LIMIT 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	);
+	$aitamer_days = 0;
+	if ( $aitamer_oldest ) {
+		$aitamer_diff = time() - strtotime( $aitamer_oldest );
+		$aitamer_days = min( 30, max( 1, ceil( $aitamer_diff / DAY_IN_SECONDS ) ) );
+	}
+	?>
 	<div class="aitamer-metrics">
 		<div class="aitamer-metric green">
 			<div class="aitamer-metric-label"><?php esc_html_e( 'Secure Logs', 'ai-tamer' ); ?></div>
@@ -43,9 +55,9 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 			<div class="aitamer-metric-sub"><?php esc_html_e( 'Protected access records', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric amber">
-			<div class="aitamer-metric-label"><?php esc_html_e( 'Transparency', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value">99.9%</div>
-			<div class="aitamer-metric-sub"><?php esc_html_e( 'Evidence integrity score', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-label"><?php esc_html_e( 'Audit History', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html( $aitamer_days ); ?> <?php echo esc_html( _n( 'Day', 'Days', $aitamer_days, 'ai-tamer' ) ); ?></div>
+			<div class="aitamer-metric-sub"><?php esc_html_e( 'Activity period recorded', 'ai-tamer' ); ?></div>
 		</div>
 	</div>
 

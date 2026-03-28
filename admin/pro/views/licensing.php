@@ -11,38 +11,10 @@ use AiTamer\Enums\LicenseScope;
 
 defined('ABSPATH') || exit;
 
-// Handle token revocation.
-if (
-	isset($_POST['aitamer_revoke_nonce'], $_POST['revoke_index'])
-	&& wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aitamer_revoke_nonce'])), 'aitamer_revoke_token')
-	&& current_user_can('manage_options')
-) {
-	LicenseVerifier::revoke_token(absint($_POST['revoke_index']));
-	wp_safe_redirect(add_query_arg('aitamer_revoked', '1', admin_url('admin.php?page=ai-tamer-licensing')));
-	exit;
-}
-
-// Handle token issuance.
-$aitamer_issued_token = '';
-if (
-	isset($_POST['aitamer_issue_token_nonce'])
-	&& wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aitamer_issue_token_nonce'])), 'aitamer_issue_token')
-	&& current_user_can('manage_options')
-) {
-	$aitamer_agent_name   = sanitize_text_field(wp_unslash($_POST['agent_name'] ?? ''));
-	$aitamer_days         = absint($_POST['days'] ?? 365) ?: 365;
-	$aitamer_sub_id       = sanitize_text_field(wp_unslash($_POST['sub_id'] ?? ''));
-	$aitamer_scope_type   = sanitize_text_field(wp_unslash($_POST['scope_type'] ?? LicenseScope::GLOBAL->value));
-	$aitamer_scope_id     = sanitize_text_field(wp_unslash($_POST['scope_id'] ?? ''));
-	
-	$aitamer_final_scope = LicenseScope::GLOBAL->value;
-	if (LicenseScope::POST->value === $aitamer_scope_type && !empty($aitamer_scope_id)) {
-		$aitamer_final_scope = LicenseScope::POST->value . ':' . $aitamer_scope_id;
-	} elseif (LicenseScope::CATEGORY->value === $aitamer_scope_type && !empty($aitamer_scope_id)) {
-		$aitamer_final_scope = LicenseScope::CATEGORY->value . ':' . $aitamer_scope_id;
-	}
-
-	$aitamer_issued_token = LicenseVerifier::issue_token($aitamer_agent_name, $aitamer_days, $aitamer_sub_id, $aitamer_final_scope);
+// Get success data from redirects.
+$aitamer_issued_token = get_transient('aitamer_last_issued_token');
+if ($aitamer_issued_token) {
+	delete_transient('aitamer_last_issued_token');
 }
 
 $aitamer_tokens = LicenseVerifier::get_tokens();
@@ -52,6 +24,8 @@ $aitamer_rest_url    = get_rest_url(null, 'ai-tamer/v1');
 $aitamer_license_url = $aitamer_rest_url . '/license';
 $aitamer_content_url = $aitamer_rest_url . '/content/{post_id}';
 $aitamer_sample_token = 'your-hmac-token-here';
+$aitamer_scope_type  = \AiTamer\Enums\LicenseScope::GLOBAL->value;
+$aitamer_scope_id    = '';
 ?>
 <div class="wrap aitamer-wrap">
 
@@ -69,7 +43,7 @@ $aitamer_sample_token = 'your-hmac-token-here';
 		</div>
 	<?php endif; ?>
 
-	<?php if ($aitamer_issued_token) : ?>
+	<?php if (isset($_GET['aitamer_issued']) && $aitamer_issued_token) : ?>
 		<div class="notice notice-success">
 			<p><strong><?php esc_html_e('Token issued. Share this securely with the licensee.', 'ai-tamer'); ?></strong></p>
 			<code class="aitamer-token-block"><?php echo esc_html($aitamer_issued_token); ?></code>

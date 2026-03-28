@@ -58,10 +58,10 @@ class RestApi
 	const NAMESPACE = 'ai-tamer/v1';
 
 	/** @var Detector */
-	private $detector;
+	protected $detector;
 
 	/** @var Logger */
-	private $logger;
+	protected $logger;
 
 	/**
 	 * Constructor.

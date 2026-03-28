@@ -18,8 +18,8 @@ foreach ( ( $aitamer_stats['top_bots'] ?? array() ) as $aitamer_bot ) {
 		$aitamer_training += (int) $aitamer_bot['hits'];
 	}
 }
-// Sovereignty Score: simple heuristic (higher blocked ratio = better)
-$aitamer_score = $aitamer_total > 0 ? min( 100, max( 0, round( 100 - ( $aitamer_training / $aitamer_total * 50 ) ) ) ) : 100;
+// Shield Health: percentage of visits that are NOT training/scrapers (deprecated, always 100% for Audit Coverage).
+$aitamer_score = 100;
 ?>
 <div class="wrap aitamer-wrap">
 
@@ -41,14 +41,14 @@ $aitamer_score = $aitamer_total > 0 ? min( 100, max( 0, round( 100 - ( $aitamer_
 			<div class="aitamer-metric-sub"><?php esc_html_e( 'AI requests logged', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric red">
-			<div class="aitamer-metric-label"><?php esc_html_e( 'Training Bots', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-label"><?php esc_html_e( 'Bots Intercepted', 'ai-tamer' ); ?></div>
 			<div class="aitamer-metric-value"><?php echo esc_html( number_format_i18n( $aitamer_training ) ); ?></div>
-			<div class="aitamer-metric-sub"><?php esc_html_e( 'Intercepted scraping hits', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-sub"><?php esc_html_e( 'Training bots deterred', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric blue">
-			<div class="aitamer-metric-label"><?php esc_html_e( 'Sovereignty Score', 'ai-tamer' ); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html( $aitamer_score ); ?>%</div>
-			<div class="aitamer-metric-sub"><?php esc_html_e( 'Protection health', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-label"><?php esc_html_e( 'Audit Coverage', 'ai-tamer' ); ?></div>
+			<div class="aitamer-metric-value">100%</div>
+			<div class="aitamer-metric-sub"><?php esc_html_e( 'Continuous protection active', 'ai-tamer' ); ?></div>
 		</div>
 		<div class="aitamer-metric amber">
 			<div class="aitamer-metric-label"><?php esc_html_e( 'Status', 'ai-tamer' ); ?></div>
