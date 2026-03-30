@@ -144,7 +144,7 @@ class AdminPro
 			&& wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['aitamer_issue_token_nonce'])), 'aitamer_issue_token')
 		) {
 			$agent_name   = sanitize_text_field(wp_unslash($_POST['agent_name'] ?? ''));
-			$days         = absint($_POST['days'] ?? 365) ?: 365;
+			$days         = isset($_POST['days']) && $_POST['days'] !== '' ? absint($_POST['days']) : 365;
 			$sub_id       = sanitize_text_field(wp_unslash($_POST['sub_id'] ?? ''));
 			$scope_type   = sanitize_text_field(wp_unslash($_POST['scope_type'] ?? 'global'));
 			$scope_id     = sanitize_text_field(wp_unslash($_POST['scope_id'] ?? ''));
@@ -225,7 +225,6 @@ class AdminPro
 
 		// Pro-specific checkboxes.
 		$settings['enable_watermarking']  = ! empty($input['enable_watermarking']);
-		$settings['active_stylistic_dna'] = ! empty($input['active_stylistic_dna']);
 		$settings['enable_c2pa']          = ! empty($input['enable_c2pa']);
 		$settings['show_c2pa_badge']      = ! empty($input['show_c2pa_badge']);
 
@@ -239,6 +238,7 @@ class AdminPro
 		$settings['base_wallet_address'] = sanitize_text_field($input['base_wallet_address'] ?? '');
 		$settings['usdc_price_per_request'] = sanitize_text_field($input['usdc_price_per_request'] ?? '0.01');
 		$settings['base_rpc_node_url'] = esc_url_raw($input['base_rpc_node_url'] ?? 'https://mainnet.base.org');
+		$settings['plugin_license_key'] = sanitize_text_field($input['plugin_license_key'] ?? '');
 
 		return $settings;
 	}
@@ -256,7 +256,10 @@ class AdminPro
 			$settings['price_id_voucher'] = sanitize_text_field($input['price_id_voucher']);
 		}
 		if (isset($input['voucher_credits'])) {
-			$settings['voucher_credits'] = absint($input['voucher_credits']) ?: 1000;
+			$settings['voucher_credits'] = absint($input['voucher_credits']);
+		}
+		if (isset($input['voucher_validity_days'])) {
+			$settings['voucher_validity_days'] = absint($input['voucher_validity_days']);
 		}
 		return $settings;
 	}
@@ -268,7 +271,28 @@ class AdminPro
 	 */
 	public function register_settings($admin)
 	{
-		// 1. Content Authenticity section (v3).
+		// 1. Plugin License section.
+		add_settings_section(
+			'aitamer_plugin_license',
+			__('Pro License Key', 'ai-tamer'),
+			null,
+			'ai-tamer-settings'
+		);
+
+		add_settings_field(
+			'plugin_license_key',
+			__('AI Tamer Pro License', 'ai-tamer'),
+			function () use ($admin) {
+				$settings = get_option('aitamer_settings', array());
+				$value = $settings['plugin_license_key'] ?? '';
+				printf('<input type="password" id="plugin_license_key" name="aitamer_settings[plugin_license_key]" value="%s" class="regular-text">', esc_attr($value));
+				echo '<p class="description">' . esc_html__('Enter your product key to enable automatic plugin updates.', 'ai-tamer') . '</p>';
+			},
+			'ai-tamer-settings',
+			'aitamer_plugin_license'
+		);
+
+		// 2. Content Authenticity section (v3).
 		add_settings_section(
 			'aitamer_authenticity',
 			__('Content Authenticity & Attribution', 'ai-tamer'),
@@ -283,15 +307,6 @@ class AdminPro
 			'ai-tamer-settings',
 			'aitamer_authenticity',
 			array('key' => 'enable_watermarking', 'description' => __('Injects an invisible cryptographic signature (Zero-Width characters) into your content. Visual appearance remains unchanged.', 'ai-tamer'))
-		);
-
-		add_settings_field(
-			'active_stylistic_dna',
-			__('Active Stylistic DNA (Experimental)', 'ai-tamer'),
-			array($admin, 'render_checkbox_field'),
-			'ai-tamer-settings',
-			'aitamer_authenticity',
-			array('key' => 'active_stylistic_dna', 'description' => __('Deep defense: subtly alters word choices using synonyms (e.g., "perhaps" vs "maybe") to track content even if rephrased by AI.', 'ai-tamer'))
 		);
 
 		add_settings_field(
@@ -317,14 +332,14 @@ class AdminPro
 			'aitamer_web3_toll',
 			__('Web3 Data Toll (Crypto Micropayments)', 'ai-tamer'),
 			null,
-			'ai-tamer-settings'
+			'ai-tamer-monetization'
 		);
 
 		add_settings_field(
 			'web3_toll_enabled',
 			__('Enable Web3 Data Toll', 'ai-tamer'),
 			array($admin, 'render_checkbox_field'),
-			'ai-tamer-settings',
+			'ai-tamer-monetization',
 			'aitamer_web3_toll',
 			array('key' => 'web3_toll_enabled', 'description' => __('Allow AI agents to pay per article request using USDC on the Base network. Requires Active Defense to be set to "Payment Required".', 'ai-tamer'))
 		);
@@ -338,7 +353,7 @@ class AdminPro
 				printf('<input type="text" id="base_wallet_address" name="aitamer_settings[base_wallet_address]" value="%s" class="regular-text">', esc_attr($value));
 				echo '<p class="description">' . esc_html__('Your EVM compatible wallet address on the Base network to receive USDC.', 'ai-tamer') . '</p>';
 			},
-			'ai-tamer-settings',
+			'ai-tamer-monetization',
 			'aitamer_web3_toll'
 		);
 
@@ -351,7 +366,7 @@ class AdminPro
 				printf('<input type="text" id="usdc_price_per_request" name="aitamer_settings[usdc_price_per_request]" value="%s" class="small-text">', esc_attr($value));
 				echo '<p class="description">' . esc_html__('Amount of USDC required per article view (e.g. 0.05).', 'ai-tamer') . '</p>';
 			},
-			'ai-tamer-settings',
+			'ai-tamer-monetization',
 			'aitamer_web3_toll'
 		);
 
@@ -364,7 +379,7 @@ class AdminPro
 				printf('<input type="url" id="base_rpc_node_url" name="aitamer_settings[base_rpc_node_url]" value="%s" class="regular-text">', esc_url($value));
 				echo '<p class="description">' . esc_html__('Public RPC node or your personal Alchemy/Infura Base URL used to verify transactions.', 'ai-tamer') . '</p>';
 			},
-			'ai-tamer-settings',
+			'ai-tamer-monetization',
 			'aitamer_web3_toll'
 		);
 	}

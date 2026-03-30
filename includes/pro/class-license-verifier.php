@@ -106,7 +106,7 @@ class LicenseVerifier
 		}
 
 		// Token expiry check.
-		if ((int) $payload['exp'] < time()) {
+		if ((int) $payload['exp'] > 0 && (int) $payload['exp'] < time()) {
 			return false;
 		}
 
@@ -178,7 +178,7 @@ class LicenseVerifier
 		}
 
 		$uid = wp_generate_password(16, false);
-		$exp = time() + ($days * DAY_IN_SECONDS);
+		$exp = ($days > 0) ? time() + ($days * DAY_IN_SECONDS) : 0;
 		$iss = home_url('/');
 		$sig = hash_hmac('sha256', $agent_name . '|' . $iss . '|' . $exp . '|' . $uid, self::get_secret());
 

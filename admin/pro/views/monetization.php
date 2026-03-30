@@ -110,8 +110,14 @@ $settings = StripeManager::get_settings();
 								<strong><?php esc_html_e('Recommended Path:', 'ai-tamer'); ?></strong> <?php esc_html_e('Sells a pack of readings (credits) at once. Prevents transaction fees from consuming small payments.', 'ai-tamer'); ?>
 							</p>
 							<div style="margin-top:10px;">
-								<label><?php esc_html_e('Initial Credits per Voucher:', 'ai-tamer'); ?></label>
+								<label style="display:inline-block; width:180px;"><?php esc_html_e('Initial Credits per Voucher:', 'ai-tamer'); ?></label>
 								<input type="number" name="aitamer_stripe_settings[voucher_credits]" value="<?php echo esc_attr($settings['voucher_credits'] ?? 1000); ?>" class="small-text" />
+								<span class="description"><?php esc_html_e('(0 = Unlimited)', 'ai-tamer'); ?></span>
+							</div>
+							<div style="margin-top:10px;">
+								<label style="display:inline-block; width:180px;"><?php esc_html_e('Validity (Days):', 'ai-tamer'); ?></label>
+								<input type="number" name="aitamer_stripe_settings[voucher_validity_days]" value="<?php echo esc_attr($settings['voucher_validity_days'] ?? 365); ?>" class="small-text" />
+								<span class="description"><?php esc_html_e('(0 = Forever)', 'ai-tamer'); ?></span>
 							</div>
 						</td>
 					</tr>
@@ -144,6 +150,11 @@ $settings = StripeManager::get_settings();
 				</div>
 			</div>
 		</div>
+
+		<?php
+		// Render Web3 Data Toll and other sections registered to this page.
+		do_settings_sections('ai-tamer-monetization');
+		?>
 
 		<?php submit_button(); ?>
 	</form>

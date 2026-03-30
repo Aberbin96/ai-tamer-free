@@ -61,7 +61,7 @@ class MetaBox
 	 */
 	public function add_meta_box(): void
 	{
-		$post_types = get_post_types(array('public' => true));
+		$post_types = array('post');
 		foreach ($post_types as $post_type) {
 			add_meta_box(
 				'aitamer-protection',

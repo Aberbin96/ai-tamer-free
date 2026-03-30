@@ -229,7 +229,8 @@ $aitamer_scope_id    = '';
 						<label for="days"><?php esc_html_e('Validity (days)', 'ai-tamer'); ?></label>
 					</th>
 					<td>
-						<input type="number" id="days" name="days" value="365" min="1" max="3650" class="small-text">
+						<input type="number" id="days" name="days" value="365" min="0" max="3650" class="small-text">
+						<span class="description"><?php esc_html_e('(0 = Forever)', 'ai-tamer'); ?></span>
 					</td>
 				</tr>
 				<tr>
@@ -247,7 +248,7 @@ $aitamer_scope_id    = '';
 					</th>
 					<td>
 						<input type="number" id="credits" name="credits" value="0" min="0" class="small-text">
-						<p class="description"><?php esc_html_e('Setting this above 0 turns the token into a "Reading Voucher". Access will be blocked once credits reach zero.', 'ai-tamer'); ?></p>
+						<p class="description"><?php esc_html_e('Setting this above 0 turns the token into a "Reading Voucher". For unlimited access, leave at 0.', 'ai-tamer'); ?></p>
 					</td>
 				</tr>
 				<tr>

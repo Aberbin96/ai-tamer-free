@@ -36,26 +36,6 @@ class Watermarker
 	private const ZWNJ  = "\xe2\x80\x8c"; // Zero-Width Non-Joiner
 
 	/**
-	 * Synonym map for Grammatical DNA.
-	 */
-	private static array $synonyms = array(
-		'es' => array(
-			'quizás'      => array('tal vez', 'posiblemente'),
-			'importante'  => array('relevante', 'esencial'),
-			'siempre'     => array('constantemente', 'en todo momento'),
-			'ahora'       => array('actualmente', 'en este momento'),
-			'rápidamente' => array('velozmente', 'con prontitud'),
-		),
-		'en' => array(
-			'perhaps'   => array('maybe', 'possibly'),
-			'important' => array('relevant', 'essential'),
-			'always'    => array('constantly', 'at all times'),
-			'now'       => array('currently', 'at present'),
-			'quickly'   => array('fast', 'swiftly'),
-		),
-	);
-
-	/**
 	 * Apply watermarking to content.
 	 *
 	 * @param string $content Original HTML content.
@@ -71,12 +51,7 @@ class Watermarker
 			return $content;
 		}
 
-		// 1. apply Stylistic DNA (Grammatical layer) - OPTIONAL.
-		if (!empty($settings['active_stylistic_dna']) && 'no' !== $settings['active_stylistic_dna']) {
-			$content = self::apply_stylistic_dna($content, $post_id);
-		}
-
-		// 2. apply Invisible signature (Steganography) - DEFAULT if enabled.
+		// Inject Invisible signature (Steganography).
 		$content = self::inject_invisible_tag($content, $post_id);
 
 		return $content;
@@ -123,46 +98,6 @@ class Watermarker
 		}
 
 		return $encoded;
-	}
-
-	/**
-	 * Switches words for synonyms based on a determininstic key for this post.
-	 *
-	 * @param string $content HTML content.
-	 * @param int    $post_id Post ID.
-	 * @return string Content with stylistic DNA applied.
-	 */
-	private static function apply_stylistic_dna(string $content, int $post_id): string
-	{
-		$lang = substr(get_locale(), 0, 2);
-		if (!isset(self::$synonyms[$lang])) {
-			$lang = 'en'; // Fallback
-		}
-
-		$map = self::$synonyms[$lang];
-		$key = hash('crc32', \AUTH_KEY . $post_id);
-
-		foreach ($map as $word => $replacements) {
-			$pattern = '/\b' . preg_quote($word, '/') . '\b/iu';
-			
-			if (preg_match_all($pattern, $content, $matches, PREG_OFFSET_CAPTURE)) {
-				$idx = hexdec(substr($key, 0, 2)) % count($replacements);
-				$replacement = $replacements[$idx];
-				
-				// Subtle swap: every 3rd occurrence.
-				$count = 0;
-				$content = preg_replace_callback(
-					$pattern,
-					function ($m) use (&$count, $replacement) {
-						$count++;
-						return ($count % 3 === 0) ? $replacement : $m[0];
-					},
-					$content
-				);
-			}
-		}
-
-		return $content;
 	}
 
 	/**

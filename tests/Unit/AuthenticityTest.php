@@ -68,47 +68,7 @@ class AuthenticityTest extends TestCase
 		$this->assertMatchesRegularExpression('/[\x{200b}\x{200c}]+<\/p>/u', $watermarked);
 	}
 
-	public function test_stylistic_dna_substitution()
-	{
-		$content = '<p>Perhaps this is important.</p>';
-		$post_id = 123;
 
-		// Mock settings to enable stylistic DNA.
-		Functions\expect('get_option')
-			->with('aitamer_settings', [])
-			->andReturn([
-				'enable_watermarking' => true,
-				'active_stylistic_dna' => true
-			]);
-
-		$watermarked = Watermarker::apply($content, $post_id);
-
-		// "Perhaps" or "important" might be swapped.
-		// We check for some common replacements from the map.
-		$possible_words = ['maybe', 'possibly', 'relevant', 'essential'];
-		$found = false;
-		foreach ($possible_words as $word) {
-			if (stripos($watermarked, $word) !== false) {
-				$found = true;
-				break;
-			}
-		}
-		
-		// Note: The substitution only happens every 3rd occurrence in the current implementation,
-		// so with 1 occurrence it might NOT swap if the deterministic index doesn't match.
-		// Wait, I should verify the index logic.
-		// If I have 1 occurrence, $count becomes 1. 1 % 3 !== 0.
-		// I'll update the test to have 3 occurrences.
-		
-		$content_3 = '<p>Perhaps, perhaps, perhaps.</p>';
-		$watermarked_3 = Watermarker::apply($content_3, $post_id);
-		
-		$this->assertTrue(
-			stripos($watermarked_3, 'maybe') !== false || 
-			stripos($watermarked_3, 'possibly') !== false,
-			'At least one synonym should be injected for 3 occurrences.'
-		);
-	}
 
 	public function test_c2pa_manifest_generation()
 	{

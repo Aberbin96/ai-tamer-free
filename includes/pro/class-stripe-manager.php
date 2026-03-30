@@ -70,8 +70,9 @@ class StripeManager implements PaymentProvider
 				'live_secret'       => '',
 				'price_id'          => '',
 				'price_id_micropayment' => '',
-				'price_id_voucher'    => '',
-				'voucher_credits'     => 1000,
+				'price_id_voucher'      => '',
+				'voucher_credits'       => 1000,
+				'voucher_validity_days' => 365,
 			)
 		);
 	}
@@ -187,7 +188,8 @@ class StripeManager implements PaymentProvider
 			$credits  = 0;
 			if ($session->metadata->is_voucher || (! empty($settings['price_id_voucher']) && ! empty($session->line_items->data[0]->price->id) && $session->line_items->data[0]->price->id === $settings['price_id_voucher'])) {
 				$credits = (int) ($session->metadata->voucher_credits ?? $settings['voucher_credits']);
-				Plugin::log("AI Tamer Webhook: VOUCHER detected. Credits: {$credits}");
+				$days    = (int) ($session->metadata->license_days ?? $settings['voucher_validity_days']);
+				Plugin::log("AI Tamer Webhook: VOUCHER detected. Credits: {$credits}, Days: {$days}");
 			}
 
 			$token = LicenseVerifier::issue_token($agent, $days, $sub_id, $scope, $credits);

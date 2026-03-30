@@ -43,6 +43,8 @@ require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-stripe-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-watermarker.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-heuristic-detector.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-c2pa-manager.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-media-pro.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-web3-toll.php';
 
 // Ensure BrainMonkey is torn down after tests.
 register_shutdown_function(function () {
