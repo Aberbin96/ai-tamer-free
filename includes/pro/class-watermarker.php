@@ -15,6 +15,12 @@ namespace AiTamer;
 use function get_option;
 use function get_bloginfo;
 use function get_locale;
+use function get_post_meta;
+use function get_attached_file;
+use function update_post_meta;
+use function delete_post_meta;
+use function wp_next_scheduled;
+use function wp_schedule_single_event;
 
 defined('ABSPATH') || exit;
 
@@ -58,7 +64,7 @@ class Watermarker
 	 */
 	public static function apply(string $content, int $post_id): string
 	{
-		$settings = \get_option('aitamer_settings', array());
+		$settings = get_option('aitamer_settings', array());
 		$enabled  = !empty($settings['enable_watermarking']) && 'no' !== $settings['enable_watermarking'];
 
 		if (!$enabled) {
@@ -86,7 +92,7 @@ class Watermarker
 	private static function inject_invisible_tag(string $content, int $post_id): string
 	{
 		// Encode Site name hash + Post ID.
-		$site_hash = substr(md5(\get_bloginfo('name')), 0, 4);
+		$site_hash = substr(md5(get_bloginfo('name')), 0, 4);
 		$payload   = $site_hash . ':' . $post_id;
 		$signature = self::encode_string($payload);
 		
@@ -128,7 +134,7 @@ class Watermarker
 	 */
 	private static function apply_stylistic_dna(string $content, int $post_id): string
 	{
-		$lang = substr(\get_locale(), 0, 2);
+		$lang = substr(get_locale(), 0, 2);
 		if (!isset(self::$synonyms[$lang])) {
 			$lang = 'en'; // Fallback
 		}
@@ -161,9 +167,6 @@ class Watermarker
 
 	/**
 	 * Injects IPTC Digital Source Type into a JPEG image.
-
-
-
 	 *
 	 * @param string $file_path Path to the local image file.
 	 * @param string $source_type IPTC source type (e.g., 'trainedAlgorithmicMedia').
@@ -208,6 +211,28 @@ class Watermarker
 		fclose($fp);
 
 		return true;
+	}
+
+	/**
+	 * Processes a single media file asynchronously (IPTC injection).
+	 *
+	 * @param int $post_id Attachment ID.
+	 */
+	public static function process_media_async(int $post_id): void
+	{
+		$certified = get_post_meta($post_id, '_aitamer_iptc_certified', true) === 'yes';
+		if (!$certified) {
+			return;
+		}
+
+		$file = get_attached_file($post_id);
+		if (!$file || !file_exists($file)) {
+			update_post_meta($post_id, '_aitamer_iptc_status', 'failed');
+			return;
+		}
+
+		$success = self::apply_iptc_metadata($file, 'originalMediaDigitalSource');
+		update_post_meta($post_id, '_aitamer_iptc_status', $success ? 'done' : 'failed');
 	}
 
 	/**

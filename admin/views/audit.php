@@ -91,26 +91,74 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 
 	<!-- Log Preview Table -->
 	<?php
-	// Fetch recent 20 log entries for preview.
-	$aitamer_recent = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->prepare(
-			"SELECT bot_name, bot_type, request_uri, ip_hash, user_agent, protection, created_at FROM `{$aitamer_table}` ORDER BY id DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			20
-		),
-		ARRAY_A
+	// Filtering and Pagination logic.
+	$aitamer_paged      = absint( $_GET['paged'] ?? 1 );
+	$aitamer_bot_type   = sanitize_text_field( $_GET['bot_type'] ?? '' );
+	$aitamer_protection = sanitize_text_field( $_GET['protection'] ?? '' );
+	$aitamer_search     = sanitize_text_field( $_GET['s'] ?? '' );
+	$aitamer_per_page   = 25;
+	$aitamer_offset     = ( $aitamer_paged - 1 ) * $aitamer_per_page;
+
+	$aitamer_filter_args = array(
+		'limit'      => $aitamer_per_page,
+		'offset'     => $aitamer_offset,
+		'bot_type'   => $aitamer_bot_type,
+		'protection' => $aitamer_protection,
+		's'          => $aitamer_search,
 	);
+
+	$aitamer_recent      = Logger::get_logs( $aitamer_filter_args );
+	$aitamer_count       = Logger::count_logs( $aitamer_filter_args );
+	$aitamer_total_pages = ceil( $aitamer_count / $aitamer_per_page );
 	?>
+
 	<div class="aitamer-card">
 		<div class="aitamer-card-header">
-			<h2><?php esc_html_e( 'Recent Activity Log', 'ai-tamer' ); ?></h2>
+			<h2><?php esc_html_e( 'Secure Activity Log', 'ai-tamer' ); ?></h2>
 			<span style="font-size:11px;color:var(--at-muted);">
-				<span class="aitamer-status-dot" style="width:6px;height:6px;"></span>
-				<?php esc_html_e( 'Live', 'ai-tamer' ); ?>
+				<?php printf( esc_html__( 'Showing %d of %s records', 'ai-tamer' ), count( $aitamer_recent ), number_format_i18n( $aitamer_count ) ); ?>
 			</span>
 		</div>
+
+		<!-- Filter Bar -->
+		<form method="get" class="aitamer-filter-bar">
+			<input type="hidden" name="page" value="ai-tamer-audit">
+			
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e( 'Search', 'ai-tamer' ); ?></label>
+				<input type="text" name="s" value="<?php echo esc_attr( $aitamer_search ); ?>" placeholder="<?php esc_attr_e( 'URI or Bot Name...', 'ai-tamer' ); ?>" style="width:200px;">
+			</div>
+
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e( 'Bot Type', 'ai-tamer' ); ?></label>
+				<select name="bot_type">
+					<option value=""><?php esc_html_e( 'All Types', 'ai-tamer' ); ?></option>
+					<option value="search" <?php selected( $aitamer_bot_type, 'search' ); ?>><?php esc_html_e( 'Search Engine', 'ai-tamer' ); ?></option>
+					<option value="training" <?php selected( $aitamer_bot_type, 'training' ); ?>><?php esc_html_e( 'AI Training', 'ai-tamer' ); ?></option>
+					<option value="scraper" <?php selected( $aitamer_bot_type, 'scraper' ); ?>><?php esc_html_e( 'Aggressive Scraper', 'ai-tamer' ); ?></option>
+				</select>
+			</div>
+
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e( 'Protection', 'ai-tamer' ); ?></label>
+				<select name="protection">
+					<option value=""><?php esc_html_e( 'All Actions', 'ai-tamer' ); ?></option>
+					<option value="none" <?php selected( $aitamer_protection, 'none' ); ?>><?php esc_html_e( 'None (Allowed)', 'ai-tamer' ); ?></option>
+					<option value="blocked" <?php selected( $aitamer_protection, 'blocked' ); ?>><?php esc_html_e( 'Blocked (401)', 'ai-tamer' ); ?></option>
+					<option value="payment_required" <?php selected( $aitamer_protection, 'payment_required' ); ?>><?php esc_html_e( 'Payment Req (402)', 'ai-tamer' ); ?></option>
+					<option value="obfuscated" <?php selected( $aitamer_protection, 'obfuscated' ); ?>><?php esc_html_e( 'Obfuscated', 'ai-tamer' ); ?></option>
+				</select>
+			</div>
+
+			<button type="submit" class="aitamer-btn-ghost"><?php esc_html_e( 'Filter', 'ai-tamer' ); ?></button>
+			<?php if ( ! empty( $aitamer_search ) || ! empty( $aitamer_bot_type ) || ! empty( $aitamer_protection ) ) : ?>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-tamer-audit' ) ); ?>" class="aitamer-btn-danger" style="border:none;"><?php esc_html_e( 'Clear', 'ai-tamer' ); ?></a>
+			<?php endif; ?>
+		</form>
+
 		<?php if ( empty( $aitamer_recent ) ) : ?>
 			<div class="aitamer-empty">
-				<p><?php esc_html_e( 'No activity recorded yet. Logs will appear after the first detected bot visit.', 'ai-tamer' ); ?></p>
+				<p><?php esc_html_e( 'No matching records found for these filters.', 'ai-tamer' ); ?></p>
 			</div>
 		<?php else : ?>
 			<div class="aitamer-table-responsive">
@@ -140,12 +188,37 @@ $aitamer_total  = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatab
 							<td class="mono" style="font-size:9px;"><?php echo esc_html( substr($aitamer_entry['ip_hash'], 0, 8) ); ?>...</td>
 							<td class="mono"><?php echo esc_html( $aitamer_entry['request_uri'] ); ?></td>
 							<td><span class="aitamer-badge-status <?php echo esc_attr( $aitamer_type ); ?>"><?php echo esc_html( $aitamer_type ); ?></span></td>
-							<td><span class="aitamer-badge-status" style="background:var(--at-border);color:var(--at-text);"><?php echo esc_html( $aitamer_entry['protection'] ?? 'none' ); ?></span></td>
+							<td>
+								<?php
+								$aitamer_prot_label = $aitamer_entry['protection'] ?? 'none';
+								$aitamer_prot_class = $aitamer_prot_label === 'none' ? '' : ( strpos($aitamer_prot_label, 'block') !== false ? 'blocked' : 'limited' );
+								?>
+								<span class="aitamer-badge-status <?php echo esc_attr($aitamer_prot_class); ?>" style="<?php echo empty($aitamer_prot_class) ? 'background:var(--at-border);color:var(--at-text);' : ''; ?>">
+									<?php echo esc_html( $aitamer_prot_label ); ?>
+								</span>
+							</td>
 						</tr>
 						<?php endforeach; ?>
 					</tbody>
 				</table>
 			</div>
+
+			<!-- Pagination -->
+			<?php if ( $aitamer_total_pages > 1 ) : ?>
+				<div class="aitamer-pagination">
+					<?php
+					echo paginate_links( array(
+						'base'      => add_query_arg( 'paged', '%#%' ),
+						'format'    => '',
+						'prev_text' => '&laquo; ' . __( 'Prev', 'ai-tamer' ),
+						'next_text' => __( 'Next', 'ai-tamer' ) . ' &raquo;',
+						'total'     => $aitamer_total_pages,
+						'current'   => $aitamer_paged,
+					) );
+					?>
+				</div>
+			<?php endif; ?>
+
 		<?php endif; ?>
 	</div>
 

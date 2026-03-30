@@ -43,35 +43,54 @@ class LoggerTest extends TestCase {
 	}
 
 	/**
-	 * Tests that logging only occurs for matched agents.
+	 * Tests that logging adds to the buffer.
 	 */
-	public function test_it_logs_requests_from_bots(): void {
-		global $wpdb;
-		
+	public function test_it_logs_requests_from_bots_to_buffer(): void {
 		$agent = array(
 			'matched' => true,
 			'name'    => 'GPTBot',
 			'type'    => 'training',
 		);
 
-		// We expect $wpdb->insert to be called.
-		// Since $wpdb is a stdClass, we use Mockery or just expect the call via Brain Monkey.
-		// Actually, Brain Monkey doesn't mock objects easily, so we rely on theMockery stdClass we created.
-		
-		$wpdb->shouldReceive( 'insert' )
-			->once()
-			->with(
-				\Mockery::on( function( $table ) { return strpos( $table, 'aitamer_logs' ) !== false; } ),
-				\Mockery::on( function( $data ) {
-					return $data['bot_name'] === 'GPTBot' && ! empty( $data['ip_hash'] );
-				} ),
-				\Mockery::any()
-			);
+		// log() should call wp_cache_set and set_transient.
+		Monkey\Functions\expect( 'wp_cache_set' )->once();
+		Monkey\Functions\expect( 'set_transient' )->once();
 
 		$logger = new Logger();
 		$logger->log( $agent );
 
-		$this->assertTrue( true ); // Verify no exception thrown and mock expectations met.
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * Tests that flush_buffer calls $wpdb->query.
+	 */
+	public function test_it_flushes_buffer(): void {
+		global $wpdb;
+
+		$sample_buffer = array(
+			array(
+				'bot_name'    => 'GPTBot',
+				'bot_type'    => 'training',
+				'post_id'     => 123,
+				'request_uri' => '/',
+				'ip_hash'     => 'abc',
+				'user_agent'  => 'Mozilla',
+				'protection'  => 'none',
+				'created_at'  => '2025-01-01 12:00:00',
+			)
+		);
+
+		Monkey\Functions\expect( 'wp_cache_get' )->andReturn( $sample_buffer );
+		Monkey\Functions\expect( 'wp_cache_delete' )->once();
+		Monkey\Functions\expect( 'delete_transient' )->once();
+
+		$wpdb->shouldReceive( 'prepare' )->andReturn( 'INSERT INTO wp_aitamer_logs ...' );
+		$wpdb->shouldReceive( 'query' )->once()->with( 'INSERT INTO wp_aitamer_logs ...' );
+
+		Logger::flush_buffer();
+
+		$this->assertTrue( true );
 	}
 
 	/**

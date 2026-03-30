@@ -70,6 +70,8 @@ class StripeManager implements PaymentProvider
 				'live_secret'       => '',
 				'price_id'          => '',
 				'price_id_micropayment' => '',
+				'price_id_voucher'    => '',
+				'voucher_credits'     => 1000,
 			)
 		);
 	}
@@ -79,9 +81,10 @@ class StripeManager implements PaymentProvider
 	 *
 	 * @param string $agent_name Optional agent name to link to the token.
 	 * @param int    $post_id    Optional post ID to scope the token to.
+	 * @param string $type       Optional type of purchase (e.g., 'voucher').
 	 * @return string|null Redirect URL to Stripe Checkout.
 	 */
-	public function create_checkout_session(string $agent_name = '', int $post_id = 0): ?string
+	public function create_checkout_session(string $agent_name, int $post_id = 0, string $type = ''): ?string
 	{
 		$settings = self::get_settings();
 		$secret   = ('yes' === $settings['test_mode']) ? $settings['test_secret'] : $settings['live_secret'];
@@ -90,18 +93,24 @@ class StripeManager implements PaymentProvider
 			return null;
 		}
 
-		$price_id = $settings['price_id'];
+		$price_id = $settings['price_id'] ?? '';
 		$success_url = add_query_arg('aitamer_stripe', 'success', home_url('/'));
 
 		if ($post_id > 0 && ! empty($settings['price_id_micropayment'])) {
 			$price_id = $settings['price_id_micropayment'];
 			$success_url = add_query_arg('aitamer_stripe', 'success', get_permalink($post_id));
+		} elseif ('voucher' === $type && ! empty($settings['price_id_voucher'])) {
+			$price_id = $settings['price_id_voucher'];
+		}
+
+		if (empty($price_id)) {
+			return null;
 		}
 
 		$body = array(
 			'success_url' => $success_url,
 			'cancel_url'  => add_query_arg('aitamer_stripe', 'cancel', home_url('/')),
-			'mode'        => ($price_id === $settings['price_id'] && ! empty($settings['price_id']) && strpos($settings['price_id'], 'price_') === 0) ? 'subscription' : 'payment',
+			'mode'        => ($type === 'voucher' || strpos($price_id, 'price_') !== 0 || (strpos($price_id, 'price_') === 0 && 'payment' === $type)) ? 'payment' : 'subscription',
 			'line_items'  => array(
 				array(
 					'price'    => $price_id,
@@ -173,7 +182,15 @@ class StripeManager implements PaymentProvider
 				Plugin::log("AI Tamer Webhook: scoped to post {$session->metadata->post_id} for 1 hour");
 			}
 
-			$token = LicenseVerifier::issue_token($agent, $days, $sub_id, $scope);
+			// Reading Voucher Logic (V2).
+			$settings = self::get_settings();
+			$credits  = 0;
+			if ($session->metadata->is_voucher || (! empty($settings['price_id_voucher']) && ! empty($session->line_items->data[0]->price->id) && $session->line_items->data[0]->price->id === $settings['price_id_voucher'])) {
+				$credits = (int) ($session->metadata->voucher_credits ?? $settings['voucher_credits']);
+				Plugin::log("AI Tamer Webhook: VOUCHER detected. Credits: {$credits}");
+			}
+
+			$token = LicenseVerifier::issue_token($agent, $days, $sub_id, $scope, $credits);
 
 			// Log the transaction in the billing table.
 			$this->log_transaction(array(
@@ -279,15 +296,16 @@ class StripeManager implements PaymentProvider
 	}
 
 	/**
-	 * Creates the billing table.
+	 * Creates the billing and wallet tables.
 	 */
 	public static function install_table(): void
 	{
 		global $wpdb;
-		$table = $wpdb->prefix . self::TABLE;
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$sql = "CREATE TABLE {$table} (
+		// Billing table.
+		$billing_table = $wpdb->prefix . self::TABLE;
+		$sql_billing = "CREATE TABLE {$billing_table} (
 			id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
 			agent_name  VARCHAR(100)        NOT NULL DEFAULT '',
 			amount      DECIMAL(10,2)       NOT NULL DEFAULT 0.00,
@@ -299,10 +317,24 @@ class StripeManager implements PaymentProvider
 			KEY agent_idx (agent_name(50))
 		) {$charset_collate};";
 
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta($sql);
+		// Wallets table (Reading Vouchers).
+		$wallets_table = $wpdb->prefix . 'aitamer_wallets';
+		$sql_wallets = "CREATE TABLE {$wallets_table} (
+			id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+			token_id    VARCHAR(100)        NOT NULL DEFAULT '',
+			balance     BIGINT(20)          NOT NULL DEFAULT 0,
+			status      VARCHAR(20)         NOT NULL DEFAULT 'active',
+			last_used   DATETIME            DEFAULT NULL,
+			created_at  DATETIME            NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY token_idx (token_id)
+		) {$charset_collate};";
 
-		update_option('aitamer_billing_db_version', '1.0');
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta($sql_billing);
+		dbDelta($sql_wallets);
+
+		update_option('aitamer_billing_db_version', '1.1');
 	}
 
 	/**
@@ -328,15 +360,62 @@ class StripeManager implements PaymentProvider
 	}
 
 	/**
-	 * Returns recent transactions for the Admin UI.
+	 * Returns transactions with optional filtering and pagination.
 	 *
-	 * @param int $limit Max rows.
+	 * @param array $args Filtering and pagination arguments.
 	 * @return array
 	 */
-	public function get_transactions(int $limit = 20): array
+	public function get_transactions(array $args = array()): array
 	{
 		global $wpdb;
 		$table = $wpdb->prefix . self::TABLE;
-		return $wpdb->get_results($wpdb->prepare("SELECT * FROM `{$table}` ORDER BY created_at DESC LIMIT %d", $limit), ARRAY_A);
+
+		$query = "SELECT * FROM `{$table}` WHERE 1=1";
+		$params = array();
+
+		if (! empty($args['s'])) {
+			$query .= " AND agent_name LIKE %s";
+			$params[] = '%' . $wpdb->esc_like($args['s']) . '%';
+		}
+
+		$query .= " ORDER BY created_at DESC";
+
+		if (isset($args['limit'])) {
+			$query .= " LIMIT %d OFFSET %d";
+			$params[] = (int) $args['limit'];
+			$params[] = (int) ($args['offset'] ?? 0);
+		}
+
+		if (! empty($params)) {
+			return $wpdb->get_results($wpdb->prepare($query, $params), ARRAY_A) ?: array();
+		}
+
+		return $wpdb->get_results($query, ARRAY_A) ?: array();
+	}
+
+	/**
+	 * Counts total transactions with optional filtering.
+	 *
+	 * @param array $args Filtering arguments.
+	 * @return int
+	 */
+	public function count_transactions(array $args = array()): int
+	{
+		global $wpdb;
+		$table = $wpdb->prefix . self::TABLE;
+
+		$query = "SELECT COUNT(*) FROM `{$table}` WHERE 1=1";
+		$params = array();
+
+		if (! empty($args['s'])) {
+			$query .= " AND agent_name LIKE %s";
+			$params[] = '%' . $wpdb->esc_like($args['s']) . '%';
+		}
+
+		if (! empty($params)) {
+			return (int) $wpdb->get_var($wpdb->prepare($query, $params));
+		}
+
+		return (int) $wpdb->get_var("SELECT COUNT(*) FROM `{$table}`");
 	}
 }

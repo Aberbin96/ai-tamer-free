@@ -12,6 +12,16 @@ use function current_time;
 use function get_the_ID;
 use function sanitize_text_field;
 use function wp_parse_args;
+use function wp_unslash;
+use function update_option;
+use function wp_cache_get;
+use function wp_cache_set;
+use function wp_cache_delete;
+use function get_transient;
+use function set_transient;
+use function delete_transient;
+use function wp_next_scheduled;
+use function wp_schedule_single_event;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -25,6 +35,12 @@ class Logger {
 
 	/** @var string DB table name (without prefix). */
 	const TABLE = 'aitamer_logs';
+
+	/** @var string Cache key for log buffer. */
+	const BUFFER_KEY = 'aitamer_log_buffer';
+
+	/** @var int Max records before forced flush. */
+	const BUFFER_LIMIT = 50;
 
 	/**
 	 * Creates or upgrades the log table. Called on plugin activation.
@@ -51,7 +67,7 @@ class Logger {
 		) {$charset_collate};"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
+		\dbDelta( $sql ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
 
 		update_option( 'aitamer_db_version', '1.1' );
 	}
@@ -78,25 +94,168 @@ class Logger {
 			return; // Never log human visitors.
 		}
 
-		global $wpdb;
-
 		$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
-		$wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->prefix . self::TABLE,
-			array(
-				'bot_name'    => $agent['name'],
-				'bot_type'    => $agent['type'],
-				'post_id'     => $post_id ?: (get_the_ID() ?: null),
-				'request_uri' => $uri,
-				'ip_hash'     => hash( 'sha256', $ip ), // GDPR: never store raw IPs.
-				'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),
-				'protection'  => sanitize_text_field( $protection ),
-				'created_at'  => current_time( 'mysql' ),
-			),
-			array( '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s' )
+		$entry = array(
+			'bot_name'    => $agent['name'],
+			'bot_type'    => $agent['type'],
+			'post_id'     => $post_id ?: ( get_the_ID() ?: null ),
+			'request_uri' => $uri,
+			'ip_hash'     => hash( 'sha256', $ip ),
+			'user_agent'  => substr( (string) ( isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '' ), 0, 255 ),
+			'protection'  => sanitize_text_field( $protection ),
+			'created_at'  => current_time( 'mysql' ),
 		);
+
+		$buffer = wp_cache_get( self::BUFFER_KEY, 'ai-tamer' );
+		if ( false === $buffer ) {
+			$buffer = get_transient( self::BUFFER_KEY ) ?: array();
+		}
+
+		$buffer[] = $entry;
+
+		wp_cache_set( self::BUFFER_KEY, $buffer, 'ai-tamer', 3600 );
+		set_transient( self::BUFFER_KEY, $buffer, 3600 );
+
+		// If buffer is large enough, trigger async flush.
+		if ( count( $buffer ) >= self::BUFFER_LIMIT ) {
+			if ( ! wp_next_scheduled( 'aitamer_flush_logs' ) ) {
+				wp_schedule_single_event( time(), 'aitamer_flush_logs' );
+			}
+		}
+	}
+
+	/**
+	 * Flushes the log buffer to the database in a single batch.
+	 */
+	public static function flush_buffer(): void {
+		$buffer = wp_cache_get( self::BUFFER_KEY, 'ai-tamer' );
+		if ( false === $buffer ) {
+			$buffer = get_transient( self::BUFFER_KEY );
+		}
+
+		if ( empty( $buffer ) ) {
+			return;
+		}
+
+		// Clear buffer immediately to avoid race conditions.
+		wp_cache_delete( self::BUFFER_KEY, 'ai-tamer' );
+		delete_transient( self::BUFFER_KEY );
+
+		global $wpdb;
+		$table = $wpdb->prefix . self::TABLE;
+
+		// Perform batch insert.
+		$query = "INSERT INTO `{$table}` (bot_name, bot_type, post_id, request_uri, ip_hash, user_agent, protection, created_at) VALUES ";
+		$placeholders = array();
+		$values       = array();
+
+		foreach ( $buffer as $entry ) {
+			$placeholders[] = '( %s, %s, %d, %s, %s, %s, %s, %s )';
+			$values[]       = $entry['bot_name'];
+			$values[]       = $entry['bot_type'];
+			$values[]       = $entry['post_id'];
+			$values[]       = $entry['request_uri'];
+			$values[]       = $entry['ip_hash'];
+			$values[]       = $entry['user_agent'];
+			$values[]       = $entry['protection'];
+			$values[]       = $entry['created_at'];
+		}
+
+		$query .= implode( ', ', $placeholders );
+
+		$wpdb->query( $wpdb->prepare( $query, $values ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+	}
+
+	/**
+	 * Returns logs with pagination and filtering.
+	 *
+	 * @param array $args {
+	 *     Optional. Arguments for log retrieval.
+	 *     @type int    $limit      Number of records to return. Default 20.
+	 *     @type int    $offset     Number of records to skip. Default 0.
+	 *     @type string $bot_type   Filter by agent type (e.g. 'training').
+	 *     @type string $protection Filter by protection level.
+	 *     @type string $s          Search string (matches bot_name or request_uri).
+	 * }
+	 * @return array List of log entries.
+	 */
+	public static function get_logs( array $args = array() ): array {
+		global $wpdb;
+		$table = $wpdb->prefix . self::TABLE;
+		$defaults = array(
+			'limit'      => 20,
+			'offset'     => 0,
+			'bot_type'   => '',
+			'protection' => '',
+			's'          => '',
+		);
+		$args = wp_parse_args( $args, $defaults );
+
+		$where = array( '1=1' );
+		$params = array();
+
+		if ( ! empty( $args['bot_type'] ) ) {
+			$where[]  = 'bot_type = %s';
+			$params[] = $args['bot_type'];
+		}
+		if ( ! empty( $args['protection'] ) ) {
+			$where[]  = 'protection = %s';
+			$params[] = $args['protection'];
+		}
+		if ( ! empty( $args['s'] ) ) {
+			$where[]  = '(bot_name LIKE %s OR request_uri LIKE %s OR user_agent LIKE %s)';
+			$like     = '%' . $wpdb->esc_like( $args['s'] ) . '%';
+			$params[] = $like;
+			$params[] = $like;
+			$params[] = $like;
+		}
+
+		$where_str = implode( ' AND ', $where );
+		$query = "SELECT * FROM `{$table}` WHERE {$where_str} ORDER BY id DESC LIMIT %d OFFSET %d";
+		$params[] = $args['limit'];
+		$params[] = $args['offset'];
+
+		return $wpdb->get_results( $wpdb->prepare( $query, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	}
+
+	/**
+	 * Counts logs matching filters.
+	 *
+	 * @param array $args Same args as get_logs.
+	 * @return int Total number of logs.
+	 */
+	public static function count_logs( array $args = array() ): int {
+		global $wpdb;
+		$table = $wpdb->prefix . self::TABLE;
+		$where = array( '1=1' );
+		$params = array();
+
+		if ( ! empty( $args['bot_type'] ) ) {
+			$where[]  = 'bot_type = %s';
+			$params[] = $args['bot_type'];
+		}
+		if ( ! empty( $args['protection'] ) ) {
+			$where[]  = 'protection = %s';
+			$params[] = $args['protection'];
+		}
+		if ( ! empty( $args['s'] ) ) {
+			$where[]  = '(bot_name LIKE %s OR request_uri LIKE %s OR user_agent LIKE %s)';
+			$like     = '%' . $wpdb->esc_like( $args['s'] ) . '%';
+			$params[] = $like;
+			$params[] = $like;
+			$params[] = $like;
+		}
+
+		$where_str = implode( ' AND ', $where );
+		$query = "SELECT COUNT(*) FROM `{$table}` WHERE {$where_str}";
+
+		if ( empty( $params ) ) {
+			return (int) $wpdb->get_var( $query ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		}
+
+		return (int) $wpdb->get_var( $wpdb->prepare( $query, $params ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
 	/**
@@ -125,9 +284,7 @@ class Logger {
 			ARRAY_A
 		);
 
-		$total = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-			"SELECT COUNT(*) FROM `{$table}`" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		);
+		$total = self::count_logs();
 
 		return compact( 'top_bots', 'top_posts', 'total' );
 	}

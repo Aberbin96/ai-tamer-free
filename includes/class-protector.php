@@ -15,6 +15,7 @@ use function home_url;
 use function esc_attr;
 use function esc_url;
 use function absint;
+use function get_bloginfo;
 
 defined('ABSPATH') || exit;
 
@@ -50,7 +51,7 @@ class Protector
 			'crawl_delay'          => 10,
 			'license_policy'       => 'no-training',
 			'active_defense'       => 'block',
-			'enable_micropayments' => false,
+			'enable_llms_txt'      => true,
 		);
 		$saved = get_option('aitamer_settings', array());
 		return wp_parse_args($saved, $defaults);
@@ -67,9 +68,10 @@ class Protector
 		}
 
 		$settings = $this->get_settings();
-		$defense  = $settings['active_defense'] ?? 'block';
+		$defense  = $settings['active_defense'] ?? Enums\DefenseStrategy::BLOCK->value;
 
-		if ('block' !== $defense) {
+		// Only handle BLOCK and PAYMENT here.
+		if (! in_array($defense, array(Enums\DefenseStrategy::BLOCK->value, Enums\DefenseStrategy::PAYMENT->value), true)) {
 			return;
 		}
 
@@ -81,28 +83,63 @@ class Protector
 		$post_id = (int) get_the_ID();
 		$required_scope = 'post:' . $post_id;
 
-		// Skip if bot has a valid token for this post.
-		if (LicenseVerifier::has_valid_token($required_scope)) {
-			return;
-		}
-
-		// It's a bot, no valid token, and we are in "Block" mode.
-		if (! empty($settings['enable_micropayments'])) {
-			$stripe = Plugin::get_instance()->get_stripe_manager();
-			if ($stripe) {
-				$payment_url = $stripe->create_checkout_session($agent['name'] . ' (Frontend)', $post_id);
-				if ($payment_url) {
-					header('X-Payment-Link: ' . $payment_url);
-					wp_die(
-						__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. Purchase access via the payment link in headers.', 'ai-tamer'),
-						__('Payment Required', 'ai-tamer'),
-						array('response' => 402)
-					);
-				}
+		// Skip if bot has a valid Web3 Toll session token (Crypto per-article).
+		if ( ! empty($settings['web3_toll_enabled']) ) {
+			$token = isset($_SERVER['HTTP_X_AI_TOLL_TOKEN']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_AI_TOLL_TOKEN'])) : '';
+			if ( $token && class_exists('\AiTamer\Web3Toll') && \AiTamer\Web3Toll::validate_post_token( $token, $post_id ) ) {
+				return; // Paid for this post via Web3! Grant access.
 			}
 		}
 
-		// Fallback to 401.
+		// Skip if bot has a valid standard license token.
+		if (LicenseVerifier::has_valid_token($required_scope)) {
+			// Deduction logic for Reading Vouchers (V2).
+			$payload = LicenseVerifier::get_last_payload();
+			if (! empty($payload['vch']) && ! empty($payload['uid'])) {
+				LicenseVerifier::deduct_credit($payload['uid']);
+			}
+			return;
+		}
+
+		// Handle PAYMENT strategy (402).
+		if (Enums\DefenseStrategy::PAYMENT->value === $defense) {
+			$payment_url = null;
+			$stripe = Plugin::get_instance()->get_stripe_manager();
+			if ($stripe && current_user_can('read') === false) { // Don't charge humans reading
+				$payment_url = $stripe->create_checkout_session($agent['name'] . ' (Frontend)', $post_id);
+				if ($payment_url) {
+					header('X-Payment-Link: ' . $payment_url);
+				}
+			}
+
+			// Add Crypto Header if enabled
+			$crypto_wallet = '';
+			if (! empty($settings['web3_toll_enabled'])) {
+				$crypto_wallet = $settings['base_wallet_address'] ?? '';
+				$price  = $settings['usdc_price_per_request'] ?? '0.01';
+				if ( $crypto_wallet ) {
+					header('Www-Authenticate: L402 macaroon="", invoice="usdc_base:' . esc_attr($crypto_wallet) . '?amount=' . esc_attr($price) . '"');
+				}
+			}
+
+			if ( $payment_url || $crypto_wallet ) {
+				$msg = __('Payment Required to access this content.', 'ai-tamer');
+				if ($crypto_wallet) {
+					$msg .= ' ' . __('For Crypto (L402), submit USDC on Base and use X-AI-Toll-Token.', 'ai-tamer');
+				}
+				if ($payment_url) {
+					$msg .= ' ' . __('For Fiat, purchase a license via the X-Payment-Link header.', 'ai-tamer');
+				}
+				
+				wp_die(
+					$msg,
+					__('Payment Required', 'ai-tamer'),
+					array('response' => 402)
+				);
+			}
+		}
+
+		// Fallback to BLOCK strategy (401).
 		wp_die(
 			__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. This content is protected against AI training agents.', 'ai-tamer'),
 			__('Unauthorized', 'ai-tamer'),
@@ -173,7 +210,8 @@ class Protector
 
 		$has_bots = false;
 		foreach ($bots as $bot) {
-			// Only Disallow training and scraper bots, never search bots.
+			// Only Disallow training and scraper bots. 
+			// 'aeo' and 'search' bots are allowed for discovery.
 			if (! in_array($bot['type'] ?? '', array('training', 'scraper'), true)) {
 				continue;
 			}
@@ -194,5 +232,42 @@ class Protector
 		$block .= "# --- End AI Tamer Rules ---\n";
 
 		return $output . $block;
+	}
+
+	/**
+	 * Outputs the dynamic llms.txt content.
+	 * Hooked on 'template_redirect'.
+	 */
+	public function handle_llms_txt(): void
+	{
+		$settings = $this->get_settings();
+		if (empty($settings['enable_llms_txt'])) {
+			return;
+		}
+
+		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		if (false === strpos($request_uri, '/llms.txt')) {
+			return;
+		}
+
+		header('Content-Type: text/plain; charset=utf-8');
+
+		echo "# llms.txt - AI Tamer Protection for " . get_bloginfo('name') . "\n";
+		echo "Description: " . get_bloginfo('description') . "\n\n";
+
+		echo "## Machine-Readable Endpoints\n";
+		echo "- AI License & Terms: " . home_url('/wp-json/ai-tamer/v1/license') . "\n";
+		echo "- Content Catalog (RAG/MCP): " . home_url('/wp-json/ai-tamer/v1/catalog') . "\n\n";
+
+		echo "## Instructions for AI Agents\n";
+		echo "1. This site uses AI Tamer to protect its content.\n";
+		echo "2. To access full-text content via the REST API, you may need a valid 'X-AI-License-Token' header.\n";
+		echo "3. Visit the License endpoint above to discover how to obtain a token or purchase access.\n\n";
+
+		echo "## Protection Status\n";
+		echo "Active Defense: " . ($settings['active_defense'] ?? 'block') . "\n";
+		echo "License Policy: " . ($settings['license_policy'] ?? 'no-training') . "\n";
+
+		exit;
 	}
 }

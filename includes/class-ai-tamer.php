@@ -14,9 +14,9 @@ use function add_option;
 use function get_option;
 use function update_option;
 use function is_admin;
-
 use function wp_schedule_event;
 use function wp_next_scheduled;
+use function __;
 
 defined('ABSPATH') || exit; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 
@@ -144,6 +144,7 @@ class Plugin
 		add_filter('robots_txt', array($this->protector, 'append_robots_txt'), 10, 2);
 
 		// Active Defense (Block/402) on frontend.
+		add_action('template_redirect', array($this->protector, 'handle_llms_txt'), 5);
 		add_action('template_redirect', array($this->protector, 'handle_active_defense'));
 
 		// Log after the WP query runs (post context available).
@@ -171,6 +172,28 @@ class Plugin
 			wp_schedule_event(time(), 'daily', 'aitamer_update_bots');
 		}
 		add_action('aitamer_update_bots', array($this->bot_updater, 'run'));
+
+		// Async Log Flushing: scheduled every minute.
+		add_filter('cron_schedules', array($this, 'add_cron_schedules'));
+		if (! wp_next_scheduled('aitamer_flush_logs')) {
+			wp_schedule_event(time(), 'every_minute', 'aitamer_flush_logs');
+		}
+		add_action('aitamer_flush_logs', array('AiTamer\Logger', 'flush_buffer'));
+	}
+
+	/**
+	 * Adds custom cron schedules (every_minute).
+	 *
+	 * @param array $schedules Existing schedules.
+	 * @return array Modified schedules.
+	 */
+	public function add_cron_schedules(array $schedules): array
+	{
+		$schedules['every_minute'] = array(
+			'interval' => 60,
+			'display'  => __('Every Minute', 'ai-tamer'),
+		);
+		return $schedules;
 	}
 
 

@@ -26,6 +26,11 @@ use function get_permalink;
 use function get_post_meta;
 use function get_the_ID;
 use function get_the_title;
+use function get_the_author_meta;
+use function get_avatar_url;
+use function get_the_date;
+use function get_the_modified_date;
+use function get_post;
 use function gmdate;
 use function home_url;
 use function is_singular;
@@ -135,68 +140,144 @@ class LicenseManager {
 	}
 
 	/**
-	 * Injects a schema.org/CreativeWork JSON-LD block for AI crawlers.
+	 * Injects a schema.org JSON-LD block using the @graph structure for AEO.
 	 */
 	public function inject_jsonld(): void {
 		$directive = $this->get_license_directive();
+		$home_url  = home_url( '/' );
+		$site_name = get_bloginfo( 'name' );
 
-		$schema = array(
-			'@context'         => 'https://schema.org',
-			'@type'            => 'CreativeWork',
-			'url'              => is_singular() ? (string) get_permalink() : home_url( '/' ),
-			'name'             => is_singular() ? get_the_title() : get_bloginfo( 'name' ),
-			'copyrightYear'    => (int) gmdate( 'Y' ),
-			'copyrightHolder'  => array(
+		// 1. Organization Node.
+		$org_id = $home_url . '#organization';
+		$graph  = array(
+			array(
 				'@type' => 'Organization',
-				'name'  => get_bloginfo( 'name' ),
-				'url'   => home_url( '/' ),
+				'@id'   => $org_id,
+				'name'  => $site_name,
+				'url'   => $home_url,
+				'logo'  => array(
+					'@type' => 'ImageObject',
+					'url'   => $home_url . 'wp-content/uploads/logo.png', // Placeholder if no custom logo.
+				),
 			),
 		);
 
-		// Map the directive to schema.org usageInfo and license.
-		switch ( $directive ) {
-			case 'none':
-				$schema['usageInfo']       = home_url( '/ai-usage-policy/' );
-				$schema['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
-				$schema['copyrightNotice'] = 'No AI training, scraping, or indexing permitted without a written licence.';
-				break;
+		// 2. WebSite Node.
+		$graph[] = array(
+			'@type'     => 'WebSite',
+			'@id'       => $home_url . '#website',
+			'url'       => $home_url,
+			'name'      => $site_name,
+			'publisher' => array( '@id' => $org_id ),
+		);
 
-			case 'training-prohibited':
-				$schema['usageInfo']       = home_url( '/ai-usage-policy/' );
-				$schema['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
-				$schema['copyrightNotice'] = 'AI training and scraping prohibited. Indexing by search bots permitted.';
-				break;
-
-			case 'permitted':
-				$schema['license']         = 'https://creativecommons.org/licenses/by/4.0/';
-				$schema['copyrightNotice'] = 'Licensed for AI use with attribution.';
-				break;
-
-			default: // all-rights-reserved
-				$schema['usageInfo']       = home_url( '/ai-usage-policy/' );
-				$schema['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
-				$schema['copyrightNotice'] = 'AI training prohibited. All rights reserved.';
-				break;
-		}
-
+		// 3. Author and Article Nodes (if singular).
 		if ( is_singular() ) {
-			$post_id      = (int) get_the_ID();
-			$block_text   = get_post_meta( $post_id, '_aitamer_block_text', true ) === 'yes';
-			$block_images = get_post_meta( $post_id, '_aitamer_block_images', true ) === 'yes';
-			$block_video  = get_post_meta( $post_id, '_aitamer_block_video', true ) === 'yes';
+			$post_id   = (int) get_the_ID();
+			$post_url  = (string) get_permalink();
+			$author_id = (int) get_the_author_meta( 'ID' );
+			$author_url = get_the_author_meta( 'url' ) ?: $home_url . 'author/' . get_the_author_meta( 'user_nicename' );
 
-			if ( $block_text || $block_images || $block_video ) {
-				$restrictions = array();
-				if ( $block_text ) $restrictions[] = 'text';
-				if ( $block_images ) $restrictions[] = 'images';
-				if ( $block_video ) $restrictions[] = 'video';
-				
-				$schema['copyrightNotice'] .= ' Specific restrictions apply to: ' . implode( ', ', $restrictions ) . '.';
+			$author_node = array(
+				'@type' => 'Person',
+				'@id'   => $home_url . '#author/' . $author_id,
+				'name'  => get_the_author_meta( 'display_name' ),
+				'url'   => $author_url,
+				'image' => array(
+					'@type' => 'ImageObject',
+					'url'   => get_avatar_url( $author_id ),
+				),
+				'description' => get_the_author_meta( 'description' ),
+			);
+
+			// Enrich with social links if available.
+			$social_links = array();
+			$platforms    = array( 'facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'github' );
+			foreach ( $platforms as $platform ) {
+				$link = get_the_author_meta( $platform, $author_id );
+				if ( $link ) {
+					$social_links[] = $link;
+				}
 			}
+			if ( ! empty( $social_links ) ) {
+				$author_node['sameAs'] = $social_links;
+			}
+
+			$graph[] = $author_node;
+
+			$article = array(
+				'@type'            => 'Article',
+				'@id'              => $post_url . '#article',
+				'url'              => $post_url,
+				'headline'         => get_the_title(),
+				'datePublished'    => get_the_date( 'c', $post_id ),
+				'dateModified'     => get_the_modified_date( 'c', $post_id ),
+				'author'           => array( '@id' => $home_url . '#author/' . $author_id ),
+				'publisher'        => array( '@id' => $org_id ),
+				'copyrightYear'    => (int) get_the_date( 'Y', $post_id ),
+				'copyrightHolder'  => array( '@id' => $org_id ),
+				'mainEntityOfPage' => array( '@id' => $post_url ),
+			);
+
+			// Add protection metadata.
+			switch ( $directive ) {
+				case 'none':
+					$article['usageInfo']       = home_url( '/ai-usage-policy/' );
+					$article['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
+					$article['copyrightNotice'] = 'No AI training, scraping, or indexing permitted without a written licence.';
+					break;
+				case 'training-prohibited':
+					$article['usageInfo']       = home_url( '/ai-usage-policy/' );
+					$article['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
+					$article['copyrightNotice'] = 'AI training and scraping prohibited. Indexing by search bots permitted.';
+					break;
+				case 'permitted':
+					$article['license']         = 'https://creativecommons.org/licenses/by/4.0/';
+					$article['copyrightNotice'] = 'Licensed for AI use with attribution.';
+					break;
+				default:
+					$article['usageInfo']       = home_url( '/ai-usage-policy/' );
+					$article['license']         = 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
+					$article['copyrightNotice'] = 'AI training prohibited. All rights reserved.';
+					break;
+			}
+
+			// Add FAQ support if headers are detected (AEO requirement).
+			$post_content = get_post( $post_id )->post_content ?? '';
+			if ( preg_match_all( '/<h[2-3][^>]*>(.*?)<\/h[2-3]>.*?<p[^>]*>(.*?)<\/p>/is', $post_content, $matches, PREG_SET_ORDER ) ) {
+				$questions = array();
+				foreach ( $matches as $match ) {
+					$q_text = trim( strip_tags( $match[1] ) );
+					$a_text = trim( strip_tags( $match[2] ) );
+					if ( strpos( $q_text, '?' ) !== false || strpos( $q_text, '¿' ) !== false ) {
+						$questions[] = array(
+							'@type'          => 'Question',
+							'name'           => $q_text,
+							'acceptedAnswer' => array(
+								'@type' => 'Answer',
+								'text'  => $a_text,
+							),
+						);
+					}
+				}
+				if ( ! empty( $questions ) ) {
+					$graph[] = array(
+						'@type'      => 'FAQPage',
+						'@id'        => $post_url . '#faq',
+						'mainEntity' => $questions,
+					);
+					$article['hasPart'] = array( '@id' => $post_url . '#faq' );
+				}
+			}
+
+			$graph[] = $article;
 		}
 
-		echo '<script type="application/ld+json">' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput
-		echo wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ); // phpcs:ignore WordPress.Security.EscapeOutput
-		echo "\n" . '</script>' . "\n"; // phpcs:ignore WordPress.Security.EscapeOutput
+		echo '<script type="application/ld+json">' . "\n";
+		echo wp_json_encode( array(
+			'@context' => 'https://schema.org',
+			'@graph'   => $graph,
+		), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+		echo "\n" . '</script>' . "\n";
 	}
 }

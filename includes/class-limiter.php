@@ -37,6 +37,16 @@ class Limiter {
 	 * @param array $agent Classified agent from Detector::classify().
 	 */
 	public function check( array $agent ): void {
+		$ip  = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'unknown';
+
+		// Fingerprinting Block Check (Highest Priority)
+		if ( get_transient( 'aitamer_fp_block_' . md5( $ip ) ) ) {
+			status_header( 403 );
+			header( 'Content-Type: text/plain; charset=UTF-8' );
+			echo 'Access denied (Automated activity detected).'; // phpcs:ignore WordPress.Security.EscapeOutput
+			exit;
+		}
+
 		if ( ! $agent['matched'] ) {
 			return; // Never limit human visitors.
 		}

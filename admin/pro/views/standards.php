@@ -53,6 +53,13 @@ defined( 'ABSPATH' ) || exit;
 				<p><strong>GPTBot:</strong> <a href="https://platform.openai.com/docs/gptbot" target="_blank"><?php esc_html_e( 'OpenAI Documentation', 'ai-tamer' ); ?></a></p>
 				<p><strong>Google-Extended:</strong> <a href="https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers#google-extended" target="_blank"><?php esc_html_e( 'Google Documentation', 'ai-tamer' ); ?></a></p>
 			</div>
+
+			<div class="aitamer-standard-item">
+				<h3><?php esc_html_e( 'llms.txt — Machine-Readable Sitemap', 'ai-tamer' ); ?></h3>
+				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'Large Language Models (LLMs) and RAG agents need a way to quickly discover which content is available and what the licensing terms are without crawling every page.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When enabled in General Settings, AI Tamer serves a dynamic /llms.txt file that points agents to your machine-readable Catalog and License endpoints.', 'ai-tamer' ); ?></p>
+				<p><a href="<?php echo esc_url( home_url( '/llms.txt' ) ); ?>" target="_blank" class="button button-link"><?php esc_html_e( 'View your llms.txt', 'ai-tamer' ); ?></a></p>
+			</div>
 		</div>
 
 		<div class="aitamer-card sidebar">

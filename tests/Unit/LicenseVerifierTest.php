@@ -31,6 +31,8 @@ class LicenseVerifierTest extends TestCase {
 			->andReturnFirstArg();
 		Monkey\Functions\expect( 'update_option' )
 			->andReturn( true );
+		Monkey\Functions\expect( 'wp_generate_password' )
+			->andReturn( 'mock-password-123' );
 	}
 
 	/**

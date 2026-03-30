@@ -4,6 +4,36 @@ namespace AiTamer;
 
 use AiTamer\Enums\DefenseStrategy;
 use AiTamer\Enums\LicensePolicy;
+use function add_action;
+use function add_filter;
+use function apply_filters;
+use function __;
+use function esc_attr;
+use function esc_html;
+use function esc_html__;
+use function esc_url;
+use function plugin_dir_url;
+use function wp_enqueue_script;
+use function wp_localize_script;
+use function rest_url;
+use function wp_create_nonce;
+use function add_submenu_page;
+use function current_user_can;
+use function wp_verify_nonce;
+use function sanitize_text_field;
+use function wp_unslash;
+use function absint;
+use function wp_safe_redirect;
+use function add_query_arg;
+use function admin_url;
+use function set_transient;
+use function get_posts;
+use function get_permalink;
+use function home_url;
+use function add_settings_field;
+use function add_settings_section;
+use function esc_url_raw;
+use function get_option;
 
 /**
  * AdminPro class — handles Pro-only admin registrations.
@@ -18,13 +48,13 @@ class AdminPro
 		add_action('aitamer_admin_register_menus', array($this, 'register_menus'));
 		add_action('aitamer_admin_register_settings', array($this, 'register_settings'));
 		add_filter('aitamer_admin_sanitize_settings', array($this, 'sanitize_pro_settings'), 10, 2);
+		add_filter('aitamer_admin_sanitize_stripe_settings', array($this, 'sanitize_pro_stripe_settings'), 10, 2);
 
 		// Assets.
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
 
 		// Active Defense hooks.
-		add_filter('aitamer_admin_defense_strategies', array($this, 'add_poison_strategy'));
-		add_action('aitamer_admin_render_defense_footer', array($this, 'render_poison_footer'));
+		add_filter('aitamer_admin_defense_strategies', array($this, 'add_pro_strategies'));
 
 		// POST actions.
 		add_action('admin_init', array($this, 'handle_licensing_actions'));
@@ -118,6 +148,7 @@ class AdminPro
 			$sub_id       = sanitize_text_field(wp_unslash($_POST['sub_id'] ?? ''));
 			$scope_type   = sanitize_text_field(wp_unslash($_POST['scope_type'] ?? 'global'));
 			$scope_id     = sanitize_text_field(wp_unslash($_POST['scope_id'] ?? ''));
+			$credits      = absint($_POST['credits'] ?? 0);
 
 			$final_scope = 'global';
 			if ('post' === $scope_type && ! empty($scope_id)) {
@@ -126,7 +157,7 @@ class AdminPro
 				$final_scope = 'category:' . $scope_id;
 			}
 
-			$token = LicenseVerifier::issue_token($agent_name, $days, $sub_id, $final_scope);
+			$token = LicenseVerifier::issue_token($agent_name, $days, $sub_id, $final_scope, $credits);
 			set_transient('aitamer_last_issued_token', $token, 30);
 			wp_safe_redirect(add_query_arg('aitamer_issued', '1', admin_url('admin.php?page=ai-tamer-licensing')));
 			exit;
@@ -193,12 +224,40 @@ class AdminPro
 		}
 
 		// Pro-specific checkboxes.
-		$settings['enable_micropayments'] = ! empty($input['enable_micropayments']);
 		$settings['enable_watermarking']  = ! empty($input['enable_watermarking']);
 		$settings['active_stylistic_dna'] = ! empty($input['active_stylistic_dna']);
 		$settings['enable_c2pa']          = ! empty($input['enable_c2pa']);
 		$settings['show_c2pa_badge']      = ! empty($input['show_c2pa_badge']);
 
+		// Migration: if enable_micropayments was previously true and defense is block, move to payment.
+		if (! empty($input['enable_micropayments']) && $settings['active_defense'] === DefenseStrategy::BLOCK->value) {
+			$settings['active_defense'] = DefenseStrategy::PAYMENT->value;
+		}
+
+		// Web3 Data Toll Settings
+		$settings['web3_toll_enabled'] = ! empty($input['web3_toll_enabled']);
+		$settings['base_wallet_address'] = sanitize_text_field($input['base_wallet_address'] ?? '');
+		$settings['usdc_price_per_request'] = sanitize_text_field($input['usdc_price_per_request'] ?? '0.01');
+		$settings['base_rpc_node_url'] = esc_url_raw($input['base_rpc_node_url'] ?? 'https://mainnet.base.org');
+
+		return $settings;
+	}
+
+	/**
+	 * Sanitize Pro Stripe settings.
+	 *
+	 * @param array $settings Sanitized Stripe settings.
+	 * @param array $input    Raw Input.
+	 * @return array
+	 */
+	public function sanitize_pro_stripe_settings(array $settings, array $input): array
+	{
+		if (isset($input['price_id_voucher'])) {
+			$settings['price_id_voucher'] = sanitize_text_field($input['price_id_voucher']);
+		}
+		if (isset($input['voucher_credits'])) {
+			$settings['voucher_credits'] = absint($input['voucher_credits']) ?: 1000;
+		}
 		return $settings;
 	}
 
@@ -209,17 +268,7 @@ class AdminPro
 	 */
 	public function register_settings($admin)
 	{
-		// 1. Micropayments field (General section).
-		add_settings_field(
-			'enable_micropayments',
-			__('Enable Micropayments (Protocol 402)', 'ai-tamer'),
-			array($admin, 'render_checkbox_field'),
-			'ai-tamer-settings',
-			'aitamer_general',
-			array('key' => 'enable_micropayments', 'description' => __('When unauthorized bots access content, return a 402 Payment Required status with a direct checkout link.', 'ai-tamer'))
-		);
-
-		// 2. Content Authenticity section (v3).
+		// 1. Content Authenticity section (v3).
 		add_settings_section(
 			'aitamer_authenticity',
 			__('Content Authenticity & Attribution', 'ai-tamer'),
@@ -262,40 +311,71 @@ class AdminPro
 			'aitamer_authenticity',
 			array('key' => 'show_c2pa_badge', 'description' => __('Display a visual "Verified Human" shield at the bottom of authenticated posts.', 'ai-tamer'))
 		);
+
+		// 2. Web3 Data Toll section.
+		add_settings_section(
+			'aitamer_web3_toll',
+			__('Web3 Data Toll (Crypto Micropayments)', 'ai-tamer'),
+			null,
+			'ai-tamer-settings'
+		);
+
+		add_settings_field(
+			'web3_toll_enabled',
+			__('Enable Web3 Data Toll', 'ai-tamer'),
+			array($admin, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_web3_toll',
+			array('key' => 'web3_toll_enabled', 'description' => __('Allow AI agents to pay per article request using USDC on the Base network. Requires Active Defense to be set to "Payment Required".', 'ai-tamer'))
+		);
+
+		add_settings_field(
+			'base_wallet_address',
+			__('Base Wallet Address', 'ai-tamer'),
+			function () use ($admin) {
+				$settings = get_option('aitamer_settings', array());
+				$value = $settings['base_wallet_address'] ?? '';
+				printf('<input type="text" id="base_wallet_address" name="aitamer_settings[base_wallet_address]" value="%s" class="regular-text">', esc_attr($value));
+				echo '<p class="description">' . esc_html__('Your EVM compatible wallet address on the Base network to receive USDC.', 'ai-tamer') . '</p>';
+			},
+			'ai-tamer-settings',
+			'aitamer_web3_toll'
+		);
+
+		add_settings_field(
+			'usdc_price_per_request',
+			__('USDC Price Per Post', 'ai-tamer'),
+			function () use ($admin) {
+				$settings = get_option('aitamer_settings', array());
+				$value = $settings['usdc_price_per_request'] ?? '0.01';
+				printf('<input type="text" id="usdc_price_per_request" name="aitamer_settings[usdc_price_per_request]" value="%s" class="small-text">', esc_attr($value));
+				echo '<p class="description">' . esc_html__('Amount of USDC required per article view (e.g. 0.05).', 'ai-tamer') . '</p>';
+			},
+			'ai-tamer-settings',
+			'aitamer_web3_toll'
+		);
+
+		add_settings_field(
+			'base_rpc_node_url',
+			__('Base RPC Node URL', 'ai-tamer'),
+			function () use ($admin) {
+				$settings = get_option('aitamer_settings', array());
+				$value = $settings['base_rpc_node_url'] ?? 'https://mainnet.base.org';
+				printf('<input type="url" id="base_rpc_node_url" name="aitamer_settings[base_rpc_node_url]" value="%s" class="regular-text">', esc_url($value));
+				echo '<p class="description">' . esc_html__('Public RPC node or your personal Alchemy/Infura Base URL used to verify transactions.', 'ai-tamer') . '</p>';
+			},
+			'ai-tamer-settings',
+			'aitamer_web3_toll'
+		);
 	}
 
 	/**
-	 * Adds the "Poison" strategy to the defense dropdown.
+	 * Adds Pro strategies to the defense dropdown.
 	 */
-	public function add_poison_strategy($strategies)
+	public function add_pro_strategies($strategies)
 	{
-		$strategies[DefenseStrategy::POISON->value] = __('Poison (Serve truncated/degraded preview)', 'ai-tamer');
+		$strategies[DefenseStrategy::PAYMENT->value] = __('Payment Required (Fiat & Crypto - 402)', 'ai-tamer');
 		return $strategies;
 	}
 
-	/**
-	 * Renders the Poison-specific description and preview button.
-	 */
-	public function render_poison_footer($selected)
-	{
-		$latest_post = get_posts(array(
-			'numberposts' => 1,
-			'post_status' => 'publish',
-		));
-
-		$preview_url = home_url('/?aitamer_preview_poison=1');
-		if (! empty($latest_post)) {
-			$preview_url = add_query_arg('aitamer_preview_poison', '1', get_permalink($latest_post[0]->ID));
-		}
-
-		echo '<p class="description">' . esc_html__('Choose how to handle unauthorized AI agents trying to access protected content. "Poison" will serve a degraded teaser version of the text and inject decoy media from the plugin, ensuring your real images, videos, and full text are NEVER leaked to the scraper.', 'ai-tamer') . '</p>';
-
-		if (class_exists('AiTamer\Poisoner')) {
-			printf(
-				'<p><a href="%s" target="_blank" class="button button-secondary">%s</a></p>',
-				esc_url($preview_url),
-				__('Preview Poisoned Content (Frontend)', 'ai-tamer')
-			);
-		}
-	}
 }

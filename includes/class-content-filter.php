@@ -97,21 +97,12 @@ class ContentFilter
 			return $content;
 		}
 
-		// Active Defense: Poisoning.
-		$settings = get_option('aitamer_settings', array());
-		$defense  = $settings['active_defense'] ?? 'block';
-
-		// Active Defense strategies (can be extended by Pro).
-		$defended_content = apply_filters('aitamer_active_defense', $content, $defense, $post_id);
-		if ($defended_content !== $content) {
-			return $defended_content;
-		}
 
 		// Standard blocking or no filtering for researchers.
 		// Strip elements marked with data-noai attribute.
 		$content = $this->strip_noai_elements($content);
 
-		return $this->apply_additional_pro_filters($content, $post_id, false);
+		return $this->apply_additional_pro_filters($content, $post_id);
 	}
 
 	/**
@@ -119,10 +110,9 @@ class ContentFilter
 	 *
 	 * @param string $content     Current content.
 	 * @param int    $post_id     Current post ID.
-	 * @param bool   $is_poisoned Whether the content was poisoned.
 	 * @return string Modified content.
 	 */
-	protected function apply_additional_pro_filters(string $content, int $post_id, bool $is_poisoned): string
+	protected function apply_additional_pro_filters(string $content, int $post_id): string
 	{
 		return $content;
 	}

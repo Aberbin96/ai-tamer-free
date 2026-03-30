@@ -14,6 +14,8 @@ use AiTamer\Enums\DefenseStrategy;
 use AiTamer\Enums\LicensePolicy;
 
 use function add_action;
+use function add_filter;
+use function apply_filters;
 use function add_menu_page;
 use function add_submenu_page;
 use function add_settings_field;
@@ -248,6 +250,15 @@ class Admin
 		);
 
 		add_settings_field(
+			'enable_llms_txt',
+			__('Enable llms.txt support', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array('key' => 'enable_llms_txt', 'description' => __('Exposes a virtual /llms.txt file to help AI agents discover your content and terms.', 'ai-tamer'))
+		);
+
+		add_settings_field(
 			'active_defense',
 			__('Active Defense Strategy', 'ai-tamer'),
 			array($this, 'render_active_defense_field'),
@@ -340,6 +351,7 @@ class Admin
 			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
 			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
 			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
+			'enable_llms_txt'         => ! empty($input['enable_llms_txt']),
 			'active_defense'          => $defense,
 			'license_policy'          => LicensePolicy::NO_TRAINING->value,
 		);
@@ -369,7 +381,7 @@ class Admin
 			return get_option('aitamer_stripe_settings', array());
 		}
 
-		return array(
+		$settings = array(
 			'enabled'               => (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no',
 			'test_mode'             => (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes',
 			'test_publishable'      => sanitize_text_field($input['test_publishable'] ?? ''),
@@ -379,6 +391,9 @@ class Admin
 			'price_id'              => sanitize_text_field($input['price_id'] ?? ''),
 			'price_id_micropayment' => sanitize_text_field($input['price_id_micropayment'] ?? ''),
 		);
+
+		// Let Pro handle extra Stripe fields.
+		return apply_filters('aitamer_admin_sanitize_stripe_settings', $settings, $input);
 	}
 
 	/**
@@ -458,7 +473,7 @@ class Admin
 			DefenseStrategy::BLOCK->value => __('Block (Return 401 Unauthorized)', 'ai-tamer'),
 		);
 
-		// Let Pro add more strategies (like Poison).
+		// Let Pro add more strategies (like Payment Required).
 		$strategies = apply_filters('aitamer_admin_defense_strategies', $strategies);
 
 		echo '<select id="active_defense" name="aitamer_settings[active_defense]">';
@@ -559,11 +574,6 @@ class Admin
 			wp_cache_delete($key, 'ai-tamer');
 			delete_transient($key);
 		}
-
-		// 2. Clear Frontend Poisoned cache.
-		$p_key = 'ait_p_' . (int) $post_id;
-		wp_cache_delete($p_key, 'ai-tamer');
-		delete_transient($p_key);
 	}
 
 	/**
@@ -615,15 +625,16 @@ class Admin
 
 			if (!$was_certified) {
 				update_post_meta($post_id, '_aitamer_iptc_certified', 'yes');
+				update_post_meta($post_id, '_aitamer_iptc_status', 'pending');
 
-				// Trigger IPTC injection.
-				$file = get_attached_file($post_id);
-				if ($file && file_exists($file) && class_exists('AiTamer\Watermarker')) {
-					Watermarker::apply_iptc_metadata($file, 'originalMediaDigitalSource');
+				// Trigger IPTC injection asynchronously.
+				if (! wp_next_scheduled('aitamer_process_media', array($post_id))) {
+					wp_schedule_single_event(time(), 'aitamer_process_media', array($post_id));
 				}
 			}
 		} else {
 			delete_post_meta($post_id, '_aitamer_iptc_certified');
+			delete_post_meta($post_id, '_aitamer_iptc_status');
 		}
 	}
 }

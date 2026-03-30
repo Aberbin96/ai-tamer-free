@@ -128,4 +128,47 @@ class HeuristicDetector
 	{
 		return self::get_ai_score($content) < $threshold;
 	}
+
+	/**
+	 * Evaluates fingerprint data to detect headless browsers and scrapers.
+	 *
+	 * @param array $data Fingerprint payload.
+	 * @return int Risk score (0-100).
+	 */
+	public static function evaluate_fingerprint(array $data): int
+	{
+		$score = 0;
+
+		// 1. Direct Headless indicator (Selenium, Puppeteer without stealth)
+		if (!empty($data['webdriver']) && $data['webdriver'] === true) {
+			$score += 50;
+		}
+
+		// 2. Chrome object missing (Headless Chrome defaults)
+		if (isset($data['chrome']) && $data['chrome'] === false) {
+			$score += 30;
+		}
+
+		// 3. No plugins or MIME types installed (headless environments)
+		if (isset($data['plugins']) && (int)$data['plugins'] === 0) {
+			$score += 20;
+		}
+
+		// 4. Software WebGL renderers (run on VPS without GPUs)
+		if (!empty($data['webgl'])) {
+			$webgl = strtolower($data['webgl']);
+			if (strpos($webgl, 'swiftshader') !== false || strpos($webgl, 'llvmpipe') !== false || strpos($webgl, 'mesa offscreen') !== false) {
+				$score += 40;
+			}
+		}
+
+		// 5. Unrealistic window dimensions
+		if (isset($data['innerWidth']) && isset($data['outerWidth'])) {
+			if ($data['innerWidth'] === 800 && $data['outerWidth'] === 800) {
+				$score += 15; // Common default viewport for puppeteer
+			}
+		}
+
+		return min(100, $score);
+	}
 }

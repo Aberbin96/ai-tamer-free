@@ -37,3 +37,35 @@ if ( ! function_exists( 'esc_html_e' ) ) {
 if ( ! function_exists( 'esc_attr_e' ) ) {
 	function esc_attr_e( $text, $domain = 'default' ) { echo $text; }
 }
+
+if ( ! function_exists( 'wp_cache_get' ) ) {
+	function wp_cache_get( $key, $group = '', $force = false, &$found = null ) { return false; }
+}
+
+if ( ! function_exists( 'wp_cache_set' ) ) {
+	function wp_cache_set( $key, $data, $group = '', $expire = 0 ) { return true; }
+}
+
+if ( ! function_exists( 'wp_cache_delete' ) ) {
+	function wp_cache_delete( $key, $group = '' ) { return true; }
+}
+
+if ( ! function_exists( 'get_transient' ) ) {
+	function get_transient( $transient ) { return false; }
+}
+
+if ( ! function_exists( 'set_transient' ) ) {
+	function set_transient( $transient, $value, $expiration = 0 ) { return true; }
+}
+
+if ( ! function_exists( 'delete_transient' ) ) {
+	function delete_transient( $transient ) { return true; }
+}
+
+if ( ! function_exists( 'wp_next_scheduled' ) ) {
+	function wp_next_scheduled( $hook, $args = array() ) { return false; }
+}
+
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	function wp_schedule_single_event( $timestamp, $hook, $args = array(), $wp_error = false ) { return true; }
+}

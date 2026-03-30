@@ -13,6 +13,6 @@ defined( 'ABSPATH' ) || exit;
  * Valid defense strategies for unauthorized AI agents.
  */
 enum DefenseStrategy: string {
-	case BLOCK  = 'block';
-	case POISON = 'poison';
+	case BLOCK     = 'block';
+	case PAYMENT   = 'payment';
 }

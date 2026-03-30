@@ -17,7 +17,23 @@ if ($aitamer_issued_token) {
 	delete_transient('aitamer_last_issued_token');
 }
 
-$aitamer_tokens = LicenseVerifier::get_tokens();
+// Filtering and Pagination logic.
+$aitamer_paged    = absint( $_GET['paged'] ?? 1 );
+$aitamer_search   = sanitize_text_field( $_GET['s'] ?? '' );
+$aitamer_scope    = sanitize_text_field( $_GET['scope'] ?? '' );
+$aitamer_per_page = 15;
+$aitamer_offset   = ( $aitamer_paged - 1 ) * $aitamer_per_page;
+
+$aitamer_filter_args = array(
+	'limit'  => $aitamer_per_page,
+	'offset' => $aitamer_offset,
+	's'      => $aitamer_search,
+	'scope'  => $aitamer_scope,
+);
+
+$aitamer_tokens      = LicenseVerifier::get_tokens( $aitamer_filter_args );
+$aitamer_count       = LicenseVerifier::count_tokens( $aitamer_filter_args );
+$aitamer_total_pages = ceil( $aitamer_count / $aitamer_per_page );
 
 // API Documentation data.
 $aitamer_rest_url    = get_rest_url(null, 'ai-tamer/v1');
@@ -36,8 +52,7 @@ $aitamer_scope_id    = '';
 		</div>
 	</div>
 
-	<?php if (isset($_GET['aitamer_revoked'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended 
-	?>
+	<?php if (isset($_GET['aitamer_revoked'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
 		<div class="notice notice-success is-dismissible">
 			<p><?php esc_html_e('Token revoked successfully.', 'ai-tamer'); ?></p>
 		</div>
@@ -56,8 +71,38 @@ $aitamer_scope_id    = '';
 	<!-- Issued Tokens Table -->
 	<div class="aitamer-card">
 		<div class="aitamer-card-header">
-			<h2><?php esc_html_e('Active License Tokens', 'ai-tamer'); ?></h2>
+			<h2><?php esc_html_e( 'Active License Tokens', 'ai-tamer' ); ?></h2>
+			<span style="font-size:11px;color:var(--at-muted);">
+				<?php printf( esc_html__( 'Showing %d of %s records', 'ai-tamer' ), count( $aitamer_tokens ), number_format_i18n( $aitamer_count ) ); ?>
+			</span>
 		</div>
+
+		<!-- Filter Bar -->
+		<form method="get" class="aitamer-filter-bar">
+			<input type="hidden" name="page" value="ai-tamer-licensing">
+			
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e( 'Search', 'ai-tamer' ); ?></label>
+				<input type="text" name="s" value="<?php echo esc_attr( $aitamer_search ); ?>" placeholder="<?php esc_attr_e( 'Agent or Token...', 'ai-tamer' ); ?>" style="width:200px;">
+			</div>
+
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e( 'Scope', 'ai-tamer' ); ?></label>
+				<select name="scope">
+					<option value=""><?php esc_html_e( 'All Scopes', 'ai-tamer' ); ?></option>
+					<option value="global" <?php selected( $aitamer_scope, 'global' ); ?>><?php esc_html_e( 'Global', 'ai-tamer' ); ?></option>
+					<?php 
+						// Optionally allow filtering by specific post/cat if they exist in tokens? 
+						// For now, let's keep it simple: Global or Other.
+					?>
+				</select>
+			</div>
+
+			<button type="submit" class="aitamer-btn-ghost"><?php esc_html_e( 'Filter', 'ai-tamer' ); ?></button>
+			<?php if ( ! empty( $aitamer_search ) || ! empty( $aitamer_scope ) ) : ?>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-tamer-licensing' ) ); ?>" class="aitamer-btn-danger" style="border:none;"><?php esc_html_e( 'Clear', 'ai-tamer' ); ?></a>
+			<?php endif; ?>
+		</form>
 		<?php if (empty($aitamer_tokens)) : ?>
 			<div class="aitamer-empty">
 				<p><?php esc_html_e('No tokens issued yet. Use the form below to authorize a trusted AI agent.', 'ai-tamer'); ?></p>
@@ -72,6 +117,7 @@ $aitamer_scope_id    = '';
 							<th><?php esc_html_e('Expires', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Scope', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Subscription', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Credits', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Status', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Token (preview)', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Actions', 'ai-tamer'); ?></th>
@@ -104,6 +150,25 @@ $aitamer_scope_id    = '';
 										<span style="color:var(--at-muted);"><?php esc_html_e('Direct', 'ai-tamer'); ?></span>
 									<?php endif; ?>
 								</td>
+								<td class="mono">
+									<?php 
+										if (! empty($aitamer_t['is_voucher']) && ! empty($aitamer_t['uid'])) {
+											global $wpdb;
+											$table = $wpdb->prefix . 'aitamer_wallets';
+											$balance = $wpdb->get_var($wpdb->prepare(
+												"SELECT balance FROM {$table} WHERE token_id = %s",
+												$aitamer_t['uid']
+											));
+											if (null !== $balance) {
+												echo '<strong>' . (int)$balance . '</strong>';
+											} else {
+												echo '<span style="color:var(--at-muted);">–</span>';
+											}
+										} else {
+											echo '<span style="color:var(--at-muted);">Unlimited</span>';
+										}
+									?>
+								</td>
 								<td>
 									<span class="aitamer-badge-status <?php echo $aitamer_is_expired ? 'expired' : 'active'; ?>">
 										<?php echo $aitamer_is_expired ? esc_html__('Expired', 'ai-tamer') : esc_html__('Active', 'ai-tamer'); ?>
@@ -122,6 +187,22 @@ $aitamer_scope_id    = '';
 					</tbody>
 				</table>
 			</div>
+
+			<!-- Pagination -->
+			<?php if ( $aitamer_total_pages > 1 ) : ?>
+				<div class="aitamer-pagination">
+					<?php
+					echo paginate_links( array(
+						'base'      => add_query_arg( 'paged', '%#%' ),
+						'format'    => '',
+						'prev_text' => '&laquo; ' . __( 'Prev', 'ai-tamer' ),
+						'next_text' => __( 'Next', 'ai-tamer' ) . ' &raquo;',
+						'total'     => $aitamer_total_pages,
+						'current'   => $aitamer_paged,
+					) );
+					?>
+				</div>
+			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 
@@ -158,6 +239,15 @@ $aitamer_scope_id    = '';
 					<td>
 						<input type="text" id="sub_id" name="sub_id" class="regular-text" placeholder="sub_1...">
 						<p class="description"><?php esc_html_e('Optional. If provided, the token will be invalidated automatically if the subscription is canceled.', 'ai-tamer'); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row">
+						<label for="credits"><?php esc_html_e('Reading Voucher (Credits)', 'ai-tamer'); ?></label>
+					</th>
+					<td>
+						<input type="number" id="credits" name="credits" value="0" min="0" class="small-text">
+						<p class="description"><?php esc_html_e('Setting this above 0 turns the token into a "Reading Voucher". Access will be blocked once credits reach zero.', 'ai-tamer'); ?></p>
 					</td>
 				</tr>
 				<tr>

@@ -37,7 +37,7 @@ require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-license-verifier.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-rest-api-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-content-filter-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-meta-box-pro.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-poisoner.php';
+
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/interface-payment-provider.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-stripe-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-watermarker.php';

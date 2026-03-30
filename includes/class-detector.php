@@ -100,19 +100,52 @@ class Detector {
 	 * @return bool
 	 */
 	private function is_anomalous_request( string $ua ): bool {
-		// Only check if it claims to be a common browser (Chrome, Firefox, Safari, Edge).
+		// Only check if it claims to be a common browser (Chrome, Safari, Firefox, Edge).
 		$is_browser_ua = preg_match( '/(Chrome|Safari|Firefox|Edg)\//i', $ua );
 		if ( ! $is_browser_ua ) {
-			return false;
+			return false; // If it doesn't pretend to be a browser, let list-based detection handle it.
 		}
 
-		// Modern browsers sending these headers since 2019/2020.
-		// If missing completely on a "Chrome" request, it's suspicious.
+		$anomaly_score = 0;
+
+		// 1. Missing Accept-Language
+		// Real browsers ALWAYS send their language preferences (e.g., es-ES, en-US). Scrapers/Bots often skip it.
+		$accept_language = isset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
+		if ( empty( $accept_language ) ) {
+			$anomaly_score += 2;
+		}
+
+		// 2. Anomalous Accept Header
+		// A standard browser navigating a page explicitly asks for HTML. Bots might use wildcard '*/*'.
+		$accept = isset( $_SERVER['HTTP_ACCEPT'] ) ? $_SERVER['HTTP_ACCEPT'] : '';
+		if ( empty( $accept ) || $accept === '*/*' || $accept === 'application/json' ) {
+			$anomaly_score += 1;
+		}
+
+		// 3. Missing Modern Fetch Metadata (Since ~2020)
+		// Missing Sec-Fetch on a request claiming to be a modern Chrome/Firefox is highly suspicious.
 		$dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
 		$mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
-
+		
 		if ( empty( $dest ) || empty( $mode ) ) {
-			// Most simple scrapers (python-requests, axios, curl) don't send these.
+			$anomaly_score += 2;
+		}
+
+		// 4. Missing Client Hints (Chrome/Edge 89+)
+		// If UA says Chrome 90+ but has no Sec-CH-UA, it's very likely a spoofed scraper library.
+		if ( preg_match( '/(?:Chrome|Edg)\/([0-9]{2,})/', $ua, $matches ) ) {
+			$version = (int) $matches[1];
+			// Apple limits Client Hints on WebKit/Safari, so we only strictly penalize non-Safari engines impersonating Chrome
+			if ( $version >= 90 && false === stripos( $ua, 'Safari' ) || preg_match( '/Chrome\//i', $ua ) ) {
+				$ch_ua = isset( $_SERVER['HTTP_SEC_CH_UA'] ) ? $_SERVER['HTTP_SEC_CH_UA'] : '';
+				if ( empty( $ch_ua ) ) {
+					$anomaly_score += 2;
+				}
+			}
+		}
+
+		// If the score reaches 3 or more, it has accumulated too many critical falsehoods for a real browser.
+		if ( $anomaly_score >= 3 ) {
 			return true;
 		}
 

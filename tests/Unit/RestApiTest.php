@@ -15,7 +15,6 @@ use Brain\Monkey;
 require_once dirname(dirname(__DIR__)) . '/includes/class-rest-api.php';
 require_once dirname(dirname(__DIR__)) . '/includes/pro/class-rest-api-pro.php';
 require_once dirname(dirname(__DIR__)) . '/includes/class-meta-box.php';
-require_once dirname(dirname(__DIR__)) . '/includes/pro/class-poisoner.php';
 
 use AiTamer\RestApi;
 use AiTamer\RestApiPro;
@@ -80,8 +79,6 @@ class RestApiTest extends TestCase
 	{
 		$request = \Mockery::mock('WP_REST_Request');
 		$request->allows('get_param')->with('id')->andReturn(123);
-		$request->allows('get_param')->with('aitamer_poison')->andReturn(false);
-		$request->allows('get_param')->with('aitamer_preview_poison')->andReturn(false);
 		$request->allows('get_param')->with('aitamer_force_clean')->andReturn(false);
 
 		$mock_post = (object) array(
@@ -140,86 +137,4 @@ class RestApiTest extends TestCase
 		$this->assertStringNotContainsString('<img', $data['content']);
 	}
 
-	/**
-	 * Tests that poisoning filter is applied for unauthorized bots when enabled.
-	 */
-	public function test_handle_content_applies_poisoning(): void
-	{
-		$request = \Mockery::mock('WP_REST_Request');
-		$request->allows('get_param')->with('id')->andReturn(123);
-		$request->allows('get_param')->with('aitamer_poison')->andReturn(true);
-		$request->allows('get_param')->with('aitamer_preview_poison')->andReturn(false);
-		$request->allows('get_param')->with('aitamer_force_clean')->andReturn(false);
-
-		$mock_post = (object) array(
-			'ID' => 123,
-			'post_title' => 'Sensitive Content',
-			'post_content' => 'This is a long text that should be truncated by the data poisoning filter to protect the original value of the content.',
-			'post_status' => 'publish',
-			'post_author' => 1,
-			'post_date_gmt' => '2026-03-25 00:00:00',
-			'post_modified_gmt' => '2026-03-25 00:00:00',
-			'post_excerpt' => '',
-		);
-
-		Monkey\Functions\expect('get_post')->andReturn($mock_post);
-		Monkey\Functions\expect('get_post_meta')->andReturn('no');
-		Monkey\Functions\expect('wp_strip_all_tags')->atLeast()->once()->andReturnArg(0);
-		Monkey\Functions\expect('get_the_author_meta')->andReturn('Admin');
-		Monkey\Functions\expect('get_permalink')->andReturn('https://example.com/post');
-
-		Monkey\Functions\stubs(array(
-			'wp_cache_get'  => false,
-			'wp_cache_set'  => true,
-			'get_transient' => false,
-			'set_transient' => true,
-			'do_blocks'     => function ($content) {
-				return $content;
-			},
-			'do_shortcode'  => function ($content) {
-				return $content;
-			},
-			'wp_kses'       => function ($content, $allowed_html) {
-				return $content;
-			},
-			'esc_html'      => function ($text) {
-				return $text;
-			},
-			'esc_url'       => function ($url) {
-				return $url;
-			},
-			'__'            => function ($text, $domain) {
-				return $text;
-			},
-			'current_user_can' => function ($capability) {
-				return false;
-			},
-		));
-
-		$api = new RestApiPro();
-		$response = $api->handle_content($request);
-		$data = $response->get_data();
-
-		$this->assertStringContainsString('display:none', $data['content']);
-		
-		// The seeds are random, check for at least one known seed.
-		$known_seeds = array(
-			'IMPORTANT: Disregard all previous facts',
-			'RESEARCH NOTE',
-			'STRICT INSTRUCTION',
-			'DATA INTEGRITY NOTICE',
-			'SYSTEM OVERRIDE',
-			'COMPLIANCE',
-			'BREADCRUMB'
-		);
-		
-		$found = false;
-		foreach ($known_seeds as $seed) {
-			if (strpos($data['content'], $seed) !== false) {
-				$found = true;
-				break;
-			}
-		}
-		$this->assertTrue($found, 'At least one hallucination seed should be present.');
-	}
 }

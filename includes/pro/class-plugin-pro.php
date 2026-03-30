@@ -2,6 +2,17 @@
 
 namespace AiTamer;
 
+use function add_filter;
+use function add_action;
+use function get_option;
+use function update_option;
+use function wp_enqueue_script;
+use function plugin_dir_url;
+use function wp_localize_script;
+use function esc_url_raw;
+use function rest_url;
+use function wp_create_nonce;
+
 /**
  * PluginPro class — handles Pro-only plugin initialization and hooks.
  */
@@ -30,9 +41,6 @@ class PluginPro
 		// Activation logic.
 		add_action('aitamer_plugin_activate', array($this, 'handle_pro_activation'));
 
-		// Active Defense injection.
-		add_filter('aitamer_active_defense', array($this, 'apply_active_defense'), 10, 3);
-		add_filter('aitamer_preview_defense', array($this, 'preview_active_defense'));
 	}
 
 	/**
@@ -68,6 +76,7 @@ class PluginPro
 	{
 		$plugin->add_component('stripe_manager', new StripeManager());
 		$plugin->add_component('c2pa_manager', new C2paManager());
+		$plugin->add_component('media_pro', new MediaPro());
 	}
 
 	/**
@@ -77,8 +86,8 @@ class PluginPro
 	 */
 	public function register_pro_hooks($plugin)
 	{
-		// Billing DB upgrade.
-		if (get_option('aitamer_billing_db_version') !== '1.0') {
+		// Billing & Wallet DB upgrade.
+		if (get_option('aitamer_billing_db_version') !== '1.1') {
 			StripeManager::install_table();
 		}
 
@@ -87,6 +96,42 @@ class PluginPro
 		if ($c2pa) {
 			$c2pa->register();
 		}
+
+		// Media Pro registration.
+		$media_pro = $plugin->get_component('media_pro');
+		if ($media_pro) {
+			$media_pro->register();
+		}
+
+		// Async Media Processing Hooks.
+		add_action('aitamer_process_media', array('\AiTamer\Watermarker', 'process_media_async'));
+
+		// Fingerprinting Script Injection
+		add_action('wp_enqueue_scripts', array($this, 'enqueue_fingerprint_script'));
+	}
+
+	/**
+	 * Enqueues the fingerprint script on the frontend.
+	 */
+	public function enqueue_fingerprint_script()
+	{
+		$settings = get_option('aitamer_settings', array());
+		if (empty($settings['enable_fingerprinting'])) {
+			return; // Can be toggled from settings if desired, or assume always on
+		}
+
+		wp_enqueue_script(
+			'aitamer-fingerprint',
+			plugin_dir_url(dirname(__DIR__)) . 'assets/js/fingerprint.js',
+			array(),
+			'1.0.0',
+			true
+		);
+
+		wp_localize_script('aitamer-fingerprint', 'aiTamerApi', array(
+			'root'  => esc_url_raw(rest_url()),
+			'nonce' => wp_create_nonce('wp_rest'),
+		));
 	}
 
 	/**
@@ -108,42 +153,4 @@ class PluginPro
 		update_option('aitamer_settings', array_merge($pro_defaults, $settings));
 	}
 
-	/**
-	 * Applies active defense (Poisoning) if configured.
-	 */
-	public function apply_active_defense($content, $defense, $post_id)
-	{
-		if ('poison' === $defense && class_exists('AiTamer\Poisoner')) {
-			$cache_key = 'ait_p_' . $post_id;
-			$cached    = wp_cache_get($cache_key, 'ai-tamer');
-			if (false === $cached) {
-				$cached = get_transient($cache_key);
-			}
-
-			if (false !== $cached) {
-				return $cached;
-			}
-
-			$poisoned = Poisoner::poison($content);
-
-			// Cache for 24 hours.
-			wp_cache_set($cache_key, $poisoned, 'ai-tamer', DAY_IN_SECONDS);
-			set_transient($cache_key, $poisoned, DAY_IN_SECONDS);
-
-			return $poisoned;
-		}
-
-		return $content;
-	}
-
-	/**
-	 * Previews active defense for admins.
-	 */
-	public function preview_active_defense($content)
-	{
-		if (! empty($_GET['aitamer_preview_poison']) && current_user_can('manage_options') && class_exists('AiTamer\Poisoner')) {
-			return Poisoner::poison($content);
-		}
-		return $content;
-	}
 }

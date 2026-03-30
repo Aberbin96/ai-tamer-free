@@ -524,3 +524,62 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* =========================================================
+   Pagination & Filters
+   ========================================================= */
+.aitamer-filter-bar {
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	margin-bottom: 16px;
+	padding: 12px;
+	background: var(--at-surface-2);
+	border-radius: var(--at-radius);
+	border: 1px solid var(--at-border);
+}
+
+.aitamer-filter-bar label {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--at-muted);
+}
+
+.aitamer-pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 6px;
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid var(--at-border);
+}
+
+.aitamer-pagination .page-numbers {
+	padding: 6px 12px;
+	border: 1px solid var(--at-border);
+	background: var(--at-surface);
+	color: var(--at-text);
+	border-radius: var(--at-radius-sm);
+	text-decoration: none;
+	font-size: 12px;
+	transition: all 0.15s;
+}
+
+.aitamer-pagination .page-numbers.current {
+	background: var(--at-green);
+	color: #fff !important;
+	border-color: var(--at-green);
+}
+
+.aitamer-pagination .page-numbers:hover:not(.current) {
+	border-color: var(--at-green);
+	color: var(--at-green);
+	background: var(--at-green-dim);
+}
+
+.aitamer-pagination .dots {
+	color: var(--at-muted);
+	padding: 0 4px;
+}

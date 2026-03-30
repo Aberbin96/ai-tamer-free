@@ -19,13 +19,12 @@ class ContentFilterPro extends ContentFilter
 	 *
 	 * @param string $content     Current content.
 	 * @param int    $post_id     Current post ID.
-	 * @param bool   $is_poisoned Whether the content was poisoned.
 	 * @return string Modified content.
 	 */
-	protected function apply_additional_pro_filters(string $content, int $post_id, bool $is_poisoned): string
+	protected function apply_additional_pro_filters(string $content, int $post_id): string
 	{
-		// Only watermark if we're not poisoning (poisoning already has markups).
-		if (!$is_poisoned && class_exists('AiTamer\Watermarker')) {
+		// Pro-specific: apply invisible watermarking (Stylistic DNA).
+		if (class_exists('AiTamer\Watermarker')) {
 			$content = Watermarker::apply($content, $post_id);
 		}
 
