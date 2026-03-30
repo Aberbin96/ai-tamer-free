@@ -1,322 +1,1268 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
-#, fuzzy
+# Copyright (C) 2026 Alejandro Berbin
+# This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-24 23:44+0100\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Project-Id-Version: AI Tamer — Scraper & Crawler Protection 0.1.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ai-tamer-project\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-03-30T20:25:00+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: ai-tamer\n"
 
-#: includes/class-meta-box.php:67
-msgid "AI Tamer Protection"
+#. Plugin Name of the plugin
+#: ai-tamer.php:4
+msgid "AI Tamer — Scraper & Crawler Protection"
 msgstr ""
 
-#: includes/class-meta-box.php:88
-msgid "AI Bot Access"
+#. Plugin URI of the plugin
+#: ai-tamer.php:5
+msgid "https://github.com/Aberbin96/ai-tamer-free"
 msgstr ""
 
-#: includes/class-meta-box.php:92
-msgid "— Inherit global settings —"
+#. Description of the plugin
+#: ai-tamer.php:6
+msgid "Protects your WordPress content from unauthorized AI scraping and training while maintaining SEO visibility."
 msgstr ""
 
-#: includes/class-meta-box.php:95
-msgid "Block all AI bots"
+#. Author of the plugin
+#: ai-tamer.php:7
+msgid "Alejandro Berbin"
 msgstr ""
 
-#: includes/class-meta-box.php:98
-msgid "Block training bots only"
+#. Author URI of the plugin
+#: ai-tamer.php:8
+msgid "https://github.com/Aberbin96/"
 msgstr ""
 
-#: includes/class-meta-box.php:101
-msgid "Allow all AI bots"
+#: admin/class-admin.php:117
+msgid "AI Tamer — Scraper Protection"
 msgstr ""
 
-#: includes/class-meta-box.php:106
-msgid "Override global AI protection for this specific post."
-msgstr ""
-
-#: admin/class-admin.php:71 admin/class-admin.php:72
+#: admin/class-admin.php:118
+#: admin/views/dashboard.php:29
 msgid "AI Tamer"
 msgstr ""
 
-#: admin/class-admin.php:83 admin/class-admin.php:84
+#: admin/class-admin.php:129
+#: admin/class-admin.php:130
 msgid "Dashboard"
 msgstr ""
 
-#: admin/class-admin.php:93 admin/class-admin.php:94
+#: admin/class-admin.php:139
+#: admin/class-admin.php:140
+#: admin/views/settings.php:15
 msgid "Settings"
 msgstr ""
 
-#: admin/class-admin.php:103 admin/class-admin.php:104
+#: admin/class-admin.php:149
+#: admin/class-admin.php:150
+#: admin/views/audit.php:24
 msgid "Audit Reports"
 msgstr ""
 
-#: admin/class-admin.php:113 admin/class-admin.php:114
-msgid "Licensing"
-msgstr ""
-
-#: admin/class-admin.php:135
+#: admin/class-admin.php:184
 msgid "General Protection"
 msgstr ""
 
-#: admin/class-admin.php:142
+#: admin/class-admin.php:191
 msgid "Block training bots in robots.txt"
 msgstr ""
 
-#: admin/class-admin.php:151
+#: admin/class-admin.php:200
 msgid "Inject noai meta tags"
 msgstr ""
 
-#: admin/class-admin.php:160
+#: admin/class-admin.php:209
 msgid "Inject X-Robots-Tag HTTP headers"
 msgstr ""
 
-#: admin/class-admin.php:170
+#: admin/class-admin.php:218
+msgid "Add Crawl-delay to blocked bots"
+msgstr ""
+
+#: admin/class-admin.php:227
+msgid "Crawl-delay (seconds)"
+msgstr ""
+
+#: admin/class-admin.php:236
+msgid "AI License Policy (meta tag)"
+msgstr ""
+
+#: admin/class-admin.php:245
+msgid "Auto-update bot list from GitHub"
+msgstr ""
+
+#: admin/class-admin.php:254
+msgid "Enable llms.txt support"
+msgstr ""
+
+#: admin/class-admin.php:258
+msgid "Exposes a virtual /llms.txt file to help AI agents discover your content and terms."
+msgstr ""
+
+#: admin/class-admin.php:263
+msgid "Active Defense Strategy"
+msgstr ""
+
+#: admin/class-admin.php:276
 msgid "Rate Limiting"
 msgstr ""
 
-#: admin/class-admin.php:177
+#: admin/class-admin.php:283
 msgid "Enable rate limiting for bots"
 msgstr ""
 
-#: admin/class-admin.php:186
+#: admin/class-admin.php:292
 msgid "Max requests per minute (RPM)"
 msgstr ""
 
-#: admin/class-admin.php:196
+#: admin/class-admin.php:302
 msgid "Bandwidth Limiting"
 msgstr ""
 
-#: admin/class-admin.php:203
+#: admin/class-admin.php:309
 msgid "Enable daily bandwidth cap for bots"
 msgstr ""
 
-#: admin/class-admin.php:212
+#: admin/class-admin.php:318
 msgid "Max KB served per bot per day"
 msgstr ""
 
-#: admin/views/dashboard.php:21
-msgid "Total AI Requests Detected"
+#: admin/class-admin.php:449
+msgid "No Training (default)"
 msgstr ""
 
-#: admin/views/dashboard.php:29
-msgid "Protection Status"
+#: admin/class-admin.php:450
+msgid "Allow all AI use"
 msgstr ""
 
-#: admin/views/dashboard.php:31 admin/views/licensing.php:82
-msgid "Active"
+#: admin/class-admin.php:451
+msgid "Allow with attribution"
 msgstr ""
 
-#: admin/views/dashboard.php:34
-msgid "Headers, meta tags and robots.txt rules are live."
+#: admin/class-admin.php:461
+msgid "Select the default license for AI agents visiting your site."
 msgstr ""
 
-#: admin/views/dashboard.php:42
-msgid "Top AI Bots by Activity"
+#: admin/class-admin.php:473
+msgid "Block (Return 401 Unauthorized)"
 msgstr ""
 
-#: admin/views/dashboard.php:44
-msgid "No AI bot activity recorded yet."
+#: admin/class-admin.php:594
+msgid "AI Tamer: Human Origin"
 msgstr ""
 
-#: admin/views/dashboard.php:49
-msgid "Bot Name"
+#: admin/class-admin.php:601
+msgid "Certify this media has human origin (Injects IPTC metadata on save)"
 msgstr ""
 
-#: admin/views/dashboard.php:50
-msgid "Type"
+#: admin/pro/class-admin-pro.php:96
+#: admin/pro/class-admin-pro.php:97
+msgid "Licensing"
 msgstr ""
 
-#: admin/views/dashboard.php:51 admin/views/dashboard.php:84
-msgid "Requests"
+#: admin/pro/class-admin-pro.php:105
+#: admin/pro/class-admin-pro.php:106
+#: admin/pro/views/monetization.php:19
+msgid "Monetization"
 msgstr ""
 
-#: admin/views/dashboard.php:76
-msgid "Most Targeted Content"
+#: admin/pro/class-admin-pro.php:114
+#: admin/pro/class-admin-pro.php:115
+msgid "Technical Standards"
 msgstr ""
 
-#: admin/views/dashboard.php:78
-msgid "No content-specific activity recorded yet."
+#: admin/pro/class-admin-pro.php:274
+msgid "Content Authenticity & Attribution"
 msgstr ""
 
-#: admin/views/dashboard.php:83
-msgid "Post"
+#: admin/pro/class-admin-pro.php:281
+msgid "Enable Invisible Watermarking"
 msgstr ""
 
-#: admin/views/settings.php:15
-msgid ""
-"Control how AI agents interact with your content. Changes take effect "
-"immediately."
+#: admin/pro/class-admin-pro.php:285
+msgid "Injects an invisible cryptographic signature (Zero-Width characters) into your content. Visual appearance remains unchanged."
 msgstr ""
 
-#: admin/views/settings.php:22
-msgid "Save Settings"
+#: admin/pro/class-admin-pro.php:290
+msgid "Active Stylistic DNA (Experimental)"
 msgstr ""
 
-#: admin/views/audit.php:21
-msgid ""
-"Generate a downloadable CSV audit report with evidence of AI bot access to "
-"your content."
+#: admin/pro/class-admin-pro.php:294
+msgid "Deep defense: subtly alters word choices using synonyms (e.g., \"perhaps\" vs \"maybe\") to track content even if rephrased by AI."
 msgstr ""
 
-#: admin/views/audit.php:25
-msgid "Could not generate the report. Please check file system permissions."
+#: admin/pro/class-admin-pro.php:299
+msgid "Enable C2PA Origin Proof (Experimental)"
 msgstr ""
 
-#: admin/views/audit.php:30
-msgid "Download Report"
+#: admin/pro/class-admin-pro.php:303
+msgid "Generates a verifiable digital manifest (JSON-LD) to prove \"Proof of Human Origin\". Note: Automated heuristic detection is experimental and may not be 100% accurate."
 msgstr ""
 
-#: admin/views/audit.php:31
-msgid "Select the time period and download the audit CSV file."
+#: admin/pro/class-admin-pro.php:308
+msgid "Show Verified Human Badge (Frontend)"
 msgstr ""
 
-#: admin/views/audit.php:35
-msgid "Period"
+#: admin/pro/class-admin-pro.php:312
+msgid "Display a visual \"Verified Human\" shield at the bottom of authenticated posts."
 msgstr ""
 
-#: admin/views/audit.php:38
-msgid "Last 7 days"
+#: admin/pro/class-admin-pro.php:318
+msgid "Web3 Data Toll (Crypto Micropayments)"
 msgstr ""
 
-#: admin/views/audit.php:42
-msgid "Last 30 days"
+#: admin/pro/class-admin-pro.php:325
+msgid "Enable Web3 Data Toll"
 msgstr ""
 
-#: admin/views/audit.php:46
-msgid "Last 90 days"
+#: admin/pro/class-admin-pro.php:329
+msgid "Allow AI agents to pay per article request using USDC on the Base network. Requires Active Defense to be set to \"Payment Required\"."
 msgstr ""
 
-#. translators: %s: total number of log records
-#: admin/views/audit.php:56
-#, php-format
-msgid "There are currently %s log records available."
+#: admin/pro/class-admin-pro.php:334
+msgid "Base Wallet Address"
 msgstr ""
 
-#: admin/views/audit.php:63
-msgid ""
-"Reports are saved to wp-content/uploads/aitamer-reports/ and are protected "
-"from direct web access."
+#: admin/pro/class-admin-pro.php:339
+msgid "Your EVM compatible wallet address on the Base network to receive USDC."
 msgstr ""
 
-#: admin/views/licensing.php:42
-msgid ""
-"Issue machine-readable license tokens to trusted AI agents. The agent must "
-"send the token in the X-AI-License-Token HTTP header with each request to "
-"bypass protection rules."
+#: admin/pro/class-admin-pro.php:347
+msgid "USDC Price Per Post"
 msgstr ""
 
-#: admin/views/licensing.php:47
+#: admin/pro/class-admin-pro.php:352
+msgid "Amount of USDC required per article view (e.g. 0.05)."
+msgstr ""
+
+#: admin/pro/class-admin-pro.php:360
+msgid "Base RPC Node URL"
+msgstr ""
+
+#: admin/pro/class-admin-pro.php:365
+msgid "Public RPC node or your personal Alchemy/Infura Base URL used to verify transactions."
+msgstr ""
+
+#: admin/pro/class-admin-pro.php:377
+msgid "Payment Required (Fiat & Crypto - 402)"
+msgstr ""
+
+#: admin/pro/views/licensing.php:50
+msgid "Licensing & API"
+msgstr ""
+
+#: admin/pro/views/licensing.php:51
+msgid "Issue HMAC-signed tokens to trusted AI agents for authorized access and programmatic control."
+msgstr ""
+
+#: admin/pro/views/licensing.php:57
 msgid "Token revoked successfully."
 msgstr ""
 
-#: admin/views/licensing.php:53
-msgid "Token issued. Share it securely with the licensee."
+#: admin/pro/views/licensing.php:63
+msgid "Token issued. Share this securely with the licensee."
 msgstr ""
 
-#: admin/views/licensing.php:59
+#: admin/pro/views/licensing.php:66
 msgid "The agent sends this as: X-AI-License-Token: [token]"
 msgstr ""
 
-#: admin/views/licensing.php:65
-msgid "Issued Tokens"
+#: admin/pro/views/licensing.php:74
+msgid "Active License Tokens"
 msgstr ""
 
-#: admin/views/licensing.php:69
+#: admin/pro/views/licensing.php:76
+#: admin/views/audit.php:119
+#, php-format
+msgid "Showing %d of %s records"
+msgstr ""
+
+#: admin/pro/views/licensing.php:85
+#: admin/views/audit.php:128
+msgid "Search"
+msgstr ""
+
+#: admin/pro/views/licensing.php:86
+msgid "Agent or Token..."
+msgstr ""
+
+#: admin/pro/views/licensing.php:90
+#: admin/pro/views/licensing.php:118
+msgid "Scope"
+msgstr ""
+
+#: admin/pro/views/licensing.php:92
+msgid "All Scopes"
+msgstr ""
+
+#: admin/pro/views/licensing.php:93
+#: admin/pro/views/licensing.php:138
+msgid "Global"
+msgstr ""
+
+#: admin/pro/views/licensing.php:101
+#: admin/pro/views/monetization.php:186
+#: admin/views/audit.php:153
+msgid "Filter"
+msgstr ""
+
+#: admin/pro/views/licensing.php:103
+#: admin/pro/views/monetization.php:188
+#: admin/views/audit.php:155
+msgid "Clear"
+msgstr ""
+
+#: admin/pro/views/licensing.php:108
+msgid "No tokens issued yet. Use the form below to authorize a trusted AI agent."
+msgstr ""
+
+#: admin/pro/views/licensing.php:115
 msgid "Agent"
 msgstr ""
 
-#: admin/views/licensing.php:70
+#: admin/pro/views/licensing.php:116
 msgid "Issued"
 msgstr ""
 
-#: admin/views/licensing.php:71
+#: admin/pro/views/licensing.php:117
 msgid "Expires"
 msgstr ""
 
-#: admin/views/licensing.php:72
+#: admin/pro/views/licensing.php:119
+msgid "Subscription"
+msgstr ""
+
+#: admin/pro/views/licensing.php:120
+msgid "Credits"
+msgstr ""
+
+#: admin/pro/views/licensing.php:121
+#: admin/pro/views/monetization.php:200
+#: admin/views/dashboard.php:54
 msgid "Status"
 msgstr ""
 
-#: admin/views/licensing.php:73
-msgid "Token (truncated)"
+#: admin/pro/views/licensing.php:122
+msgid "Token (preview)"
 msgstr ""
 
-#: admin/views/licensing.php:74
+#: admin/pro/views/licensing.php:123
 msgid "Actions"
 msgstr ""
 
-#: admin/views/licensing.php:81
+#: admin/pro/views/licensing.php:150
+msgid "Direct"
+msgstr ""
+
+#: admin/pro/views/licensing.php:174
 msgid "Expired"
 msgstr ""
 
-#: admin/views/licensing.php:95
+#: admin/pro/views/licensing.php:174
+#: admin/views/dashboard.php:30
+msgid "Active"
+msgstr ""
+
+#: admin/pro/views/licensing.php:179
+msgid "Revoke this token?"
+msgstr ""
+
+#: admin/pro/views/licensing.php:182
 msgid "Revoke"
 msgstr ""
 
-#: admin/views/licensing.php:105
-msgid "No tokens issued yet."
+#: admin/pro/views/licensing.php:198
+#: admin/pro/views/monetization.php:227
+#: admin/views/audit.php:213
+msgid "Prev"
 msgstr ""
 
-#: admin/views/licensing.php:109
+#: admin/pro/views/licensing.php:199
+#: admin/pro/views/monetization.php:228
+#: admin/views/audit.php:214
+msgid "Next"
+msgstr ""
+
+#: admin/pro/views/licensing.php:212
 msgid "Issue New Token"
 msgstr ""
 
-#: admin/views/licensing.php:117
+#: admin/pro/views/licensing.php:219
 msgid "Agent Name"
 msgstr ""
 
-#: admin/views/licensing.php:122
+#: admin/pro/views/licensing.php:223
+msgid "e.g. GPTBot, MyResearchBot"
+msgstr ""
+
+#: admin/pro/views/licensing.php:224
 msgid "The User-Agent name of the licensed crawler."
 msgstr ""
 
-#: admin/views/licensing.php:127
+#: admin/pro/views/licensing.php:229
 msgid "Validity (days)"
 msgstr ""
 
-#: admin/views/licensing.php:135
+#: admin/pro/views/licensing.php:237
+msgid "Stripe Subscription ID"
+msgstr ""
+
+#: admin/pro/views/licensing.php:241
+msgid "Optional. If provided, the token will be invalidated automatically if the subscription is canceled."
+msgstr ""
+
+#: admin/pro/views/licensing.php:246
+msgid "Reading Voucher (Credits)"
+msgstr ""
+
+#: admin/pro/views/licensing.php:250
+msgid "Setting this above 0 turns the token into a \"Reading Voucher\". Access will be blocked once credits reach zero."
+msgstr ""
+
+#: admin/pro/views/licensing.php:255
+msgid "Access Scope"
+msgstr ""
+
+#: admin/pro/views/licensing.php:262
+msgid "Global (All Content)"
+msgstr ""
+
+#: admin/pro/views/licensing.php:263
+msgid "Single Post/Page"
+msgstr ""
+
+#: admin/pro/views/licensing.php:264
+msgid "Category"
+msgstr ""
+
+#: admin/pro/views/licensing.php:274
+msgid "Scope ID (Post or Category ID)"
+msgstr ""
+
+#: admin/pro/views/licensing.php:278
+msgid "Enter the numeric ID of the post or category you want to authorize."
+msgstr ""
+
+#: admin/pro/views/licensing.php:282
 msgid "Generate Token"
 msgstr ""
 
-#: admin/views/licensing.php:140
+#: admin/pro/views/licensing.php:285
 msgid "How It Works"
 msgstr ""
 
-#: admin/views/licensing.php:142
+#: admin/pro/views/licensing.php:287
 msgid "You issue a signed HMAC token to a trusted AI company."
 msgstr ""
 
-#: admin/views/licensing.php:143
-msgid "They include it in every request as the X-AI-License-Token header."
+#: admin/pro/views/licensing.php:288
+msgid "They send it in every request as the X-AI-License-Token header."
 msgstr ""
 
-#: admin/views/licensing.php:144
+#: admin/pro/views/licensing.php:289
 msgid "AI Tamer verifies the signature and bypasses blocking for that agent."
 msgstr ""
 
-#: admin/views/licensing.php:145
+#: admin/pro/views/licensing.php:290
 msgid "Tokens expire automatically after the configured period."
 msgstr ""
 
-#. translators: %s: link to schema.org docs
-#: admin/views/licensing.php:151
-#, php-format
-msgid ""
-"JSON-LD schema.org/CreativeWork blocks and AI-Content-License HTTP headers "
-"are automatically added to every page to signal your licensing intent to AI "
-"crawlers. %s"
+#: admin/pro/views/licensing.php:297
+msgid "API Access Documentation"
 msgstr ""
 
-#: admin/views/licensing.php:152
-msgid "Learn more →"
+#: admin/pro/views/licensing.php:298
+msgid "Programmatic access for licensed AI agents. Serve clean, structured content directly."
+msgstr ""
+
+#: admin/pro/views/licensing.php:304
+msgid "Endpoints"
+msgstr ""
+
+#: admin/pro/views/licensing.php:307
+msgid "Machine-Readable License"
+msgstr ""
+
+#: admin/pro/views/licensing.php:309
+msgid "Public endpoint describing usage terms and how to request access."
+msgstr ""
+
+#: admin/pro/views/licensing.php:315
+msgid "Structured Content"
+msgstr ""
+
+#: admin/pro/views/licensing.php:317
+msgid "Authenticated endpoint serving clean post content in JSON format."
+msgstr ""
+
+#: admin/pro/views/licensing.php:322
+msgid "How to Authenticate"
+msgstr ""
+
+#: admin/pro/views/licensing.php:323
+msgid "AI agents must present a valid HMAC-signed token in the headers of each request."
+msgstr ""
+
+#: admin/pro/views/licensing.php:330
+msgid "Use the \"Active License Tokens\" table above to manage your HMAC keys."
+msgstr ""
+
+#: admin/pro/views/licensing.php:336
+msgid "AI agents must present a valid HMAC-signed token in the headers of each request. You can use either the numeric Post ID or the post slug in the URL."
+msgstr ""
+
+#: admin/pro/views/licensing.php:343
+msgid "Or using the post slug:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:20
+msgid "Set up automated licensing. Allow AI agents to purchase access tokens via Stripe."
+msgstr ""
+
+#: admin/pro/views/monetization.php:29
+msgid "Strategic Recommendation (2026)"
+msgstr ""
+
+#: admin/pro/views/monetization.php:30
+msgid "To maximize revenue while minimizing fee loss, we recommend a phased approach:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:34
+msgid "Baseline control. Understand bot behavior before charging."
+msgstr ""
+
+#: admin/pro/views/monetization.php:37
+msgid "RECOMMENDED"
+msgstr ""
+
+#: admin/pro/views/monetization.php:39
+msgid "Best for cash flow. Avoids the Stripe 0.50€ minimum by selling credits in bulk."
+msgstr ""
+
+#: admin/pro/views/monetization.php:43
+msgid "The future of autonomous agents. Real-time payments (Lightning/L402)."
+msgstr ""
+
+#: admin/pro/views/monetization.php:50
+msgid "Stripe Configuration"
+msgstr ""
+
+#: admin/pro/views/monetization.php:54
+msgid "Enable Monetization"
+msgstr ""
+
+#: admin/pro/views/monetization.php:57
+msgid "If enabled, bots will see \"Purchase\" options in the license document."
+msgstr ""
+
+#: admin/pro/views/monetization.php:61
+msgid "Mode"
+msgstr ""
+
+#: admin/pro/views/monetization.php:64
+msgid "Test Mode"
+msgstr ""
+
+#: admin/pro/views/monetization.php:65
+msgid "Live Mode"
+msgstr ""
+
+#: admin/pro/views/monetization.php:73
+msgid "Test API Keys"
+msgstr ""
+
+#: admin/pro/views/monetization.php:76
+msgid "Test Publishable Key"
+msgstr ""
+
+#: admin/pro/views/monetization.php:80
+msgid "Test Secret Key"
+msgstr ""
+
+#: admin/pro/views/monetization.php:87
+msgid "Live API Keys"
+msgstr ""
+
+#: admin/pro/views/monetization.php:90
+msgid "Live Publishable Key"
+msgstr ""
+
+#: admin/pro/views/monetization.php:94
+msgid "Live Secret Key"
+msgstr ""
+
+#: admin/pro/views/monetization.php:101
+msgid "Licensing Models & Products"
+msgstr ""
+
+#: admin/pro/views/monetization.php:102
+msgid "Define the Stripe Price IDs for your different access tiers."
+msgstr ""
+
+#: admin/pro/views/monetization.php:106
+msgid "V2: Reading Voucher (Prepaid)"
+msgstr ""
+
+#: admin/pro/views/monetization.php:110
+msgid "Recommended Path:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:110
+msgid "Sells a pack of readings (credits) at once. Prevents transaction fees from consuming small payments."
+msgstr ""
+
+#: admin/pro/views/monetization.php:113
+msgid "Initial Credits per Voucher:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:119
+msgid "V2: Enterprise Monthly Access"
+msgstr ""
+
+#: admin/pro/views/monetization.php:123
+msgid "Monthly recurring subscription for high-volume corporate bots."
+msgstr ""
+
+#: admin/pro/views/monetization.php:131
+msgid "Pricing Recommendations"
+msgstr ""
+
+#: admin/pro/views/monetization.php:133
+msgid "Reading Vouchers (V2):"
+msgstr ""
+
+#: admin/pro/views/monetization.php:133
+msgid "Recommended for most sites. Prevents transaction fee loss by selling bulk credits (e.g., $10 for 1,000 readings)."
+msgstr ""
+
+#: admin/pro/views/monetization.php:134
+msgid "Monthly Access:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:134
+msgid "Standard SaaS rates ($19 - $49/mo) are recommended for high-authority niche sites or enterprise LLM crawlers."
+msgstr ""
+
+#: admin/pro/views/monetization.php:135
+msgid "Note:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:135
+msgid "Stripe supports fixed prices or usage-based billing. Ensure your Price ID matches your business model in the Stripe Dashboard."
+msgstr ""
+
+#: admin/pro/views/monetization.php:140
+msgid "Webhook URL"
+msgstr ""
+
+#: admin/pro/views/monetization.php:141
+msgid "Configure your Stripe Webhook to point here:"
+msgstr ""
+
+#: admin/pro/views/monetization.php:143
+msgid "Required events: checkout.session.completed"
+msgstr ""
+
+#: admin/pro/views/monetization.php:155
+msgid "Billing History"
+msgstr ""
+
+#: admin/pro/views/monetization.php:156
+msgid "Recent Transactions"
+msgstr ""
+
+#: admin/pro/views/monetization.php:182
+msgid "Search Agent"
+msgstr ""
+
+#: admin/pro/views/monetization.php:183
+msgid "Agent name..."
+msgstr ""
+
+#: admin/pro/views/monetization.php:196
+msgid "Date"
+msgstr ""
+
+#: admin/pro/views/monetization.php:197
+msgid "Agent / Customer"
+msgstr ""
+
+#: admin/pro/views/monetization.php:198
+msgid "Amount"
+msgstr ""
+
+#: admin/pro/views/monetization.php:199
+msgid "Reference"
+msgstr ""
+
+#: admin/pro/views/monetization.php:238
+msgid "No transactions found yet. Once a bot purchases a license, it will appear here."
+msgstr ""
+
+#: admin/pro/views/standards.php:14
+msgid "Technical Standards & Documentation"
+msgstr ""
+
+#: admin/pro/views/standards.php:15
+msgid "How AI Tamer implements global standards for content provenance and protection."
+msgstr ""
+
+#: admin/pro/views/standards.php:21
+msgid "Our Defense Strategy"
+msgstr ""
+
+#: admin/pro/views/standards.php:23
+msgid "AI Tamer is not just a bot blocker; it is a content integrity system. We follow global standards to ensure that AI agents recognize your authority over your content."
+msgstr ""
+
+#: admin/pro/views/standards.php:27
+msgid "C2PA & Verifiable Provenance"
+msgstr ""
+
+#: admin/pro/views/standards.php:28
+#: admin/pro/views/standards.php:35
+#: admin/pro/views/standards.php:42
+#: admin/pro/views/standards.php:59
+msgid "Why:"
+msgstr ""
+
+#: admin/pro/views/standards.php:28
+msgid "Providing a \"Proof of Human Origin\" helps future AI-driven search engines (like Perplexity or Google AI Overviews) trust your data. By signing your content, you distinguish it from the flood of low-quality synthetic data."
+msgstr ""
+
+#: admin/pro/views/standards.php:29
+#: admin/pro/views/standards.php:60
+msgid "Implementation:"
+msgstr ""
+
+#: admin/pro/views/standards.php:29
+msgid "We attach a DigitalDocument manifest with a SHA-256 integrity hash to every supported post."
+msgstr ""
+
+#: admin/pro/views/standards.php:30
+msgid "C2PA Technical Specs"
+msgstr ""
+
+#: admin/pro/views/standards.php:34
+msgid "Direct Directives (Schema.org)"
+msgstr ""
+
+#: admin/pro/views/standards.php:35
+msgid "Modern AI bots look for these specific fields to determine if they have permission to use your work for training. Being explicit here is your first line of legal and technical defense."
+msgstr ""
+
+#: admin/pro/views/standards.php:36
+msgid "Standard properties to link your AI usage policy and training licenses."
+msgstr ""
+
+#: admin/pro/views/standards.php:37
+msgid "Schema.org Reference"
+msgstr ""
+
+#: admin/pro/views/standards.php:41
+msgid "Deep Defense (IPTC Media Metadata)"
+msgstr ""
+
+#: admin/pro/views/standards.php:42
+msgid "If an image is scraped or downloaded, it loses its connection to your site. By injecting IPTC metadata directly into the file, your \"Human Origin\" certification travels with the asset itself."
+msgstr ""
+
+#: admin/pro/views/standards.php:43
+msgid "We use \"originalMediaDigitalSource\" to certify the asset was captured by a human, not generated by an algorithm."
+msgstr ""
+
+#: admin/pro/views/standards.php:44
+msgid "How to Certify:"
+msgstr ""
+
+#: admin/pro/views/standards.php:44
+msgid "Go to your Media Library, edit any image, and check the \"Human Origin\" box. The metadata will be injected permanently into the file."
+msgstr ""
+
+#: admin/pro/views/standards.php:45
+msgid "IPTC Standards"
+msgstr ""
+
+#: admin/pro/views/standards.php:52
+msgid "We support granular control for modern AI crawlers through robots.txt and X-Robots-Tag."
+msgstr ""
+
+#: admin/pro/views/standards.php:53
+msgid "OpenAI Documentation"
+msgstr ""
+
+#: admin/pro/views/standards.php:54
+msgid "Google Documentation"
+msgstr ""
+
+#: admin/pro/views/standards.php:58
+msgid "llms.txt — Machine-Readable Sitemap"
+msgstr ""
+
+#: admin/pro/views/standards.php:59
+msgid "Large Language Models (LLMs) and RAG agents need a way to quickly discover which content is available and what the licensing terms are without crawling every page."
+msgstr ""
+
+#: admin/pro/views/standards.php:60
+msgid "When enabled in General Settings, AI Tamer serves a dynamic /llms.txt file that points agents to your machine-readable Catalog and License endpoints."
+msgstr ""
+
+#: admin/pro/views/standards.php:61
+msgid "View your llms.txt"
+msgstr ""
+
+#: admin/pro/views/standards.php:66
+msgid "Technical Architecture"
+msgstr ""
+
+#: admin/pro/views/standards.php:69
+msgid "Instead of using ClaimReview (fact-checking), AI Tamer extends CreativeWork with custom properties or uses DigitalDocument with a hash-based identifier to ensure content integrity."
+msgstr ""
+
+#: admin/pro/views/standards.php:72
+msgid "Pro Tip"
+msgstr ""
+
+#: admin/pro/views/standards.php:73
+msgid "Implementing iptc:DigitalSourceType is currently the gold standard for certifying human vs. AI origin in professional media workflows."
+msgstr ""
+
+#: admin/views/audit.php:25
+msgid "Transparent AI bot forensics. Immutable evidence for security auditing."
+msgstr ""
+
+#: admin/views/audit.php:29
+msgid "Generate Evidence (CSV)"
+msgstr ""
+
+#: admin/views/audit.php:36
+msgid "Could not generate the report. Please check file system permissions."
+msgstr ""
+
+#: admin/views/audit.php:53
+msgid "Secure Logs"
+msgstr ""
+
+#: admin/views/audit.php:55
+msgid "Protected access records"
+msgstr ""
+
+#: admin/views/audit.php:58
+msgid "Audit History"
+msgstr ""
+
+#: admin/views/audit.php:59
+msgid "Day"
+msgid_plural "Days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: admin/views/audit.php:60
+msgid "Activity period recorded"
+msgstr ""
+
+#: admin/views/audit.php:67
+msgid "Download Evidence Report"
+msgstr ""
+
+#: admin/views/audit.php:69
+msgid "Select a time period to generate a downloadable CSV audit file."
+msgstr ""
+
+#: admin/views/audit.php:72
+msgid "Last 7 days"
+msgstr ""
+
+#: admin/views/audit.php:75
+msgid "Last 30 days"
+msgstr ""
+
+#: admin/views/audit.php:78
+msgid "Last 90 days"
+msgstr ""
+
+#. translators: %s: total records
+#: admin/views/audit.php:85
+#, php-format
+msgid "There are currently %s access records available in the log database."
+msgstr ""
+
+#: admin/views/audit.php:117
+msgid "Secure Activity Log"
+msgstr ""
+
+#: admin/views/audit.php:129
+msgid "URI or Bot Name..."
+msgstr ""
+
+#: admin/views/audit.php:133
+msgid "Bot Type"
+msgstr ""
+
+#: admin/views/audit.php:135
+msgid "All Types"
+msgstr ""
+
+#: admin/views/audit.php:136
+msgid "Search Engine"
+msgstr ""
+
+#: admin/views/audit.php:137
+msgid "AI Training"
+msgstr ""
+
+#: admin/views/audit.php:138
+msgid "Aggressive Scraper"
+msgstr ""
+
+#: admin/views/audit.php:143
+#: admin/views/audit.php:173
+msgid "Protection"
+msgstr ""
+
+#: admin/views/audit.php:145
+msgid "All Actions"
+msgstr ""
+
+#: admin/views/audit.php:146
+msgid "None (Allowed)"
+msgstr ""
+
+#: admin/views/audit.php:147
+msgid "Blocked (401)"
+msgstr ""
+
+#: admin/views/audit.php:148
+msgid "Payment Req (402)"
+msgstr ""
+
+#: admin/views/audit.php:149
+msgid "Obfuscated"
+msgstr ""
+
+#: admin/views/audit.php:161
+msgid "No matching records found for these filters."
+msgstr ""
+
+#: admin/views/audit.php:168
+msgid "Timestamp"
+msgstr ""
+
+#: admin/views/audit.php:169
+msgid "Bot Identity"
+msgstr ""
+
+#: admin/views/audit.php:170
+msgid "IP Hash"
+msgstr ""
+
+#: admin/views/audit.php:171
+msgid "URI Accessed"
+msgstr ""
+
+#: admin/views/audit.php:172
+#: admin/views/dashboard.php:77
+msgid "Intent"
+msgstr ""
+
+#: admin/views/dashboard.php:32
+msgid "Your content sovereignty command center."
+msgstr ""
+
+#: admin/views/dashboard.php:39
+msgid "Total Detections"
+msgstr ""
+
+#: admin/views/dashboard.php:41
+msgid "AI requests logged"
+msgstr ""
+
+#: admin/views/dashboard.php:44
+msgid "Bots Intercepted"
+msgstr ""
+
+#: admin/views/dashboard.php:46
+msgid "Training bots deterred"
+msgstr ""
+
+#: admin/views/dashboard.php:49
+msgid "Audit Coverage"
+msgstr ""
+
+#: admin/views/dashboard.php:51
+msgid "Continuous protection active"
+msgstr ""
+
+#: admin/views/dashboard.php:56
+msgid "Live"
+msgstr ""
+
+#: admin/views/dashboard.php:58
+msgid "Headers, meta & robots.txt"
+msgstr ""
+
+#: admin/views/dashboard.php:65
+msgid "Top AI Bots by Activity"
+msgstr ""
+
+#: admin/views/dashboard.php:69
+msgid "No AI bot activity recorded yet. Logs will appear after the first detected bot visit."
+msgstr ""
+
+#: admin/views/dashboard.php:76
+msgid "Bot Name"
+msgstr ""
+
+#: admin/views/dashboard.php:78
+#: admin/views/dashboard.php:112
+msgid "Requests"
+msgstr ""
+
+#: admin/views/dashboard.php:100
+msgid "Most Targeted Content"
+msgstr ""
+
+#: admin/views/dashboard.php:104
+msgid "No content-specific activity recorded yet."
+msgstr ""
+
+#: admin/views/dashboard.php:111
+msgid "Post / URL"
+msgstr ""
+
+#: admin/views/settings.php:16
+msgid "Control how AI agents interact with your content. Changes take effect immediately."
+msgstr ""
+
+#: admin/views/settings.php:25
+msgid "Save Settings"
+msgstr ""
+
+#: includes/class-ai-tamer.php:194
+msgid "Every Minute"
+msgstr ""
+
+#: includes/class-meta-box.php:68
+msgid "AI Tamer Protection"
+msgstr ""
+
+#: includes/class-meta-box.php:89
+msgid "AI Bot Access"
+msgstr ""
+
+#: includes/class-meta-box.php:93
+msgid "— Inherit global settings —"
+msgstr ""
+
+#: includes/class-meta-box.php:96
+msgid "Block all AI bots"
+msgstr ""
+
+#: includes/class-meta-box.php:99
+msgid "Block training bots only"
+msgstr ""
+
+#: includes/class-meta-box.php:102
+msgid "Allow all AI bots"
+msgstr ""
+
+#: includes/class-meta-box.php:105
+msgid "Custom / Granular Control"
+msgstr ""
+
+#: includes/class-meta-box.php:112
+msgid "Granular Protections (Internal Targets)"
+msgstr ""
+
+#: includes/class-meta-box.php:123
+msgid "Block Text Training"
+msgstr ""
+
+#: includes/class-meta-box.php:127
+msgid "Block Image Training"
+msgstr ""
+
+#: includes/class-meta-box.php:131
+msgid "Block Video Training"
+msgstr ""
+
+#: includes/class-meta-box.php:146
+msgid "Override global AI protection for this specific post."
+msgstr ""
+
+#: includes/class-protector.php:126
+#: includes/pro/class-rest-api-pro.php:216
+msgid "Payment Required to access this content."
+msgstr ""
+
+#: includes/class-protector.php:128
+#: includes/pro/class-rest-api-pro.php:218
+msgid "For Crypto (L402), submit USDC on Base and use X-AI-Toll-Token."
+msgstr ""
+
+#: includes/class-protector.php:131
+#: includes/pro/class-rest-api-pro.php:221
+msgid "For Fiat, purchase a license via the X-Payment-Link header."
+msgstr ""
+
+#: includes/class-protector.php:136
+msgid "Payment Required"
+msgstr ""
+
+#: includes/class-protector.php:144
+#: includes/pro/class-rest-api-pro.php:234
+msgid "No valid license token found for this content. Use the header X-AI-License-Token: <token>. This content is protected against AI training agents."
+msgstr ""
+
+#: includes/class-protector.php:145
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/pro/class-c2pa-manager.php:132
+msgid "Verified Human Origin"
+msgstr ""
+
+#: includes/pro/class-c2pa-manager.php:139
+msgid "AI-Generated Content"
+msgstr ""
+
+#: includes/pro/class-c2pa-manager.php:146
+msgid "Human-Assisted Content"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:47
+msgid "AI Protection"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:67
+msgid "Protected: IPTC/C2PA injected"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:68
+msgid "Protected"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:70
+msgid "In Queue: Waiting for processing"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:71
+msgid "Pending..."
+msgstr ""
+
+#: includes/pro/class-media-pro.php:73
+msgid "Processing failed"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:74
+msgid "Failed"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:76
+msgid "Not Protected"
+msgstr ""
+
+#: includes/pro/class-media-pro.php:88
+msgid "Certify Human Origin (AI Tamer)"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:31
+#: includes/pro/class-rest-api-pro.php:464
+msgid "Likely AI Generator"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:31
+#: includes/pro/class-rest-api-pro.php:464
+msgid "AI-Assisted?"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:31
+#: includes/pro/class-rest-api-pro.php:464
+msgid "Likely Human"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:35
+msgid "AI Detection Status"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:42
+msgid "Based on pattern analysis (Updated on save)."
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:48
+msgid "Manual Override Active"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:49
+msgid "Content is certified as human-origin for the manifest."
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:60
+msgid "Certify Human Origin (Manual Override)"
+msgstr ""
+
+#: includes/pro/class-meta-box-pro.php:62
+msgid "Experimental (English & Spanish): Declare this content as original human work. Recommended if automated detection is inaccurate."
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:36
+msgid "Post ID or slug."
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:363
+msgid "[Text content restricted by author]"
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:479
+msgid "The provided token is not a Reading Voucher and does not have a wallet balance."
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:494
+msgid "No wallet found for this token ID."
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:558
+msgid "Web3 Toll component is missing."
+msgstr ""
+
+#: includes/pro/class-rest-api-pro.php:572
+msgid "Payment verified successfully."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:50
+msgid "Wallet address not configured in AI Tamer settings."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:54
+msgid "Invalid wallet address format."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:58
+msgid "Invalid transaction hash format."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:63
+msgid "Transaction hash has already been used (Double Spend)."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:87
+msgid "Failed to connect to RPC node: "
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:94
+msgid "Transaction not found or not confirmed on the blockchain."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:100
+msgid "Transaction reverted or failed."
+msgstr ""
+
+#: includes/pro/class-web3-toll.php:137
+msgid "No valid USDC transfer matching the price was found to your wallet in this transaction."
 msgstr ""
