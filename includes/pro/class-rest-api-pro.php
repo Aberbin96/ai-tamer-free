@@ -60,6 +60,16 @@ class RestApiPro extends RestApi
 				'methods'             => 'GET',
 				'callback'            => array($this, 'handle_catalog'),
 				'permission_callback' => '__return_true',
+				'args'                => array(
+					'post_type' => array(
+						'type' => 'string',
+						'sanitize_callback' => 'sanitize_key',
+					),
+					'page' => array(
+						'type' => 'integer',
+						'sanitize_callback' => 'absint',
+					),
+				),
 			)
 		);
 
@@ -313,6 +323,13 @@ class RestApiPro extends RestApi
 			return new WP_Error('aitamer_not_found', 'Post not found or not publicly available.', array('status' => 404));
 		}
 
+		$settings        = get_option('aitamer_settings', array());
+		$protected_types = $settings['protected_post_types'] ?? array('post');
+
+		if (! in_array($post->post_type, $protected_types, true)) {
+			return new WP_Error('aitamer_not_protected', __('This post type is not protected or exposed by the AI Tamer API.', 'ai-tamer'), array('status' => 403));
+		}
+
 		$protection = MetaBox::get_setting((int) $post->ID);
 		if ('block_all' === $protection) {
 			return new WP_Error('aitamer_forbidden', 'The author has restricted AI access to this content.', array('status' => 403));
@@ -435,9 +452,31 @@ class RestApiPro extends RestApi
 	/**
 	 * GET /catalog
 	 */
-	public function handle_catalog(): WP_REST_Response
+	public function handle_catalog(WP_REST_Request $request): WP_REST_Response
 	{
-		$posts_data = get_posts(array('posts_per_page' => 50, 'post_status' => 'publish'));
+		$settings        = get_option('aitamer_settings', array());
+		$protected_types = $settings['protected_post_types'] ?? array('post');
+
+		$requested_type = $request->get_param('post_type');
+		$post_type      = $protected_types;
+
+		if ($requested_type) {
+			if (! in_array($requested_type, $protected_types, true)) {
+				return new WP_REST_Response(array('count' => 0, 'items' => array()), 200);
+			}
+			$post_type = $requested_type;
+		}
+
+		$page     = (int) $request->get_param('page') ?: 1;
+		$per_page = 50;
+		$offset   = ($page - 1) * $per_page;
+
+		$posts_data = get_posts(array(
+			'posts_per_page' => $per_page,
+			'post_status'    => 'publish',
+			'post_type'      => $post_type,
+			'offset'         => $offset,
+		));
 		$catalog = array();
 		foreach ($posts_data as $post) {
 			$protection = MetaBox::get_setting((int) $post->ID);

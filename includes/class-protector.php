@@ -52,6 +52,7 @@ class Protector
 			'license_policy'       => 'no-training',
 			'active_defense'       => 'block',
 			'enable_llms_txt'      => true,
+			'protected_post_types' => array('post'),
 		);
 		$saved = get_option('aitamer_settings', array());
 		return wp_parse_args($saved, $defaults);
@@ -63,11 +64,13 @@ class Protector
 	 */
 	public function handle_active_defense(): void
 	{
-		if (! is_singular('post')) {
+		$settings = $this->get_settings();
+		$protected_types = $settings['protected_post_types'] ?? array('post');
+
+		if (! is_singular($protected_types)) {
 			return;
 		}
 
-		$settings = $this->get_settings();
 		$defense  = $settings['active_defense'] ?? Enums\DefenseStrategy::BLOCK->value;
 
 		// Only handle BLOCK and PAYMENT here.
@@ -257,7 +260,7 @@ class Protector
 
 		echo "## Machine-Readable Endpoints\n";
 		echo "- AI License & Terms: " . home_url('/wp-json/ai-tamer/v1/license') . "\n";
-		echo "- Content Catalog (RAG/MCP): " . home_url('/wp-json/ai-tamer/v1/catalog') . "\n\n";
+		echo "- Content Catalog (RAG/MCP): " . home_url('/wp-json/ai-tamer/v1/catalog') . " (?post_type=xxx&page=1)\n\n";
 
 		echo "## Instructions for AI Agents\n";
 		echo "1. This site uses AI Tamer to protect its content.\n";

@@ -252,6 +252,15 @@ class AdminPro
 	 */
 	public function sanitize_pro_stripe_settings(array $settings, array $input): array
 	{
+		$settings['enabled']               = (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no';
+		$settings['test_mode']             = (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes';
+		$settings['test_publishable']      = sanitize_text_field($input['test_publishable'] ?? '');
+		$settings['test_secret']           = sanitize_text_field($input['test_secret'] ?? '');
+		$settings['live_publishable']      = sanitize_text_field($input['live_publishable'] ?? '');
+		$settings['live_secret']           = sanitize_text_field($input['live_secret'] ?? '');
+		$settings['price_id']              = sanitize_text_field($input['price_id'] ?? '');
+		$settings['price_id_micropayment'] = sanitize_text_field($input['price_id_micropayment'] ?? '');
+
 		if (isset($input['price_id_voucher'])) {
 			$settings['price_id_voucher'] = sanitize_text_field($input['price_id_voucher']);
 		}

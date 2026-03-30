@@ -34,6 +34,7 @@ use function get_permalink;
 use function home_url;
 use function number_format_i18n;
 use function register_setting;
+use function get_post_types;
 use function settings_fields;
 use function status_header;
 use function submit_button;
@@ -267,6 +268,15 @@ class Admin
 			array()
 		);
 
+		add_settings_field(
+			'protected_post_types',
+			__('Protected Post Types', 'ai-tamer'),
+			array($this, 'render_post_types_field'),
+			'ai-tamer-settings',
+			'aitamer_general',
+			array()
+		);
+
 		// Register Pro settings via hook (obfuscated from Free).
 		do_action('aitamer_admin_register_settings', $this);
 
@@ -354,6 +364,7 @@ class Admin
 			'enable_llms_txt'         => ! empty($input['enable_llms_txt']),
 			'active_defense'          => $defense,
 			'license_policy'          => LicensePolicy::NO_TRAINING->value,
+			'protected_post_types'    => isset($input['protected_post_types']) && is_array($input['protected_post_types']) ? array_map('sanitize_text_field', $input['protected_post_types']) : array('post'),
 		);
 
 		if (isset($input['license_policy'])) {
@@ -381,18 +392,9 @@ class Admin
 			return get_option('aitamer_stripe_settings', array());
 		}
 
-		$settings = array(
-			'enabled'               => (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no',
-			'test_mode'             => (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes',
-			'test_publishable'      => sanitize_text_field($input['test_publishable'] ?? ''),
-			'test_secret'           => sanitize_text_field($input['test_secret'] ?? ''),
-			'live_publishable'      => sanitize_text_field($input['live_publishable'] ?? ''),
-			'live_secret'           => sanitize_text_field($input['live_secret'] ?? ''),
-			'price_id'              => sanitize_text_field($input['price_id'] ?? ''),
-			'price_id_micropayment' => sanitize_text_field($input['price_id_micropayment'] ?? ''),
-		);
+		$settings = array(); // Handled completely by Pro
 
-		// Let Pro handle extra Stripe fields.
+		// Let Pro handle Stripe fields.
 		return apply_filters('aitamer_admin_sanitize_stripe_settings', $settings, $input);
 	}
 
@@ -489,6 +491,32 @@ class Admin
 
 		// Let Pro render extra description or preview buttons.
 		do_action('aitamer_admin_render_defense_footer', $selected);
+	}
+
+	/**
+	 * Renders the protected post types checkboxes.
+	 */
+	public function render_post_types_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		$selected = $settings['protected_post_types'] ?? array('post');
+
+		$post_types = get_post_types(array('public' => true), 'objects');
+
+		echo '<fieldset><legend class="screen-reader-text"><span>' . esc_html__('Protected Post Types', 'ai-tamer') . '</span></legend>';
+		foreach ($post_types as $pt) {
+			if ('attachment' === $pt->name) {
+				continue;
+			}
+			printf(
+				'<label><input type="checkbox" name="aitamer_settings[protected_post_types][]" value="%s" %s> %s</label><br>',
+				esc_attr($pt->name),
+				checked(in_array($pt->name, (array) $selected, true), true, false),
+				esc_html($pt->label)
+			);
+		}
+		echo '</fieldset>';
+		echo '<p class="description">' . esc_html__('Select which post types should be protected by AI Tamer.', 'ai-tamer') . '</p>';
 	}
 
 	/**

@@ -38,6 +38,7 @@ $aitamer_total_pages = ceil( $aitamer_count / $aitamer_per_page );
 // API Documentation data.
 $aitamer_rest_url    = get_rest_url(null, 'ai-tamer/v1');
 $aitamer_license_url = $aitamer_rest_url . '/license';
+$aitamer_catalog_url = $aitamer_rest_url . '/catalog';
 $aitamer_content_url = $aitamer_rest_url . '/content/{post_id}';
 $aitamer_sample_token = 'your-hmac-token-here';
 $aitamer_scope_type  = \AiTamer\Enums\LicenseScope::GLOBAL->value;
@@ -316,6 +317,14 @@ $aitamer_scope_id    = '';
 				<h3><?php esc_html_e('Structured Content', 'ai-tamer'); ?></h3>
 				<code>GET <?php echo esc_url($aitamer_content_url); ?></code>
 				<p class="description"><?php esc_html_e('Authenticated endpoint serving clean post content in JSON format.', 'ai-tamer'); ?></p>
+			</div>
+
+			<hr style="border:0; border-top: 1px solid var(--at-border); margin: 20px 0;" />
+
+			<div class="aitamer-endpoint-group">
+				<h3><?php esc_html_e('Content Catalog', 'ai-tamer'); ?></h3>
+				<code>GET <?php echo esc_url($aitamer_catalog_url); ?>?post_type=post&amp;page=1</code>
+				<p class="description"><?php esc_html_e('Retrieve a list of protected content available on the site. You can filter by protected post types.', 'ai-tamer'); ?></p>
 			</div>
 		</div>
 

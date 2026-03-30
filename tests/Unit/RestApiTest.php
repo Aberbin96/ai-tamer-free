@@ -64,8 +64,16 @@ class RestApiTest extends TestCase
 			->atLeast()->once()
 			->andReturn('https://example.com');
 
+		Monkey\Functions\expect('get_option')
+			->with('aitamer_settings', array())
+			->andReturn(array('protected_post_types' => array('post')));
+
+		$request = \Mockery::mock('WP_REST_Request');
+		$request->allows('get_param')->with('post_type')->andReturn('post');
+		$request->allows('get_param')->with('page')->andReturn(1);
+
 		$api = new RestApiPro();
-		$response = $api->handle_catalog();
+		$response = $api->handle_catalog($request);
 		$data = $response->get_data();
 
 		$this->assertEquals(1, $data['count']);
@@ -86,6 +94,7 @@ class RestApiTest extends TestCase
 			'post_title' => 'Post with Image',
 			'post_content' => 'Text <img src="test.jpg"> more text',
 			'post_status' => 'publish',
+			'post_type' => 'post',
 			'post_author' => 1,
 			'post_date_gmt' => '2026-03-25 00:00:00',
 			'post_modified_gmt' => '2026-03-25 00:00:00',
@@ -93,6 +102,9 @@ class RestApiTest extends TestCase
 		);
 
 		Monkey\Functions\expect('get_post')->andReturn($mock_post);
+		Monkey\Functions\expect('get_option')
+			->with('aitamer_settings', array())
+			->andReturn(array('protected_post_types' => array('post')));
 		Monkey\Functions\expect('get_post_meta')
 			->with(123, '_aitamer_block_images', true)
 			->andReturn('yes');
