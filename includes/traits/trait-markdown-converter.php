@@ -47,7 +47,7 @@ trait MarkdownConverter {
 		$markdown = preg_replace( '/<br\s*\/?>/i', "\n", $markdown );
 
 		// 3. Strip all remaining HTML tags and decode entities.
-		$markdown = strip_tags( $markdown );
+		$markdown = wp_strip_all_tags( $markdown, false );
 		$markdown = html_entity_decode( $markdown, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
 
 		// 4. Cleanup excessive whitespace.
@@ -63,7 +63,7 @@ trait MarkdownConverter {
 	 * @return int Word count.
 	 */
 	public function get_word_count( string $text ): int {
-		return str_word_count( strip_tags( $text ) );
+		return str_word_count( wp_strip_all_tags( (string) $text ) );
 	}
 
 	/**

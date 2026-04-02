@@ -6,146 +6,117 @@
  * @package Ai_Tamer
  */
 
-use AiTamer\StripeManager;
+use AiTamer\BillingManager;
 use AiTamer\Enums\TransactionStatus;
 
 defined('ABSPATH') || exit;
 
-$settings = StripeManager::get_settings();
+$settings = get_option('aitamer_settings', array());
 ?>
 <div class="wrap aitamer-wrap">
-
 	<div class="aitamer-page-header">
 		<div>
-			<h1 class="aitamer-page-title"><?php esc_html_e('Monetization', 'ai-tamer'); ?> <span class="aitamer-badge aitamer-badge-pro">PRO</span></h1>
-			<p class="aitamer-page-desc"><?php esc_html_e('Set up automated licensing. Allow AI agents to purchase access tokens via Stripe.', 'ai-tamer'); ?></p>
+			<h1 class="aitamer-page-title"><?php esc_html_e('Monetization', 'ai-tamer'); ?></h1>
+			<p class="aitamer-page-desc"><?php esc_html_e('Set up automated licensing and Lightning micro-payments.', 'ai-tamer'); ?></p>
 		</div>
 	</div>
 
 	<?php
-	// ── Lightning Streaming Analytics Widget ───────────────────────────────────
-	$aitlnx_lnbits   = \AiTamer\Plugin::get_instance()->get_component('lnbits_manager');
-	$aitlnx_enabled  = $aitlnx_lnbits && $aitlnx_lnbits->is_enabled();
-
-	// Load initial data from DB (server-side render; JS will overwrite on first poll).
-	global $wpdb;
-	$aitlnx_billing_table = $wpdb->prefix . \AiTamer\StripeManager::TABLE;
-	$aitlnx_total_sats    = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		"SELECT SUM(amount) FROM `{$aitlnx_billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
-	);
-	$aitlnx_total_tx      = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		"SELECT COUNT(*) FROM `{$aitlnx_billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
-	);
-	$aitlnx_recent_tx     = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		"SELECT agent_name, amount, currency, provider_id, created_at FROM `{$aitlnx_billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT' ORDER BY id DESC LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL
-		ARRAY_A
-	) ?: array();
-
-	$aitlnx_wallet_sat = null;
-	$aitlnx_wallet_name = '';
-	if ($aitlnx_enabled) {
-		$aitlnx_wallet_result = $aitlnx_lnbits->get_wallet_balance();
-		if (! is_wp_error($aitlnx_wallet_result)) {
-			$aitlnx_wallet_sat  = $aitlnx_wallet_result['balance_sat'];
-			$aitlnx_wallet_name = $aitlnx_wallet_result['name'];
-		}
-	}
-
-	$aitlnx_btc_rate = get_transient(\AiTamer\PricingEngine::RATE_TRANSIENT_KEY);
+	\AiTamer\Admin::get_instance()->render_navigation_tabs();
 	?>
 
-	<div class="aitamer-card" id="aitlnx-widget" style="margin-bottom: 30px; border-top: 3px solid #f7931a;">
+	<?php
+	// ── USDT P2P Analytics Widget ──────────────────────────────────────────────
+	$usdt_address  = $settings['usdt_address'] ?? '';
+	$usdt_network  = $settings['usdt_network'] ?? 'polygon';
+	$usdt_enabled  = ! empty($usdt_address);
+
+	// Load initial data from DB.
+	global $wpdb;
+	$billing_table = $wpdb->prefix . BillingManager::TABLE;
+	$tolls_table   = $wpdb->prefix . 'aitamer_tolls';
+	
+	$total_usdt = (float) ($wpdb->get_var(
+		$wpdb->prepare("SELECT SUM(amount_usdt) FROM `{$tolls_table}` WHERE status = %s", 'paid')
+	) ?: 0);
+	
+	$total_tx = (int) ($wpdb->get_var(
+		$wpdb->prepare("SELECT COUNT(*) FROM `{$tolls_table}` WHERE status = %s", 'paid')
+	) ?: 0);
+
+	$recent_tx = $wpdb->get_results(
+		$wpdb->prepare("SELECT * FROM `{$tolls_table}` WHERE status = %s ORDER BY id DESC LIMIT 5", 'paid'),
+		ARRAY_A
+	) ?: array();
+	?>
+
+	<div class="aitamer-card" id="aitusdt-widget" style="margin-bottom: 30px;">
 		<div class="aitamer-card-header" style="display:flex; align-items:center; gap:12px;">
 			<h2 class="aitamer-card-title" style="margin:0; flex:1;">
-				<span style="color:#f7931a;">⚡</span> <?php esc_html_e('Lightning Streaming Analytics', 'ai-tamer'); ?>
-				<span class="aitamer-badge" style="background:#f7931a;">V3 · LIVE</span>
+				<span style="color:#26a17b;">₮</span> <?php esc_html_e('USDT P2P Analytics', 'ai-tamer'); ?>
+				<span class="aitamer-badge" style="background:#26a17b;">NON-CUSTODIAL</span>
 			</h2>
-			<span id="aitlnx-live-dot" style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#f7931a; vertical-align:middle;" title="<?php esc_attr_e('Live — polling every 30s', 'ai-tamer'); ?>"></span>
-			<small id="aitlnx-last-updated" style="color:#888; font-style:italic;"><?php esc_html_e('Loading…', 'ai-tamer'); ?></small>
-			<button id="aitlnx-refresh-btn" class="aitamer-btn-ghost" style="font-size:12px;" type="button" title="<?php esc_attr_e('Refresh now', 'ai-tamer'); ?>">↺ <?php esc_html_e('Refresh', 'ai-tamer'); ?></button>
-			<span id="aitlnx-error-badge" style="display:none; background:#d63638; color:#fff; font-size:11px; padding:2px 8px; border-radius:10px;"></span>
+			<small style="color:#888; font-style:italic;"><?php esc_html_e('Direct Blockchain Payments', 'ai-tamer'); ?></small>
 		</div>
 
-		<?php if (! $aitlnx_enabled) : ?>
-			<div class="aitamer-info-box" style="background:#fff8e5; border-left-color:#f7931a; margin-top:15px;">
-				<p><?php esc_html_e('Enable Lightning Micropayments in the settings below to start receiving Satoshi streaming payments from AI agents.', 'ai-tamer'); ?></p>
+		<?php if (! $usdt_enabled) : ?>
+			<div class="aitamer-info-box" style="background:#fff8e5; border-left-color:#26a17b; margin-top:15px;">
+				<p><?php esc_html_e('Configure your USDT Wallet Address in the settings below to start receiving direct payments from AI agents.', 'ai-tamer'); ?></p>
+			</div>
+		<?php else : ?>
+			<div style="background:#f0fbf8; padding:10px; border-radius:4px; margin-top:15px; font-family:monospace; font-size:12px; color:#266353;">
+				<strong><?php esc_html_e('Receiving Address:', 'ai-tamer'); ?></strong> <?php echo esc_html($usdt_address); ?> 
+				<span class="aitamer-badge" style="background:#26a17b; font-size:9px; vertical-align:middle;"><?php echo esc_html(strtoupper($usdt_network)); ?></span>
 			</div>
 		<?php endif; ?>
 
 		<!-- Metric row -->
 		<div class="aitamer-metrics" style="margin-top:20px;">
-			<div class="aitamer-metric" style="border-top:3px solid #f7931a;">
-				<div class="aitamer-metric-label"><?php esc_html_e('Total Sats Earned', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value" id="aitlnx-total-sats" style="color:#f7931a;"><?php echo esc_html(number_format_i18n($aitlnx_total_sats)); ?> <small style="font-size:14px;">sats</small></div>
-				<div class="aitamer-metric-sub"><?php esc_html_e('All-time Lightning revenue', 'ai-tamer'); ?></div>
+			<div class="aitamer-metric" style="border-top:3px solid #26a17b;">
+				<div class="aitamer-metric-label"><?php esc_html_e('Total USDT Earned', 'ai-tamer'); ?></div>
+				<div class="aitamer-metric-value" style="color:#26a17b;"><?php echo esc_html(number_format_i18n($total_usdt, 4)); ?> <small style="font-size:14px;">USDT</small></div>
+				<div class="aitamer-metric-sub"><?php esc_html_e('Direct P2P Revenue', 'ai-tamer'); ?></div>
 			</div>
 			<div class="aitamer-metric" style="border-top:3px solid #2271b1;">
-				<div class="aitamer-metric-label"><?php esc_html_e('LN Transactions', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value" id="aitlnx-total-tx"><?php echo esc_html(number_format_i18n($aitlnx_total_tx)); ?></div>
-				<div class="aitamer-metric-sub"><?php esc_html_e('Verified L402 payments', 'ai-tamer'); ?></div>
-			</div>
-			<div class="aitamer-metric" style="border-top:3px solid #00a32a;">
-				<div class="aitamer-metric-label"><?php esc_html_e('Wallet Balance', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value" id="aitlnx-wallet-balance" title="<?php echo esc_attr($aitlnx_wallet_name); ?>">
-					<?php if ($aitlnx_wallet_sat !== null) : ?>
-						<?php echo esc_html(number_format_i18n($aitlnx_wallet_sat)); ?> <small style="font-size:14px;">sats</small>
-					<?php elseif ($aitlnx_enabled) : ?>
-						<span style="color:#888;">—</span>
-					<?php else : ?>
-						<span style="color:#888;" title="<?php esc_attr_e('Configure LNbits to see wallet balance', 'ai-tamer'); ?>">—</span>
-					<?php endif; ?>
-				</div>
-				<div class="aitamer-metric-sub"><?php esc_html_e('Live LNbits node balance', 'ai-tamer'); ?></div>
+				<div class="aitamer-metric-label"><?php esc_html_e('Verified Transactions', 'ai-tamer'); ?></div>
+				<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n($total_tx)); ?></div>
+				<div class="aitamer-metric-sub"><?php esc_html_e('Confirmed via Verifier API', 'ai-tamer'); ?></div>
 			</div>
 			<div class="aitamer-metric" style="border-top:3px solid #888;">
-				<div class="aitamer-metric-label"><?php esc_html_e('BTC Price (USD)', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value" id="aitlnx-btc-rate" style="font-size:18px;">
-					<?php
-					if (is_array($aitlnx_btc_rate) && isset($aitlnx_btc_rate['usd'])) {
-						echo 'USD ' . esc_html(number_format_i18n($aitlnx_btc_rate['usd'], 0));
-					} else {
-						echo '<span style="color:#888;">—</span>';
-					}
-					?>
-				</div>
-				<div class="aitamer-metric-sub"><?php esc_html_e('CoinGecko · 15 min cache', 'ai-tamer'); ?></div>
+				<div class="aitamer-metric-label"><?php esc_html_e('Toll Precision', 'ai-tamer'); ?></div>
+				<div class="aitamer-metric-value" style="font-size:18px;">6 Decimals</div>
+				<div class="aitamer-metric-sub"><?php esc_html_e('Embedded Post-ID tracking', 'ai-tamer'); ?></div>
 			</div>
 		</div>
 
-		<!-- Recent micro-transactions table -->
+		<!-- Recent Transactions -->
 		<div style="margin-top:25px;">
-			<h3 style="margin-bottom:10px;"><?php esc_html_e('Recent Micro-transactions', 'ai-tamer'); ?></h3>
+			<h3 style="margin-bottom:10px;"><?php esc_html_e('Recent USDT Payments', 'ai-tamer'); ?></h3>
 			<div class="aitamer-table-responsive">
 				<table class="aitamer-table">
 					<thead>
 						<tr>
 							<th><?php esc_html_e('Date', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Agent', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Network', 'ai-tamer'); ?></th>
 							<th><?php esc_html_e('Amount', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Payment Hash', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Transaction Hash', 'ai-tamer'); ?></th>
 						</tr>
 					</thead>
-					<tbody id="aitlnx-recent-tbody">
-						<?php if (empty($aitlnx_recent_tx)) : ?>
+					<tbody>
+						<?php if (empty($recent_tx)) : ?>
 							<tr>
 								<td colspan="4" style="text-align:center; color:#999;">
-									<?php esc_html_e('No Lightning transactions yet. Once an AI agent pays via L402, it will appear here.', 'ai-tamer'); ?>
+									<?php esc_html_e('No USDT transactions found yet.', 'ai-tamer'); ?>
 								</td>
 							</tr>
 						<?php else : ?>
-							<?php foreach ($aitlnx_recent_tx as $aitlnx_tx) :
-								$hash_display = substr($aitlnx_tx['provider_id'], 3, 16) . '…'; // strip 'ln_' prefix
-							?>
+							<?php foreach ($recent_tx as $tx) : ?>
 								<tr>
-									<td class="mono" style="white-space:nowrap;">
-										<?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($aitlnx_tx['created_at']))); ?>
-									</td>
-									<td><?php echo esc_html($aitlnx_tx['agent_name']); ?></td>
-									<td style="font-weight:600; color:#f7931a;">
-										<?php echo esc_html(number_format_i18n((int) $aitlnx_tx['amount']) . ' sats'); ?>
-									</td>
-									<td class="mono" title="<?php echo esc_attr($aitlnx_tx['provider_id']); ?>">
-										<?php echo esc_html($hash_display); ?>
+									<td class="mono"><?php echo esc_html(date_i18n((string) get_option('date_format') . ' ' . (string) get_option('time_format'), strtotime((string) ($tx['created_at'] ?? 'now')))); ?></td>
+									<td><span class="aitamer-badge" style="background:#eee; color:#666;"><?php echo esc_html(strtoupper((string) ($tx['network'] ?? ''))); ?></span></td>
+									<td style="font-weight:600; color:#26a17b;"><?php echo esc_html($tx['amount_usdt']); ?> <small>USDT</small></td>
+									<td class="mono" title="<?php echo esc_attr((string) ($tx['transaction_hash'] ?? '')); ?>">
+										<?php echo esc_html(substr((string) ($tx['transaction_hash'] ?? ''), 0, 10) . '…'); ?>
 									</td>
 								</tr>
 							<?php endforeach; ?>
@@ -154,149 +125,8 @@ $settings = StripeManager::get_settings();
 				</table>
 			</div>
 		</div>
-	</div><!-- /#aitlnx-widget -->
 
-	<style>
-		@keyframes aitlnx-pulse {
-
-			0%,
-			100% {
-				opacity: 1;
-				transform: scale(1);
-			}
-
-			50% {
-				opacity: .4;
-				transform: scale(1.25);
-			}
-		}
-
-		#aitlnx-live-dot.aitlnx-pulsing {
-			animation: aitlnx-pulse 1.2s ease-in-out infinite;
-		}
-	</style>
-
-	<form method="post" action="options.php">
-		<?php settings_fields('aitamer_settings_group'); ?>
-
-		<div class="aitamer-grid">
-			<div class="aitamer-card">
-				<h2 class="aitamer-card-title"><?php esc_html_e('Stripe Configuration', 'ai-tamer'); ?></h2>
-
-				<table class="form-table">
-					<tr>
-						<th scope="row"><?php esc_html_e('Enable Monetization', 'ai-tamer'); ?></th>
-						<td>
-							<input type="checkbox" name="aitamer_stripe_settings[enabled]" value="yes" <?php checked($settings['enabled'], 'yes'); ?> />
-							<p class="description"><?php esc_html_e('If enabled, bots will see "Purchase" options in the license document.', 'ai-tamer'); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e('Mode', 'ai-tamer'); ?></th>
-						<td>
-							<select name="aitamer_stripe_settings[test_mode]">
-								<option value="yes" <?php selected($settings['test_mode'], 'yes'); ?>><?php esc_html_e('Test Mode', 'ai-tamer'); ?></option>
-								<option value="no" <?php selected($settings['test_mode'], 'no'); ?>><?php esc_html_e('Live Mode', 'ai-tamer'); ?></option>
-							</select>
-						</td>
-					</tr>
-				</table>
-
-				<hr />
-
-				<h3><?php esc_html_e('Test API Keys', 'ai-tamer'); ?></h3>
-				<table class="form-table">
-					<tr>
-						<th scope="row"><?php esc_html_e('Test Publishable Key', 'ai-tamer'); ?></th>
-						<td><input type="text" name="aitamer_stripe_settings[test_publishable]" value="<?php echo esc_attr($settings['test_publishable']); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e('Test Secret Key', 'ai-tamer'); ?></th>
-						<td><input type="password" name="aitamer_stripe_settings[test_secret]" value="<?php echo esc_attr($settings['test_secret']); ?>" class="regular-text" /></td>
-					</tr>
-				</table>
-
-				<hr />
-
-				<h3><?php esc_html_e('Live API Keys', 'ai-tamer'); ?></h3>
-				<table class="form-table">
-					<tr>
-						<th scope="row"><?php esc_html_e('Live Publishable Key', 'ai-tamer'); ?></th>
-						<td><input type="text" name="aitamer_stripe_settings[live_publishable]" value="<?php echo esc_attr($settings['live_publishable']); ?>" class="regular-text" /></td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e('Live Secret Key', 'ai-tamer'); ?></th>
-						<td><input type="password" name="aitamer_stripe_settings[live_secret]" value="<?php echo esc_attr($settings['live_secret']); ?>" class="regular-text" /></td>
-					</tr>
-				</table>
-			</div>
-
-			<div class="aitamer-card">
-				<h2 class="aitamer-card-title"><?php esc_html_e('Licensing Models & Products', 'ai-tamer'); ?></h2>
-				<p><?php esc_html_e('Define the Stripe Price IDs for your different access tiers.', 'ai-tamer'); ?></p>
-
-				<table class="form-table">
-					<tr>
-						<th scope="row"><?php esc_html_e('V2: Reading Voucher (Prepaid)', 'ai-tamer'); ?></th>
-						<td>
-							<input type="text" name="aitamer_stripe_settings[price_id_voucher]" value="<?php echo esc_attr($settings['price_id_voucher'] ?? ''); ?>" class="regular-text" placeholder="price_..." />
-							<p class="description">
-								<strong><?php esc_html_e('Recommended Path:', 'ai-tamer'); ?></strong> <?php esc_html_e('Sells a pack of readings (credits) at once. Prevents transaction fees from consuming small payments.', 'ai-tamer'); ?>
-							</p>
-							<div style="margin-top:10px;">
-								<label style="display:inline-block; width:180px;"><?php esc_html_e('Initial Credits per Voucher:', 'ai-tamer'); ?></label>
-								<input type="number" name="aitamer_stripe_settings[voucher_credits]" value="<?php echo esc_attr($settings['voucher_credits'] ?? 1000); ?>" class="small-text" />
-								<span class="description"><?php esc_html_e('(0 = Unlimited)', 'ai-tamer'); ?></span>
-							</div>
-							<div style="margin-top:10px;">
-								<label style="display:inline-block; width:180px;"><?php esc_html_e('Validity (Days):', 'ai-tamer'); ?></label>
-								<input type="number" name="aitamer_stripe_settings[voucher_validity_days]" value="<?php echo esc_attr($settings['voucher_validity_days'] ?? 365); ?>" class="small-text" />
-								<span class="description"><?php esc_html_e('(0 = Forever)', 'ai-tamer'); ?></span>
-							</div>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e('V2: Enterprise Monthly Access', 'ai-tamer'); ?></th>
-						<td>
-							<input type="text" name="aitamer_stripe_settings[price_id]" value="<?php echo esc_attr($settings['price_id']); ?>" class="regular-text" placeholder="price_..." />
-							<p class="description">
-								<?php esc_html_e('Monthly recurring subscription for high-volume corporate bots.', 'ai-tamer'); ?>
-							</p>
-						</td>
-					</tr>
-					<!-- V1: Single Article removed as per request -->
-				</table>
-
-				<div class="aitamer-info-box" style="margin-top:20px; background: #fffcf0; border-left-color: #f1c40f;">
-					<h3>💡 <?php esc_html_e('Pricing Recommendations', 'ai-tamer'); ?></h3>
-					<ul style="list-style:disc; margin-left: 20px;">
-						<li><strong><?php esc_html_e('Reading Vouchers (V2):', 'ai-tamer'); ?></strong> <?php esc_html_e('Recommended for most sites. Prevents transaction fee loss by selling bulk credits (e.g., $10 for 1,000 readings).', 'ai-tamer'); ?></li>
-						<li><strong><?php esc_html_e('Monthly Access:', 'ai-tamer'); ?></strong> <?php esc_html_e('Standard SaaS rates ($19 - $49/mo) are recommended for high-authority niche sites or enterprise LLM crawlers.', 'ai-tamer'); ?></li>
-						<li><strong><?php esc_html_e('Note:', 'ai-tamer'); ?></strong> <?php esc_html_e('Stripe supports fixed prices or usage-based billing. Ensure your Price ID matches your business model in the Stripe Dashboard.', 'ai-tamer'); ?></li>
-					</ul>
-				</div>
-
-				<div class="aitamer-info-box" style="margin-top:20px;">
-					<h3><?php esc_html_e('Webhook URL', 'ai-tamer'); ?></h3>
-					<p><?php esc_html_e('Configure your Stripe Webhook to point here:', 'ai-tamer'); ?></p>
-					<code><?php echo esc_url(home_url('/wp-json/ai-tamer/v1/stripe/webhook')); ?></code>
-					<p class="description"><?php esc_html_e('Required events: checkout.session.completed', 'ai-tamer'); ?></p>
-				</div>
-			</div>
-		</div>
-
-		<?php
-		// Render Web3 Data Toll and other sections registered to this page.
-		do_settings_sections('ai-tamer-monetization');
-		?>
-
-		<?php submit_button(); ?>
-	</form>
-
-	<hr />
-
-	<div class="aitamer-card">
-		<div class="aitamer-card-header">
+		<div class="aitamer-card-header" style="margin-top:25px;">
 			<h2 class="aitamer-card-title"><?php esc_html_e('Billing History', 'ai-tamer'); ?></h2>
 			<span class="aitamer-badge"><?php esc_html_e('Recent Transactions', 'ai-tamer'); ?></span>
 		</div>
@@ -313,9 +143,9 @@ $settings = StripeManager::get_settings();
 			's'      => $aitamer_billing_search,
 		);
 
-		$stripe_manager = \AiTamer\Plugin::get_instance()->get_component('stripe_manager');
-		$transactions   = $stripe_manager ? $stripe_manager->get_transactions($aitamer_billing_args) : array();
-		$aitamer_billing_total = $stripe_manager ? $stripe_manager->count_transactions($aitamer_billing_args) : 0;
+		$billing_manager = \AiTamer\Plugin::get_instance()->get_component('billing_manager');
+		$transactions    = $billing_manager ? $billing_manager->get_transactions($aitamer_billing_args) : array();
+		$aitamer_billing_total = $billing_manager ? $billing_manager->count_transactions($aitamer_billing_args) : 0;
 		$aitamer_billing_pages = ceil($aitamer_billing_total / $aitamer_billing_per_page);
 		?>
 
@@ -348,14 +178,14 @@ $settings = StripeManager::get_settings();
 					<tbody>
 						<?php foreach ($transactions as $tx) : ?>
 							<tr>
-								<td class="mono"><?php echo esc_html(date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($tx['created_at']))); ?></td>
-								<td><strong><?php echo esc_html($tx['agent_name']); ?></strong></td>
-								<td><?php echo esc_html(strtoupper($tx['currency']) . ' ' . number_format_i18n($tx['amount'], 2)); ?></td>
-								<td class="mono"><?php echo esc_html($tx['provider_id']); ?></td>
+								<td class="mono"><?php echo esc_html(date_i18n((string) get_option('date_format') . ' ' . (string) get_option('time_format'), strtotime((string) ($tx['created_at'] ?? 'now')))); ?></td>
+								<td><strong><?php echo esc_html((string) ($tx['agent_name'] ?? 'Unknown')); ?></strong></td>
+								<td><?php echo esc_html(strtoupper((string) ($tx['currency'] ?? 'SAT')) . ' ' . number_format_i18n((float) ($tx['amount'] ?? 0), 2)); ?></td>
+								<td class="mono"><?php echo esc_html((string) ($tx['provider_id'] ?? '—')); ?></td>
 								<td>
 									<span class="aitamer-badge-status <?php echo (TransactionStatus::COMPLETED->value === $tx['status']) ? 'allowed' : 'expired'; ?>">
 										<?php
-										$status_label = $tx['status'];
+										$status_label = (string) ($tx['status'] ?? 'pending');
 										if (TransactionStatus::COMPLETED->value === $status_label) {
 											$status_label = __('Completed', 'ai-tamer');
 										} elseif (TransactionStatus::PENDING->value === $status_label) {
@@ -365,7 +195,7 @@ $settings = StripeManager::get_settings();
 										} elseif (TransactionStatus::FAILED->value === $status_label) {
 											$status_label = __('Failed', 'ai-tamer');
 										}
-										echo esc_html($status_label);
+										echo esc_html((string) $status_label);
 										?>
 									</span>
 								</td>
@@ -379,7 +209,7 @@ $settings = StripeManager::get_settings();
 				<div class="aitamer-pagination">
 					<?php
 					echo paginate_links(array(
-						'base'      => add_query_arg('billing_paged', '%#%'),
+						'base'      => add_query_arg('billing_paged', '%#%', admin_url('admin.php?page=ai-tamer-monetization')),
 						'format'    => '',
 						'prev_text' => '&laquo; ' . __('Prev', 'ai-tamer'),
 						'next_text' => __('Next', 'ai-tamer') . ' &raquo;',
@@ -397,10 +227,28 @@ $settings = StripeManager::get_settings();
 		<?php endif; ?>
 	</div>
 
+	<style>
+		@keyframes aitlnx-pulse {
+
+			0%,
+			100% {
+				opacity: 1;
+				transform: scale(1);
+			}
+
+			50% {
+				opacity: .4;
+				transform: scale(1.25);
+			}
+		}
+
+		#aitlnx-live-dot.aitlnx-pulsing {
+			animation: aitlnx-pulse 1.2s ease-in-out infinite;
+		}
+	</style>
 </div>
 
 <style>
-	/* ... existing styles ... */
 	.aitamer-info-box {
 		background: #f0f6fb;
 		padding: 15px;

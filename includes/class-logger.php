@@ -78,8 +78,8 @@ class Logger {
 	public static function drop_table(): void {
 		global $wpdb;
 		$table = $wpdb->prefix . self::TABLE;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$wpdb->query( "DROP TABLE IF EXISTS `{$table}`" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( $wpdb->prepare( 'DROP TABLE IF EXISTS %i', $table ) );
 	}
 
 	/**
@@ -147,9 +147,9 @@ class Logger {
 		$table = $wpdb->prefix . self::TABLE;
 
 		// Perform batch insert.
-		$query = "INSERT INTO `{$table}` (bot_name, bot_type, post_id, request_uri, ip_hash, user_agent, protection, created_at) VALUES ";
+		$query = 'INSERT INTO %i (bot_name, bot_type, post_id, request_uri, ip_hash, user_agent, protection, created_at) VALUES ';
 		$placeholders = array();
-		$values       = array();
+		$values       = array( $table );
 
 		foreach ( $buffer as $entry ) {
 			$placeholders[] = '( %s, %s, %d, %s, %s, %s, %s, %s )';
@@ -165,7 +165,7 @@ class Logger {
 
 		$query .= implode( ', ', $placeholders );
 
-		$wpdb->query( $wpdb->prepare( $query, $values ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.NotPrepared
+		$wpdb->query( $wpdb->prepare( $query, $values ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	}
 
 	/**
@@ -213,11 +213,10 @@ class Logger {
 		}
 
 		$where_str = implode( ' AND ', $where );
-		$query = "SELECT * FROM `{$table}` WHERE {$where_str} ORDER BY id DESC LIMIT %d OFFSET %d";
-		$params[] = $args['limit'];
-		$params[] = $args['offset'];
+		$query     = 'SELECT * FROM %i WHERE ' . $where_str . ' ORDER BY id DESC LIMIT %d OFFSET %d';
+		$params    = array_merge( array( $table ), $params, array( $args['limit'], $args['offset'] ) );
 
-		return $wpdb->get_results( $wpdb->prepare( $query, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return $wpdb->get_results( $wpdb->prepare( $query, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	}
 
 	/**
@@ -249,13 +248,10 @@ class Logger {
 		}
 
 		$where_str = implode( ' AND ', $where );
-		$query = "SELECT COUNT(*) FROM `{$table}` WHERE {$where_str}";
+		$query     = 'SELECT COUNT(*) FROM %i WHERE ' . $where_str;
+		$params    = array_merge( array( $table ), $params );
 
-		if ( empty( $params ) ) {
-			return (int) $wpdb->get_var( $query ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		}
-
-		return (int) $wpdb->get_var( $wpdb->prepare( $query, $params ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->get_var( $wpdb->prepare( $query, $params ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	}
 
 	/**

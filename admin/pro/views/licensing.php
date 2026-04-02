@@ -12,17 +12,17 @@ use AiTamer\Enums\LicenseScope;
 defined('ABSPATH') || exit;
 
 // Get success data from redirects.
-$aitamer_issued_token = get_transient('aitamer_last_issued_token');
+$aitamer_issued_token = get_transient('aitamer_last_issued_token') ?: '';
 if ($aitamer_issued_token) {
 	delete_transient('aitamer_last_issued_token');
 }
 
 // Filtering and Pagination logic.
-$aitamer_paged    = absint( $_GET['paged'] ?? 1 );
-$aitamer_search   = sanitize_text_field( $_GET['s'] ?? '' );
-$aitamer_scope    = sanitize_text_field( $_GET['scope'] ?? '' );
+$aitamer_paged    = absint($_GET['paged'] ?? 1);
+$aitamer_search   = sanitize_text_field($_GET['s'] ?? '');
+$aitamer_scope    = sanitize_text_field($_GET['scope'] ?? '');
 $aitamer_per_page = 15;
-$aitamer_offset   = ( $aitamer_paged - 1 ) * $aitamer_per_page;
+$aitamer_offset   = ($aitamer_paged - 1) * $aitamer_per_page;
 
 $aitamer_filter_args = array(
 	'limit'  => $aitamer_per_page,
@@ -31,21 +31,20 @@ $aitamer_filter_args = array(
 	'scope'  => $aitamer_scope,
 );
 
-$aitamer_tokens      = LicenseVerifier::get_tokens( $aitamer_filter_args );
-$aitamer_count       = LicenseVerifier::count_tokens( $aitamer_filter_args );
-$aitamer_total_pages = ceil( $aitamer_count / $aitamer_per_page );
+$aitamer_tokens      = LicenseVerifier::get_tokens($aitamer_filter_args);
+$aitamer_count       = (int) LicenseVerifier::count_tokens($aitamer_filter_args);
+$aitamer_total_pages = $aitamer_count > 0 ? ceil($aitamer_count / $aitamer_per_page) : 1;
 
 // API Documentation data.
-$aitamer_rest_url    = get_rest_url(null, 'ai-tamer/v1');
-$aitamer_license_url = $aitamer_rest_url . '/license';
-$aitamer_catalog_url = $aitamer_rest_url . '/catalog';
-$aitamer_content_url = $aitamer_rest_url . '/content/{post_id}';
+$aitamer_rest_url    = (string) (get_rest_url(null, 'ai-tamer/v1') ?: '');
+$aitamer_license_url = (string) (! empty($aitamer_rest_url) ? $aitamer_rest_url . '/license' : '');
+$aitamer_catalog_url = (string) (! empty($aitamer_rest_url) ? $aitamer_rest_url . '/catalog' : '');
+$aitamer_content_url = (string) (! empty($aitamer_rest_url) ? $aitamer_rest_url . '/content/{post_id}' : '');
 $aitamer_sample_token = 'your-hmac-token-here';
 $aitamer_scope_type  = \AiTamer\Enums\LicenseScope::GLOBAL->value;
 $aitamer_scope_id    = '';
 ?>
 <div class="wrap aitamer-wrap">
-
 	<div class="aitamer-page-header">
 		<div>
 			<h1 class="aitamer-page-title"><?php esc_html_e('Licensing & API', 'ai-tamer'); ?></h1>
@@ -53,7 +52,12 @@ $aitamer_scope_id    = '';
 		</div>
 	</div>
 
-	<?php if (isset($_GET['aitamer_revoked'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+	<?php
+	\AiTamer\Admin::get_instance()->render_navigation_tabs();
+	?>
+
+	<?php if (isset($_GET['aitamer_revoked'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended 
+	?>
 		<div class="notice notice-success is-dismissible">
 			<p><?php esc_html_e('Token revoked successfully.', 'ai-tamer'); ?></p>
 		</div>
@@ -70,144 +74,6 @@ $aitamer_scope_id    = '';
 	<?php endif; ?>
 
 	<!-- Issued Tokens Table -->
-	<div class="aitamer-card">
-		<div class="aitamer-card-header">
-			<h2><?php esc_html_e( 'Active License Tokens', 'ai-tamer' ); ?></h2>
-			<span style="font-size:11px;color:var(--at-muted);">
-				<?php printf( esc_html__( 'Showing %d of %s records', 'ai-tamer' ), count( $aitamer_tokens ), number_format_i18n( $aitamer_count ) ); ?>
-			</span>
-		</div>
-
-		<!-- Filter Bar -->
-		<form method="get" class="aitamer-filter-bar">
-			<input type="hidden" name="page" value="ai-tamer-licensing">
-			
-			<div class="aitamer-filter-group">
-				<label><?php esc_html_e( 'Search', 'ai-tamer' ); ?></label>
-				<input type="text" name="s" value="<?php echo esc_attr( $aitamer_search ); ?>" placeholder="<?php esc_attr_e( 'Agent or Token...', 'ai-tamer' ); ?>" style="width:200px;">
-			</div>
-
-			<div class="aitamer-filter-group">
-				<label><?php esc_html_e( 'Scope', 'ai-tamer' ); ?></label>
-				<select name="scope">
-					<option value=""><?php esc_html_e( 'All Scopes', 'ai-tamer' ); ?></option>
-					<option value="global" <?php selected( $aitamer_scope, 'global' ); ?>><?php esc_html_e( 'Global', 'ai-tamer' ); ?></option>
-					<?php 
-						// Optionally allow filtering by specific post/cat if they exist in tokens? 
-						// For now, let's keep it simple: Global or Other.
-					?>
-				</select>
-			</div>
-
-			<button type="submit" class="aitamer-btn-ghost"><?php esc_html_e( 'Filter', 'ai-tamer' ); ?></button>
-			<?php if ( ! empty( $aitamer_search ) || ! empty( $aitamer_scope ) ) : ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=ai-tamer-licensing' ) ); ?>" class="aitamer-btn-danger" style="border:none;"><?php esc_html_e( 'Clear', 'ai-tamer' ); ?></a>
-			<?php endif; ?>
-		</form>
-		<?php if (empty($aitamer_tokens)) : ?>
-			<div class="aitamer-empty">
-				<p><?php esc_html_e('No tokens issued yet. Use the form below to authorize a trusted AI agent.', 'ai-tamer'); ?></p>
-			</div>
-		<?php else : ?>
-			<div class="aitamer-table-responsive">
-				<table class="aitamer-table">
-					<thead>
-						<tr>
-							<th><?php esc_html_e('Agent', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Issued', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Expires', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Scope', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Subscription', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Credits', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Status', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Token (preview)', 'ai-tamer'); ?></th>
-							<th><?php esc_html_e('Actions', 'ai-tamer'); ?></th>
-						</tr>
-					</thead>
-					<tbody>
-						<?php foreach ($aitamer_tokens as $aitamer_i => $aitamer_t) :
-							$aitamer_is_expired = (int) $aitamer_t['exp'] < time();
-						?>
-							<tr>
-								<td><strong><?php echo esc_html($aitamer_t['agent']); ?></strong></td>
-								<td class="mono"><?php echo esc_html(wp_date('Y-m-d', $aitamer_t['issued_at'])); ?></td>
-								<td class="mono"><?php echo esc_html(wp_date('Y-m-d', $aitamer_t['exp'])); ?></td>
-								<td>
-									<?php 
-										$aitamer_scope = $aitamer_t['scope'] ?? LicenseScope::GLOBAL->value;
-										if (LicenseScope::GLOBAL->value === $aitamer_scope) {
-											echo '<span class="aitamer-badge-pro" style="background:var(--at-surface-2);color:var(--at-text);border:1px solid var(--at-border);">' . esc_html__('Global', 'ai-tamer') . '</span>';
-										} else {
-											echo '<code>' . esc_html($aitamer_scope) . '</code>';
-										}
-									?>
-								</td>
-								<td class="mono">
-									<?php if (!empty($aitamer_t['sub_id'])) : ?>
-										<span title="<?php echo esc_attr($aitamer_t['sub_id']); ?>">
-											<?php echo esc_html(substr($aitamer_t['sub_id'], 0, 8) . '…'); ?>
-										</span>
-									<?php else : ?>
-										<span style="color:var(--at-muted);"><?php esc_html_e('Direct', 'ai-tamer'); ?></span>
-									<?php endif; ?>
-								</td>
-								<td class="mono">
-									<?php 
-										if (! empty($aitamer_t['is_voucher']) && ! empty($aitamer_t['uid'])) {
-											global $wpdb;
-											$table = $wpdb->prefix . 'aitamer_wallets';
-											$balance = $wpdb->get_var($wpdb->prepare(
-												"SELECT balance FROM {$table} WHERE token_id = %s",
-												$aitamer_t['uid']
-											));
-											if (null !== $balance) {
-												echo '<strong>' . (int)$balance . '</strong>';
-											} else {
-												echo '<span style="color:var(--at-muted);">–</span>';
-											}
-										} else {
-											echo '<span style="color:var(--at-muted);">Unlimited</span>';
-										}
-									?>
-								</td>
-								<td>
-									<span class="aitamer-badge-status <?php echo $aitamer_is_expired ? 'expired' : 'active'; ?>">
-										<?php echo $aitamer_is_expired ? esc_html__('Expired', 'ai-tamer') : esc_html__('Active', 'ai-tamer'); ?>
-									</span>
-								</td>
-								<td><code><?php echo esc_html(substr($aitamer_t['token'], 0, 28) . '…'); ?></code></td>
-								<td>
-									<form method="post" style="display:inline;" onsubmit="return confirm('<?php esc_attr_e('Revoke this token?', 'ai-tamer'); ?>');">
-										<?php wp_nonce_field('aitamer_revoke_token', 'aitamer_revoke_nonce'); ?>
-										<input type="hidden" name="revoke_index" value="<?php echo esc_attr($aitamer_i); ?>">
-										<button type="submit" class="aitamer-btn-danger"><?php esc_html_e('Revoke', 'ai-tamer'); ?></button>
-									</form>
-								</td>
-							</tr>
-						<?php endforeach; ?>
-					</tbody>
-				</table>
-			</div>
-
-			<!-- Pagination -->
-			<?php if ( $aitamer_total_pages > 1 ) : ?>
-				<div class="aitamer-pagination">
-					<?php
-					echo paginate_links( array(
-						'base'      => add_query_arg( 'paged', '%#%' ),
-						'format'    => '',
-						'prev_text' => '&laquo; ' . __( 'Prev', 'ai-tamer' ),
-						'next_text' => __( 'Next', 'ai-tamer' ) . ' &raquo;',
-						'total'     => $aitamer_total_pages,
-						'current'   => $aitamer_paged,
-					) );
-					?>
-				</div>
-			<?php endif; ?>
-		<?php endif; ?>
-	</div>
-
-	<!-- Issue New Token -->
 	<div class="aitamer-card">
 		<div class="aitamer-card-header">
 			<h2><?php esc_html_e('Issue New Token', 'ai-tamer'); ?></h2>
@@ -236,15 +102,6 @@ $aitamer_scope_id    = '';
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="sub_id"><?php esc_html_e('Stripe Subscription ID', 'ai-tamer'); ?></label>
-					</th>
-					<td>
-						<input type="text" id="sub_id" name="sub_id" class="regular-text" placeholder="sub_1...">
-						<p class="description"><?php esc_html_e('Optional. If provided, the token will be invalidated automatically if the subscription is canceled.', 'ai-tamer'); ?></p>
-					</td>
-				</tr>
-				<tr>
-					<th scope="row">
 						<label for="credits"><?php esc_html_e('Reading Voucher (Credits)', 'ai-tamer'); ?></label>
 					</th>
 					<td>
@@ -259,14 +116,14 @@ $aitamer_scope_id    = '';
 					<td>
 						<select id="scope_type" name="scope_type" onchange="document.getElementById('scope_id_row').style.display = (this.value === '<?php echo esc_attr(LicenseScope::GLOBAL->value); ?>') ? 'none' : 'table-row';">
 							<?php
-								foreach (LicenseScope::cases() as $case) {
-									$label = match($case) {
-										LicenseScope::GLOBAL   => __('Global (All Content)', 'ai-tamer'),
-										LicenseScope::POST     => __('Single Post/Page', 'ai-tamer'),
-										LicenseScope::CATEGORY => __('Category', 'ai-tamer'),
-									};
-									printf('<option value="%s" %s>%s</option>', esc_attr($case->value), selected($aitamer_scope_type, $case->value, false), esc_html($label));
-								}
+							foreach (LicenseScope::cases() as $case) {
+								$label = match ($case) {
+									LicenseScope::GLOBAL   => __('Global (All Content)', 'ai-tamer'),
+									LicenseScope::POST     => __('Single Post/Page', 'ai-tamer'),
+									LicenseScope::CATEGORY => __('Category', 'ai-tamer'),
+								};
+								printf('<option value="%s" %s>%s</option>', esc_attr($case->value), selected($aitamer_scope_type, $case->value, false), esc_html($label));
+							}
 							?>
 						</select>
 					</td>
@@ -291,70 +148,199 @@ $aitamer_scope_id    = '';
 			<li><?php esc_html_e('AI Tamer verifies the signature and bypasses blocking for that agent.', 'ai-tamer'); ?></li>
 			<li><?php esc_html_e('Tokens expire automatically after the configured period.', 'ai-tamer'); ?></li>
 		</ol>
-	</div>
 
-	<!-- API Documentation (Pro) -->
-	<div class="aitamer-page-header" style="margin-top: 48px; border-top: 1px solid var(--at-border); padding-top: 24px;">
-		<div>
-			<h2 class="aitamer-page-title"><?php esc_html_e('API Access Documentation', 'ai-tamer'); ?> <span class="aitamer-badge-pro">PRO</span></h2>
-			<p class="aitamer-page-desc"><?php esc_html_e('Programmatic access for licensed AI agents. Serve clean, structured content directly.', 'ai-tamer'); ?></p>
-		</div>
-	</div>
-
-	<div class="aitamer-grid">
-		<div class="aitamer-card">
-			<h2 class="aitamer-card-title"><?php esc_html_e('Endpoints', 'ai-tamer'); ?></h2>
-
-			<div class="aitamer-endpoint-group">
-				<h3><?php esc_html_e('Machine-Readable License', 'ai-tamer'); ?></h3>
-				<code>GET <?php echo esc_url($aitamer_license_url); ?></code>
-				<p class="description"><?php esc_html_e('Public endpoint describing usage terms and how to request access.', 'ai-tamer'); ?></p>
-			</div>
-
-			<hr style="border:0; border-top: 1px solid var(--at-border); margin: 20px 0;" />
-
-			<div class="aitamer-endpoint-group">
-				<h3><?php esc_html_e('Structured Content', 'ai-tamer'); ?></h3>
-				<code>GET <?php echo esc_url($aitamer_content_url); ?></code>
-				<p class="description"><?php esc_html_e('Authenticated endpoint serving clean post content in JSON format.', 'ai-tamer'); ?></p>
-			</div>
-
-			<hr style="border:0; border-top: 1px solid var(--at-border); margin: 20px 0;" />
-
-			<div class="aitamer-endpoint-group">
-				<h3><?php esc_html_e('Content Catalog', 'ai-tamer'); ?></h3>
-				<code>GET <?php echo esc_url($aitamer_catalog_url); ?>?post_type=post&amp;page=1</code>
-				<p class="description"><?php esc_html_e('Retrieve a list of protected content available on the site. You can filter by protected post types.', 'ai-tamer'); ?></p>
-			</div>
+		<div class="aitamer-page-header" style="margin-top: 48px; border-top: 1px solid var(--at-border); padding-top: 24px;">
+			<h2><?php esc_html_e('Active License Tokens', 'ai-tamer'); ?></h2>
+			<span style="font-size:11px;color:var(--at-muted);">
+				<?php printf(esc_html__('Showing %d of %s records', 'ai-tamer'), count($aitamer_tokens), number_format_i18n((int) $aitamer_count)); ?>
+			</span>
 		</div>
 
-		<div class="aitamer-card">
-			<h2 class="aitamer-card-title"><?php esc_html_e('How to Authenticate', 'ai-tamer'); ?></h2>
-			<p><?php esc_html_e('AI agents must present a valid HMAC-signed token in the headers of each request.', 'ai-tamer'); ?></p>
+		<!-- Filter Bar -->
+		<form method="get" class="aitamer-filter-bar">
+			<input type="hidden" name="page" value="ai-tamer-licensing">
+
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e('Search', 'ai-tamer'); ?></label>
+				<input type="text" name="s" value="<?php echo esc_attr($aitamer_search); ?>" placeholder="<?php esc_attr_e('Agent or Token...', 'ai-tamer'); ?>" style="width:200px;">
+			</div>
+
+			<div class="aitamer-filter-group">
+				<label><?php esc_html_e('Scope', 'ai-tamer'); ?></label>
+				<select name="scope">
+					<option value=""><?php esc_html_e('All Scopes', 'ai-tamer'); ?></option>
+					<option value="global" <?php selected($aitamer_scope, 'global'); ?>><?php esc_html_e('Global', 'ai-tamer'); ?></option>
+					<?php
+					// Optionally allow filtering by specific post/cat if they exist in tokens? 
+					// For now, let's keep it simple: Global or Other.
+					?>
+				</select>
+			</div>
+
+			<button type="submit" class="aitamer-btn-ghost"><?php esc_html_e('Filter', 'ai-tamer'); ?></button>
+			<?php if (! empty($aitamer_search) || ! empty($aitamer_scope)) : ?>
+				<a href="<?php echo esc_url(admin_url('admin.php?page=ai-tamer-licensing')); ?>" class="aitamer-btn-danger" style="border:none;"><?php esc_html_e('Clear', 'ai-tamer'); ?></a>
+			<?php endif; ?>
+		</form>
+		<?php if (empty($aitamer_tokens)) : ?>
+			<div class="aitamer-empty">
+				<p><?php esc_html_e('No tokens issued yet. Use the form below to authorize a trusted AI agent.', 'ai-tamer'); ?></p>
+			</div>
+		<?php else : ?>
+			<div class="aitamer-table-responsive">
+				<table class="aitamer-table">
+					<thead>
+						<tr>
+							<th><?php esc_html_e('Agent', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Issued', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Expires', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Scope', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Subscription', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Credits', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Status', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Token (preview)', 'ai-tamer'); ?></th>
+							<th><?php esc_html_e('Actions', 'ai-tamer'); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ($aitamer_tokens as $aitamer_i => $aitamer_t) :
+							$aitamer_is_expired = (int) ($aitamer_t['exp'] ?? 0) < time();
+						?>
+							<tr>
+								<td><strong><?php echo esc_html((string) ($aitamer_t['agent'] ?? 'Unknown')); ?></strong></td>
+								<td class="mono"><?php echo esc_html(wp_date('Y-m-d', (int) ($aitamer_t['issued_at'] ?? time()))); ?></td>
+								<td class="mono"><?php echo esc_html((int) ($aitamer_t['exp'] ?? 0) > 0 ? wp_date('Y-m-d', (int) $aitamer_t['exp']) : 'Never'); ?></td>
+								<td>
+									<?php
+									$aitamer_scope = (string) ($aitamer_t['scope'] ?? LicenseScope::GLOBAL->value);
+									if (LicenseScope::GLOBAL->value === $aitamer_scope) {
+										echo '<span class="aitamer-badge-pro" style="background:var(--at-surface-2);color:var(--at-text);border:1px solid var(--at-border);">' . esc_html__('Global', 'ai-tamer') . '</span>';
+									} else {
+										echo '<code>' . esc_html($aitamer_scope) . '</code>';
+									}
+									?>
+								</td>
+								<td class="mono">
+									<span style="color:var(--at-muted);"><?php esc_html_e('Direct', 'ai-tamer'); ?></span>
+								</td>
+								<td class="mono">
+									<?php
+									if (! empty($aitamer_t['is_voucher']) && ! empty($aitamer_t['uid'])) {
+										global $wpdb;
+										$table = $wpdb->prefix . 'aitamer_wallets';
+										$balance = $wpdb->get_var($wpdb->prepare(
+											"SELECT balance FROM {$table} WHERE token_id = %s",
+											(string) ($aitamer_t['uid'] ?? '')
+										));
+										if (null !== $balance) {
+											echo '<strong>' . (int)$balance . '</strong>';
+										} else {
+											echo '<span style="color:var(--at-muted);">–</span>';
+										}
+									} else {
+										echo '<span style="color:var(--at-muted);">Unlimited</span>';
+									}
+									?>
+								</td>
+								<td>
+									<span class="aitamer-badge-status <?php echo $aitamer_is_expired ? 'expired' : 'active'; ?>">
+										<?php echo $aitamer_is_expired ? esc_html__('Expired', 'ai-tamer') : esc_html__('Active', 'ai-tamer'); ?>
+									</span>
+								</td>
+								<td><code><?php echo esc_html(substr((string) ($aitamer_t['token'] ?? ''), 0, 28) . '…'); ?></code></td>
+								<td>
+									<form method="post" style="display:inline;" onsubmit="return confirm('<?php esc_attr_e('Revoke this token?', 'ai-tamer'); ?>');">
+										<?php wp_nonce_field('aitamer_revoke_token', 'aitamer_revoke_nonce'); ?>
+										<input type="hidden" name="revoke_index" value="<?php echo esc_attr((string) $aitamer_i); ?>">
+										<button type="submit" class="aitamer-btn-danger"><?php esc_html_e('Revoke', 'ai-tamer'); ?></button>
+									</form>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Pagination -->
+			<?php if ($aitamer_total_pages > 1) : ?>
+				<div class="aitamer-pagination">
+					<?php
+					echo paginate_links(array(
+						'base'      => add_query_arg('paged', '%#%', admin_url('admin.php?page=ai-tamer-licensing')),
+						'format'    => '',
+						'prev_text' => '&laquo; ' . __('Prev', 'ai-tamer'),
+						'next_text' => __('Next', 'ai-tamer') . ' &raquo;',
+						'total'     => $aitamer_total_pages,
+						'current'   => $aitamer_paged,
+					));
+					?>
+				</div>
+			<?php endif; ?>
+		<?php endif; ?>
+
+		<div class="aitamer-page-header" style="margin-top: 48px; border-top: 1px solid var(--at-border); padding-top: 24px;">
+			<div>
+				<h2 class="aitamer-page-title"><?php esc_html_e('API Access Documentation', 'ai-tamer'); ?></h2>
+				<p class="aitamer-page-desc"><?php esc_html_e('Programmatic access for licensed AI agents. Serve clean, structured content directly.', 'ai-tamer'); ?></p>
+			</div>
+		</div>
+
+		<div class="aitamer-grid">
+			<div class="aitamer-inner-card">
+				<h2 class="aitamer-card-title"><?php esc_html_e('Endpoints', 'ai-tamer'); ?></h2>
+
+				<div class="aitamer-endpoint-group">
+					<h3><?php esc_html_e('Machine-Readable License', 'ai-tamer'); ?></h3>
+					<code>GET <?php echo esc_url($aitamer_license_url); ?></code>
+					<p class="description"><?php esc_html_e('Public endpoint describing usage terms and how to request access.', 'ai-tamer'); ?></p>
+				</div>
+
+				<hr style="border:0; border-top: 1px solid var(--at-border); margin: 20px 0;" />
+
+				<div class="aitamer-endpoint-group">
+					<h3><?php esc_html_e('Structured Content', 'ai-tamer'); ?></h3>
+					<code>GET <?php echo esc_url($aitamer_content_url); ?></code>
+					<p class="description"><?php esc_html_e('Authenticated endpoint serving clean post content in JSON format.', 'ai-tamer'); ?></p>
+				</div>
+
+				<hr style="border:0; border-top: 1px solid var(--at-border); margin: 20px 0;" />
+
+				<div class="aitamer-endpoint-group">
+					<h3><?php esc_html_e('Content Catalog', 'ai-tamer'); ?></h3>
+					<code>GET <?php echo esc_url($aitamer_catalog_url); ?>?post_type=post&amp;page=1</code>
+					<p class="description"><?php esc_html_e('Retrieve a list of protected content available on the site. You can filter by protected post types.', 'ai-tamer'); ?></p>
+				</div>
+			</div>
+
+			<div class="aitamer-inner-card">
+				<h2 class="aitamer-card-title"><?php esc_html_e('How to Authenticate', 'ai-tamer'); ?></h2>
+				<p><?php esc_html_e('AI agents must present a valid HMAC-signed token in the headers of each request.', 'ai-tamer'); ?></p>
+
+				<div class="aitamer-code-block">
+					<pre>X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?></pre>
+				</div>
+
+				<p class="description" style="margin-top: 10px;">
+					<?php esc_html_e('Use the "Active License Tokens" table above to manage your HMAC keys.', 'ai-tamer'); ?>
+				</p>
+			</div>
+		</div>
+
+		<hr />
+
+		<div class="aitamer-inner" style="margin-top: 24px;">
+			<p><?php esc_html_e('AI agents must present a valid HMAC-signed token in the headers of each request. You can use either the numeric Post ID or the post slug in the URL.', 'ai-tamer'); ?></p>
 
 			<div class="aitamer-code-block">
-				<pre>X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?></pre>
+				<pre>curl -X GET "<?php echo esc_url(str_replace('{post_id}', '12', $aitamer_content_url)); ?>" \
+     -H "X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?>"</pre>
 			</div>
 
-			<p class="description" style="margin-top: 10px;">
-				<?php esc_html_e('Use the "Active License Tokens" table above to manage your HMAC keys.', 'ai-tamer'); ?>
-			</p>
+			<p><em><?php esc_html_e('Or using the post slug:', 'ai-tamer'); ?></em></p>
+			<div class="aitamer-code-block">
+				<pre>curl -X GET "<?php echo esc_url(str_replace('{post_id}', 'mi-post-slug', $aitamer_content_url)); ?>" \
+     -H "X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?>"</pre>
+			</div>
 		</div>
 	</div>
-
-	<div class="aitamer-card" style="margin-top: 24px;">
-		<p><?php esc_html_e('AI agents must present a valid HMAC-signed token in the headers of each request. You can use either the numeric Post ID or the post slug in the URL.', 'ai-tamer'); ?></p>
-
-		<div class="aitamer-code-block">
-			<pre>curl -X GET "<?php echo esc_url(str_replace('{post_id}', '12', $aitamer_content_url)); ?>" \
-     -H "X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?>"</pre>
-		</div>
-
-		<p><em><?php esc_html_e('Or using the post slug:', 'ai-tamer'); ?></em></p>
-		<div class="aitamer-code-block">
-			<pre>curl -X GET "<?php echo esc_url(str_replace('{post_id}', 'mi-post-slug', $aitamer_content_url)); ?>" \
-     -H "X-AI-License-Token: <?php echo esc_html($aitamer_sample_token); ?>"</pre>
-		</div>
-	</div>
-
 </div>

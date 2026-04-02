@@ -16,6 +16,10 @@ use function esc_attr;
 use function esc_url;
 use function absint;
 use function get_bloginfo;
+use function get_the_title;
+use function current_time;
+
+use AiTamer\Traits\MarkdownConverter;
 
 defined('ABSPATH') || exit;
 
@@ -24,6 +28,7 @@ defined('ABSPATH') || exit;
  */
 class Protector
 {
+	use MarkdownConverter;
 
 	/** @var Detector */
 	private Detector $detector;
@@ -99,33 +104,113 @@ class Protector
 
 		// Handle PAYMENT strategy (402).
 		if (Enums\DefenseStrategy::PAYMENT->value === $defense) {
-			$payment_url = null;
-			$stripe = Plugin::get_instance()->get_stripe_manager();
-			if ($stripe && current_user_can('read') === false) { // Don't charge humans reading
-				$payment_url = $stripe->create_checkout_session($agent['name'] . ' (Frontend)', $post_id);
-				if ($payment_url) {
-					header('X-Payment-Link: ' . $payment_url);
+			global $wpdb;
+			$bot_ip      = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+			$tolls_table = $wpdb->prefix . 'aitamer_tolls';
+
+			// 1. Check for X-Payment-Hash header.
+			$tx_hash = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_PAYMENT_HASH'] ?? '' ) );
+
+			// Define the unique amount for this post.
+			$usdt_verifier = new USDTVerifier();
+			$base_price    = (float) ($settings['usdt_price_usd'] ?? 0.10);
+			$unique_amount = $usdt_verifier->get_unique_amount($base_price, $post_id);
+			$recipient     = $settings['usdt_address'] ?? '';
+			$network       = $settings['usdt_network'] ?? 'polygon';
+
+			if (! empty($tx_hash) && ! empty($recipient)) {
+				// Check if already verified in DB.
+				$paid = $wpdb->get_var($wpdb->prepare(
+					"SELECT id FROM %i WHERE transaction_hash = %s AND status = 'paid' LIMIT 1",
+					$tolls_table,
+					sanitize_text_field($tx_hash)
+				));
+
+				if (! $paid) {
+					$is_verified = $usdt_verifier->verify($tx_hash, $unique_amount, $recipient, $network);
+					if (true === $is_verified) {
+						$wpdb->insert($tolls_table, array(
+							'transaction_hash' => sanitize_text_field($tx_hash),
+							'amount_usdt'      => $unique_amount,
+							'network'          => $network,
+							'post_id'          => $post_id,
+							'bot_ip'           => $bot_ip,
+							'status'           => 'paid',
+							'created_at'       => current_time('mysql'),
+						));
+						$paid = true;
+					}
+				}
+
+				if ($paid) {
+					// Serve clean structured JSON Markdown to verified bots.
+					if ($agent['matched']) {
+						$this->serve_paid_content_json($post_id);
+					}
+					return;
 				}
 			}
 
-			if ($payment_url) {
-				$msg = __('Payment Required to access this content.', 'ai-tamer');
-				$msg .= ' ' . __('For Fiat, purchase a license via the X-Payment-Link header.', 'ai-tamer');
+			// 2. Challenge: 402 Payment Required.
+			header('HTTP/1.1 402 Payment Required');
+			header('W3C-Payment-Method: USDT');
+			header('WWW-Authenticate: USDT address="' . esc_attr($recipient) . '", amount="' . esc_attr((string) $unique_amount) . '", network="' . esc_attr($network) . '"');
+			header('Access-Control-Expose-Headers: WWW-Authenticate, W3C-Payment-Method');
 
-				wp_die(
-					$msg,
-					__('Payment Required', 'ai-tamer'),
-					array('response' => 402)
-				);
-			}
+			$error_data = array(
+				'status'  => 402,
+				'message' => esc_html__('Payment Required to access this content.', 'ai-tamer'),
+				'payment' => array(
+					'method'      => 'USDT',
+					'address'     => $recipient,
+					'amount'      => $unique_amount,
+					'network'     => $network,
+					'instruction' => esc_html__('Send the exact amount of USDT to the address above, then retry with the "X-Payment-Hash" header.', 'ai-tamer'),
+				),
+			);
+
+			wp_die( wp_json_encode($error_data), esc_html__('Payment Required', 'ai-tamer'), array('response' => 402));
 		}
 
 		// Fallback to BLOCK strategy (401).
 		wp_die(
-			__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. This content is protected against AI training agents.', 'ai-tamer'),
-			__('Unauthorized', 'ai-tamer'),
+			esc_html__('No valid license token found for this content. Use the header X-AI-License-Token: <token>. This content is protected against AI training agents.', 'ai-tamer'),
+			esc_html__('Unauthorized', 'ai-tamer'),
 			array('response' => 401)
 		);
+	}
+
+	/**
+	 * Serves the paid content as a clean JSON object with Markdown.
+	 *
+	 * @param int $post_id The post ID to serve.
+	 */
+	private function serve_paid_content_json(int $post_id): void
+	{
+		$post = get_post($post_id);
+		if (! $post) {
+			wp_send_json_error('Post not found', 404);
+		}
+
+		// Process the content (expand shortcodes, etc.)
+		$content = apply_filters('the_content', $post->post_content);
+
+		// Convert to Markdown
+		$markdown = $this->html_to_markdown($content);
+
+		$response = array(
+			'id'           => $post_id,
+			'title'        => get_the_title($post_id),
+			'content'      => $markdown,
+			'word_count'   => $this->get_word_count($markdown),
+			'reading_time' => $this->get_reading_time($markdown),
+			'url'          => get_permalink($post_id),
+			'license'      => get_option('aitamer_settings')['license_policy'] ?? 'no-training',
+			'format'       => 'markdown',
+			'generated_at' => current_time('mysql'),
+		);
+
+		wp_send_json($response);
 	}
 
 	/**
@@ -163,11 +248,12 @@ class Protector
 		}
 
 		$policy = sanitize_text_field($settings['license_policy'] ?? 'no-training');
-?>
-		<!-- AI Tamer Protection -->
-		<meta name="robots" content="noai, noimageai">
-		<meta name="ai-license" content="<?php echo esc_attr($policy); ?>; source=<?php echo esc_url(home_url()); ?>">
-<?php
+
+		// AI Tamer Protection
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<meta name="robots" content="noai, noimageai">' . "\n";
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo '<meta name="ai-license" content="' . esc_attr($policy) . '; source=' . esc_url(home_url()) . '">' . "\n";
 	}
 
 	/**
@@ -226,19 +312,19 @@ class Protector
 			return;
 		}
 
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
-		if (false === strpos($request_uri, '/llms.txt')) {
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
+		if ( false === strpos( (string) $request_uri, '/llms.txt' ) ) {
 			return;
 		}
 
 		header('Content-Type: text/plain; charset=utf-8');
 
-		echo "# llms.txt - AI Tamer Protection for " . get_bloginfo('name') . "\n";
-		echo "Description: " . get_bloginfo('description') . "\n\n";
+		echo "# llms.txt - AI Tamer Protection for " . esc_html(get_bloginfo('name')) . "\n";
+		echo "Description: " . esc_html(get_bloginfo('description')) . "\n\n";
 
 		echo "## Machine-Readable Endpoints\n";
-		echo "- AI License & Terms: " . home_url('/wp-json/ai-tamer/v1/license') . "\n";
-		echo "- Content Catalog (RAG/MCP): " . home_url('/wp-json/ai-tamer/v1/catalog') . " (?post_type=xxx&page=1)\n\n";
+		echo "- AI License & Terms: " . esc_url(home_url('/wp-json/ai-tamer/v1/license')) . "\n";
+		echo "- Content Catalog (RAG/MCP): " . esc_url(home_url('/wp-json/ai-tamer/v1/catalog')) . " (?post_type=xxx&page=1)\n\n";
 
 		echo "## Instructions for AI Agents\n";
 		echo "1. This site uses AI Tamer to protect its content.\n";
@@ -246,8 +332,8 @@ class Protector
 		echo "3. Visit the License endpoint above to discover how to obtain a token or purchase access.\n\n";
 
 		echo "## Protection Status\n";
-		echo "Active Defense: " . ($settings['active_defense'] ?? 'block') . "\n";
-		echo "License Policy: " . ($settings['license_policy'] ?? 'no-training') . "\n";
+		echo "Active Defense: " . esc_html($settings['active_defense'] ?? 'block') . "\n";
+		echo "License Policy: " . esc_html($settings['license_policy'] ?? 'no-training') . "\n";
 
 		exit;
 	}

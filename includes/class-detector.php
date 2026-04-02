@@ -66,9 +66,22 @@ class Detector {
 
 		$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 
+		$settings = get_option( 'aitamer_settings', array() );
+		$whitelist_dev_tools = ! empty( $settings['whitelist_dev_tools'] );
+
 		foreach ( $this->bots as $bot ) {
 			$pattern = isset( $bot['user_agent'] ) ? $bot['user_agent'] : '';
 			if ( $pattern && false !== stripos( $ua, $pattern ) ) {
+				
+				// Whitelist Developer Tools if enabled.
+				if ( $whitelist_dev_tools && ! empty( $bot['is_dev_tool'] ) ) {
+					return $this->current = array(
+						'name'    => 'human',
+						'type'    => 'human',
+						'matched' => false,
+					);
+				}
+
 				$this->current = array(
 					'name'    => $bot['name'],
 					'type'    => $bot['type'],

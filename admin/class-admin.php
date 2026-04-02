@@ -124,7 +124,7 @@ class Admin
 				// Pessimistically calculate earnings per bot type.
 				$bot_val = apply_filters('aitamer_bot_monetization_value', 0.0, $bot['bot_name']);
 				if (empty($bot_val)) {
-					$normalized = strtolower($bot['bot_name']);
+					$normalized = strtolower((string) ($bot['bot_name'] ?? ''));
 					if (strpos($normalized, 'gptbot') !== false || strpos($normalized, 'chatgpt') !== false) {
 						$bot_val = 0.001;
 					} elseif (strpos($normalized, 'claudebot') !== false || strpos($normalized, 'anthropic') !== false) {
@@ -184,7 +184,7 @@ class Admin
 	{
 		// General Admin Pages
 		// Admin style (shared).
-		if (false !== strpos($hook, 'ai-tamer')) {
+		if (false !== strpos((string) $hook, 'ai-tamer')) {
 			$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
 			wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 		}
@@ -231,9 +231,9 @@ class Admin
 			array($this, 'render_settings_page')
 		);
 
-		// Audit Reports submenu.
+		// Audit Reports submenu (Hidden from sidebar).
 		add_submenu_page(
-			'ai-tamer',
+			null,
 			__('Audit Reports', 'ai-tamer'),
 			__('Audit Reports', 'ai-tamer'),
 			'manage_options',
@@ -347,18 +347,18 @@ class Admin
 		);
 
 		add_settings_field(
-			'active_defense',
-			__('Active Defense Strategy', 'ai-tamer'),
-			array($this, 'render_active_defense_field'),
+			'protected_post_types',
+			__('Protected Post Types', 'ai-tamer'),
+			array($this, 'render_post_types_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
 			array()
 		);
 
 		add_settings_field(
-			'protected_post_types',
-			__('Protected Post Types', 'ai-tamer'),
-			array($this, 'render_post_types_field'),
+			'active_defense',
+			__('Active Defense Strategy', 'ai-tamer'),
+			array($this, 'render_active_defense_field'),
 			'ai-tamer-settings',
 			'aitamer_general',
 			array()
@@ -506,8 +506,8 @@ class Admin
 			'notifications_enabled',
 			'notification_channels',
 			'slack_webhook_url',
-			'discord_webhook_url',
 			'notification_events',
+			'alby_account',
 		);
 
 		foreach ($keys as $key) {
@@ -533,7 +533,8 @@ class Admin
 						break;
 					case 'slack_webhook_url':
 					case 'discord_webhook_url':
-						$settings[$key] = esc_url_raw($input[$key]);
+					case 'alby_account':
+						$settings[$key] = sanitize_text_field((string) ($input[$key] ?? ''));
 						break;
 					default:
 						// Handle checkboxes and others.
@@ -544,7 +545,7 @@ class Admin
 				// Special handling for checkboxes: if we are on a page that HAS the checkbox but it's not sent, it's UNCHECKED.
 				// If we are on a different page, we keep the previous value.
 				// We detect this by checking if OTHER fields from the same form are present.
-				$is_general_form = isset($input['active_defense']) || isset($input['license_policy']);
+				$is_general_form = isset($input['active_defense']) || isset($input['license_policy']) || isset($input['alby_account']);
 				$is_notify_form  = isset($input['slack_webhook_url']) || isset($input['discord_webhook_url']);
 
 				$checkbox_keys = array(
@@ -622,7 +623,7 @@ class Admin
 	{
 		$key      = $args['key'];
 		$settings = get_option('aitamer_settings', array());
-		$value    = isset($settings[$key]) ? absint($settings[$key]) : 30;
+		$value    = isset($settings[$key]) ? absint($settings[$key]) : ($args['default'] ?? 30);
 		printf(
 			'<input type="number" id="%1$s" name="aitamer_settings[%1$s]" value="%2$d" min="%3$d" max="%4$d" class="small-text">',
 			esc_attr($key),
@@ -747,6 +748,8 @@ class Admin
 		}
 		echo '</select>';
 
+		echo '<p class="description">' . esc_html__('Select how to handle unauthorized or unverified AI agents.', 'ai-tamer') . '</p>';
+
 		// Let Pro render extra description or preview buttons.
 		do_action('aitamer_admin_render_defense_footer', $selected);
 	}
@@ -789,6 +792,36 @@ class Admin
 	}
 
 	/**
+	 * Renders the top-level navigation tabs.
+	 */
+	public function render_navigation_tabs(): void
+	{
+		$current_page = $_GET['page'] ?? 'ai-tamer';
+
+		$tabs = array(
+			'ai-tamer-settings' => __('Settings', 'ai-tamer'),
+		);
+
+		// Allow Pro or others to inject tabs.
+		$tabs = apply_filters('aitamer_admin_tabs', $tabs);
+
+		// Add reports at the end.
+		$tabs['ai-tamer-audit'] = __('Audit Reports', 'ai-tamer');
+
+		echo '<nav class="nav-tab-wrapper aitamer-nav-tab-wrapper">';
+		foreach ($tabs as $page => $label) {
+			$class = ($current_page === $page) ? 'nav-tab nav-tab-active' : 'nav-tab';
+			printf(
+				'<a href="%s" class="%s">%s</a>',
+				esc_url(admin_url('admin.php?page=' . $page)),
+				esc_attr($class),
+				esc_html($label)
+			);
+		}
+		echo '</nav>';
+	}
+
+	/**
 	 * Renders the settings page.
 	 */
 	public function render_settings_page(): void
@@ -807,6 +840,10 @@ class Admin
 		if (! current_user_can('manage_options')) {
 			return;
 		}
+
+		global $title;
+		$title = __('Audit Reports', 'ai-tamer');
+
 		require_once AITAMER_PLUGIN_DIR . 'admin/views/audit.php';
 	}
 
@@ -836,7 +873,7 @@ class Admin
 
 		// Stream the file to the browser as a download.
 		header('Content-Type: text/csv; charset=UTF-8');
-		header('Content-Disposition: attachment; filename="' . basename($file) . '"');
+		header('Content-Disposition: attachment; filename="' . basename((string) $file) . '"');
 		header('Content-Length: ' . filesize($file));
 		// phpcs:ignore WordPress.WP.AlternativeFunctions
 		readfile($file);
@@ -871,7 +908,7 @@ class Admin
 	 */
 	public function add_certification_field(array $form_fields, \WP_Post $post): array
 	{
-		if (strpos($post->post_mime_type, 'image/') !== 0) {
+		if (strpos((string) ($post->post_mime_type ?? ''), 'image/') !== 0) {
 			return $form_fields;
 		}
 

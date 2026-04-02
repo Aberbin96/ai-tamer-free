@@ -60,7 +60,27 @@ class PricingEngine
 	{
 		$base_sats = self::get_base_price($post_id);
 
-		$final = $base_sats;
+		// 3. Apply Multipliers (Dynamic Pricing).
+		$settings     = get_option('aitamer_settings', []);
+		$is_dynamic   = ! empty($settings['lnbits_dynamic_pricing']);
+		$multiplier   = 1.0;
+
+		if ($is_dynamic) {
+			$bot_mult     = self::get_bot_multiplier($agent);
+			$content_mult = self::get_content_multiplier($post_id);
+			$multiplier   = $bot_mult * $content_mult;
+		}
+
+		/**
+		 * Filter the pricing multiplier.
+		 *
+		 * @param float $multiplier The calculated multiplier.
+		 * @param int   $post_id    Post ID.
+		 * @param array $agent      Agent classification.
+		 */
+		$multiplier = (float) apply_filters('aitamer_pricing_multiplier', $multiplier, $post_id, $agent);
+
+		$final = (int) ceil($base_sats * $multiplier);
 
 		/**
 		 * Filter the final pricing in Satoshis.
@@ -79,7 +99,7 @@ class PricingEngine
 	 *
 	 * Resolution order:
 	 * 1. Per-post override (_aitamer_price_sats).
-	 * 2. Global setting: fiat→sats conversion OR manual sats.
+	 * 2. Global setting: manual sats OR fiat→sats conversion.
 	 *
 	 * @param int $post_id Post ID (0 for global default).
 	 * @return int Base price in Satoshis.
@@ -97,8 +117,15 @@ class PricingEngine
 			}
 		}
 
-		// 2. Global setting (Always Fiat).
+		// 2. Global setting.
 		$settings = get_option('aitamer_settings', []);
+		$mode     = $settings['lnbits_pricing_mode'] ?? 'fiat';
+
+		if ('manual' === $mode) {
+			return max(1, absint($settings['lnbits_price_sats'] ?? 100));
+		}
+
+		// Fiat conversion.
 		$currency = $settings['lnbits_pricing_currency'] ?? 'usd';
 		$fiat     = (float) ($settings['lnbits_pricing_fiat'] ?? 0.01);
 

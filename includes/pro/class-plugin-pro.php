@@ -76,9 +76,10 @@ class PluginPro
 	 */
 	public function register_pro_components($plugin)
 	{
+		$plugin->add_component('billing_manager', new BillingManager());
 		$plugin->add_component('c2pa_manager', new C2paManager());
 		$plugin->add_component('media_pro', new MediaPro());
-		$plugin->add_component('lnbits_manager', new LnbitsManager());
+		$plugin->add_component('usdt_verifier', new USDTVerifier());
 	}
 
 	/**
@@ -89,6 +90,10 @@ class PluginPro
 	public function register_pro_hooks($plugin)
 	{
 		// Billing & Wallet DB upgrade.
+		$current_version = get_option('aitamer_billing_db_version', '1.0');
+		if (version_compare($current_version, '1.4', '<')) {
+			BillingManager::install_table();
+		}
 
 		// C2PA registration.
 		$c2pa = $plugin->get_component('c2pa_manager');
@@ -111,6 +116,9 @@ class PluginPro
 	 */
 	public function handle_pro_activation()
 	{
+		// Install billing table.
+		BillingManager::install_table();
+
 		// Add Pro-specific default options.
 		$settings = get_option('aitamer_settings', array());
 		$pro_defaults = array(

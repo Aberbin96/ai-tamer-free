@@ -132,21 +132,6 @@ class LicenseVerifier
 			}
 		}
 
-		// Reading Voucher check (V2).
-		if (! empty($payload['vch']) && ! empty($uid)) {
-			if (! self::check_wallet_balance($uid)) {
-				return false;
-			}
-		}
-
-		// Real-time subscription check (if linked).
-		if (! empty($payload['sid'])) {
-			$stripe = new StripeManager();
-			if (! $stripe->verify_subscription($payload['sid'])) {
-				return false;
-			}
-		}
-
 		self::$last_validated_payload = $payload;
 		return true;
 	}
@@ -164,14 +149,13 @@ class LicenseVerifier
 	 *
 	 * @param string $agent_name Name of the licensed agent (e.g. "GPTBot").
 	 * @param int    $days       Number of days until expiry (default 365).
-	 * @param string $sub_id     Optional Stripe subscription ID.
 	 * @param string $scope      Optional access scope (default 'global').
 	 * @param int    $credits    Optional initial credits for Reading Vouchers.
 	 * @return string base64url-encoded token string.
 	 */
-	public static function issue_token(string $agent_name, int $days = 365, string $sub_id = '', string $scope = 'global', int $credits = 0): string
+	public static function issue_token(string $agent_name, int $days = 365, string $scope = 'global'): string
 	{
-		Plugin::log("AI Tamer: issue_token called for {$agent_name}, scope: {$scope}, credits: {$credits}");
+		Plugin::log("AI Tamer: issue_token called for {$agent_name}, scope: {$scope}");
 
 		if ('global' === $scope) {
 			$scope = LicenseScope::GLOBAL->value;
@@ -186,15 +170,10 @@ class LicenseVerifier
 			'sub' => $agent_name,
 			'iss' => $iss,
 			'exp' => $exp,
-			'sid' => $sub_id,
 			'scp' => $scope,
 			'uid' => $uid,
 			'sig' => $sig,
 		);
-
-		if ($credits > 0) {
-			$payload_data['vch'] = 1;
-		}
 
 		$payload = json_encode($payload_data); // phpcs:ignore WordPress.WP.AlternativeFunctions
 
@@ -207,21 +186,14 @@ class LicenseVerifier
 			'uid'       => $uid,
 			'agent'     => $agent_name,
 			'exp'       => $exp,
-			'sub_id'    => $sub_id,
 			'scope'     => $scope,
 			'issued_at' => time(),
 			'token'     => $token,
-			'is_voucher' => ($credits > 0),
 		);
 		$updated = update_option('aitamer_license_tokens', $tokens, false);
 
 		if ($updated) {
 			Plugin::log("AI Tamer: Token saved successfully for {$agent_name} (UID: {$uid}).");
-
-			// Initialize wallet if credits are provided.
-			if ($credits > 0) {
-				self::init_wallet($uid, $credits);
-			}
 		} else {
 			Plugin::log("AI Tamer: ERROR - Failed to save token for {$agent_name} in update_option.");
 		}
@@ -229,77 +201,6 @@ class LicenseVerifier
 		return $token;
 	}
 
-	/**
-	 * Initializes a wallet for a Reading Voucher.
-	 *
-	 * @param string $token_id The unique token UID.
-	 * @param int    $credits  Initial balance.
-	 */
-	public static function init_wallet(string $token_id, int $credits): void
-	{
-		global $wpdb;
-		$table = $wpdb->prefix . 'aitamer_wallets';
-
-		$wpdb->insert(
-			$table,
-			array(
-				'token_id'   => $token_id,
-				'balance'    => $credits,
-				'status'     => 'active',
-				'created_at' => current_time('mysql'),
-			),
-			array('%s', '%d', '%s', '%s')
-		);
-
-		Plugin::log("AI Tamer: Initialized wallet for token {$token_id} with {$credits} credits.");
-	}
-
-	/**
-	 * Checks if a voucher has remaining credits.
-	 *
-	 * @param string $token_id The unique token UID.
-	 * @return bool
-	 */
-	public static function check_wallet_balance(string $token_id): bool
-	{
-		global $wpdb;
-		$table = $wpdb->prefix . 'aitamer_wallets';
-
-		$balance = $wpdb->get_var($wpdb->prepare(
-			"SELECT balance FROM {$table} WHERE token_id = %s AND status = 'active'",
-			$token_id
-		));
-
-		return null !== $balance && (int) $balance > 0;
-	}
-
-	/**
-	 * Deducts one credit from a voucher's wallet.
-	 *
-	 * @param string $token_id The unique token UID.
-	 */
-	public static function deduct_credit(string $token_id): void
-	{
-		global $wpdb;
-		$table = $wpdb->prefix . 'aitamer_wallets';
-
-		$wpdb->query($wpdb->prepare(
-			"UPDATE {$table} SET balance = balance - 1, last_used = %s WHERE token_id = %s AND balance > 0",
-			current_time('mysql'),
-			$token_id
-		));
-
-		// Check if exhausted.
-		$balance = $wpdb->get_var($wpdb->prepare(
-			"SELECT balance FROM {$table} WHERE token_id = %s",
-			$token_id
-		));
-
-		if (0 === (int) $balance) {
-			$wpdb->update($table, array('status' => 'exhausted'), array('token_id' => $token_id));
-			Plugin::log("AI Tamer: Wallet {$token_id} exhausted.");
-		}
-	}
 
 	/**
 	 * Returns stored tokens with optional filtering and pagination.
@@ -307,38 +208,39 @@ class LicenseVerifier
 	 * @param array $args Filtering and pagination arguments.
 	 * @return array
 	 */
-	public static function get_tokens( array $args = array() ): array {
-		$tokens = get_option( 'aitamer_license_tokens', array() );
-		if ( ! is_array( $tokens ) ) {
+	public static function get_tokens(array $args = array()): array
+	{
+		$tokens = get_option('aitamer_license_tokens', array());
+		if (! is_array($tokens)) {
 			return array();
 		}
 
 		// Filtering.
-		if ( ! empty( $args['s'] ) ) {
-			$s      = strtolower( $args['s'] );
+		if (! empty($args['s'])) {
+			$s      = strtolower($args['s']);
 			$tokens = array_filter(
 				$tokens,
-				function( $t ) use ( $s ) {
-					return strpos( strtolower( $t['agent'] ), $s ) !== false || strpos( strtolower( $t['token'] ), $s ) !== false;
+				function ($t) use ($s) {
+					return strpos(strtolower((string) ($t['agent'] ?? '')), $s) !== false || strpos(strtolower((string) ($t['token'] ?? '')), $s) !== false;
 				}
 			);
 		}
 
-		if ( ! empty( $args['scope'] ) ) {
+		if (! empty($args['scope'])) {
 			$scope  = $args['scope'];
 			$tokens = array_filter(
 				$tokens,
-				function( $t ) use ( $scope ) {
-					return ( $t['scope'] ?? 'global' ) === $scope;
+				function ($t) use ($scope) {
+					return ($t['scope'] ?? 'global') === $scope;
 				}
 			);
 		}
 
 		// Pagination.
-		if ( isset( $args['limit'] ) ) {
+		if (isset($args['limit'])) {
 			$limit  = (int) $args['limit'];
-			$offset = (int) ( $args['offset'] ?? 0 );
-			$tokens = array_slice( $tokens, $offset, $limit, true ); // Preserve keys for index-based actions.
+			$offset = (int) ($args['offset'] ?? 0);
+			$tokens = array_slice($tokens, $offset, $limit, true); // Preserve keys for index-based actions.
 		}
 
 		return $tokens;
@@ -350,10 +252,11 @@ class LicenseVerifier
 	 * @param array $args Filtering arguments.
 	 * @return int
 	 */
-	public static function count_tokens( array $args = array() ): int {
+	public static function count_tokens(array $args = array()): int
+	{
 		$args_no_pagination = $args;
-		unset( $args_no_pagination['limit'], $args_no_pagination['offset'] );
-		return count( self::get_tokens( $args_no_pagination ) );
+		unset($args_no_pagination['limit'], $args_no_pagination['offset']);
+		return count(self::get_tokens($args_no_pagination));
 	}
 
 	/**

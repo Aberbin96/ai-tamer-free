@@ -316,8 +316,8 @@ class Plugin
 	public static function log(string $message): void
 	{
 		$log_file = '/tmp/aitamer.log';
-		$timestamp = date('Y-m-d H:i:s');
-		$entry = "[{$timestamp}] {$message}\n";
+		$timestamp = gmdate( 'Y-m-d H:i:s' );
+		$entry     = "[{$timestamp}] {$message}\n";
 		file_put_contents($log_file, $entry, FILE_APPEND);
 	}
 }

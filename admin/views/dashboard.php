@@ -14,17 +14,18 @@ $aitamer_stats    = Logger::get_stats(10);
 $aitamer_total    = (int) ($aitamer_stats['total'] ?? 0);
 $aitamer_blocked  = 0;
 $aitamer_training = 0;
-$aitamer_current_earnings = apply_filters('aitamer_monetization_earnings', 0.00);
+$aitamer_current_earnings = (float) apply_filters('aitamer_monetization_earnings', 0.00);
 $aitamer_potential_earnings = 0.0;
 
 foreach (($aitamer_stats['top_bots'] ?? array()) as $aitamer_bot) {
 	if (in_array($aitamer_bot['bot_type'], array('training', 'scraper'), true)) {
 		$hits = (int) $aitamer_bot['hits'];
 		$aitamer_training += $hits;
-
-		$bot_val = apply_filters('aitamer_bot_monetization_value', 0.0, $aitamer_bot['bot_name']);
-		if (empty($bot_val)) {
-			$normalized = strtolower($aitamer_bot['bot_name']);
+		
+		$bot_name = (string) ($aitamer_bot['bot_name'] ?? '');
+		$bot_val  = (float) apply_filters('aitamer_bot_monetization_value', 0.0, $bot_name);
+		if ($bot_val <= 0) {
+			$normalized = strtolower($bot_name);
 			if (strpos($normalized, 'gptbot') !== false || strpos($normalized, 'chatgpt') !== false) {
 				$bot_val = 0.001;
 			} elseif (strpos($normalized, 'claudebot') !== false || strpos($normalized, 'anthropic') !== false) {
@@ -40,6 +41,9 @@ foreach (($aitamer_stats['top_bots'] ?? array()) as $aitamer_bot) {
 }
 // Shield Health: percentage of visits that are NOT training/scrapers (deprecated, always 100% for Audit Coverage).
 $aitamer_score = 100;
+?>
+<?php
+// Tabs removed from Dashboard to keep it clean.
 ?>
 <div class="wrap aitamer-wrap">
 
@@ -57,22 +61,22 @@ $aitamer_score = 100;
 	<div class="aitamer-metrics">
 		<div class="aitamer-metric green">
 			<div class="aitamer-metric-label"><?php esc_html_e('Total Detections', 'ai-tamer'); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n($aitamer_total)); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n((int) $aitamer_total)); ?></div>
 			<div class="aitamer-metric-sub"><?php esc_html_e('AI requests logged', 'ai-tamer'); ?></div>
 		</div>
 		<div class="aitamer-metric red">
 			<div class="aitamer-metric-label"><?php esc_html_e('Bots Intercepted', 'ai-tamer'); ?></div>
-			<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n($aitamer_training)); ?></div>
+			<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n((int) $aitamer_training)); ?></div>
 			<div class="aitamer-metric-sub"><?php esc_html_e('Training bots deterred', 'ai-tamer'); ?></div>
 		</div>
 		<div class="aitamer-metric blue">
 			<div class="aitamer-metric-label"><?php esc_html_e('Potential Earnings', 'ai-tamer'); ?></div>
-			<div class="aitamer-metric-value">$<?php echo esc_html(number_format_i18n($aitamer_potential_earnings, 4)); ?></div>
+			<div class="aitamer-metric-value">$<?php echo esc_html(number_format_i18n((float) $aitamer_potential_earnings, 4)); ?></div>
 			<div class="aitamer-metric-sub"><?php esc_html_e('Based on pessimistic bot valuation', 'ai-tamer'); ?></div>
 		</div>
 		<div class="aitamer-metric amber">
 			<div class="aitamer-metric-label"><?php esc_html_e('Current Earnings', 'ai-tamer'); ?></div>
-			<div class="aitamer-metric-value">$<?php echo esc_html(number_format_i18n($aitamer_current_earnings, 2)); ?></div>
+			<div class="aitamer-metric-value">$<?php echo esc_html(number_format_i18n((float) $aitamer_current_earnings, 2)); ?></div>
 			<div class="aitamer-metric-sub" style="margin-top:5px;">
 				<?php if (! apply_filters('aitamer_is_pro_active', false)) : ?>
 					<a href="#" style="color: inherit; text-decoration: underline; font-weight:600;"><?php esc_html_e('Upgrade to Pro to Monetize', 'ai-tamer'); ?></a>
@@ -107,9 +111,9 @@ $aitamer_score = 100;
 							$aitamer_type = $aitamer_bot['bot_type'] ?? 'search';
 						?>
 							<tr>
-								<td><strong><?php echo esc_html($aitamer_bot['bot_name']); ?></strong></td>
-								<td><span class="aitamer-badge-status <?php echo esc_attr($aitamer_type); ?>"><?php echo esc_html($aitamer_type); ?></span></td>
-								<td><?php echo esc_html(number_format_i18n((int) $aitamer_bot['hits'])); ?></td>
+								<td><strong><?php echo esc_html((string) ($aitamer_bot['bot_name'] ?? 'Unknown')); ?></strong></td>
+								<td><span class="aitamer-badge-status <?php echo esc_attr((string) $aitamer_type); ?>"><?php echo esc_html((string) $aitamer_type); ?></span></td>
+								<td><?php echo esc_html(number_format_i18n((int) ($aitamer_bot['hits'] ?? 0))); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					</tbody>
@@ -139,7 +143,7 @@ $aitamer_score = 100;
 					<tbody>
 						<?php foreach ($aitamer_stats['top_posts'] as $aitamer_row) :
 							$aitamer_post_id    = (int) $aitamer_row['post_id'];
-							$aitamer_post_title = get_the_title($aitamer_post_id);
+							$aitamer_post_title = (string) (get_the_title($aitamer_post_id) ?: '');
 							$aitamer_edit_link  = get_edit_post_link($aitamer_post_id);
 						?>
 							<tr>

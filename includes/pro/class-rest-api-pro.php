@@ -52,16 +52,6 @@ class RestApiPro extends RestApi
 			)
 		);
 
-		// Stripe: Webhook handler for automated payments.
-		register_rest_route(
-			self::NAMESPACE,
-			'/stripe/webhook',
-			array(
-				'methods'             => 'POST',
-				'callback'            => array($this, 'handle_stripe_webhook'),
-				'permission_callback' => '__return_true',
-			)
-		);
 
 		// Discovery: Catalog for RAG / MCP Agents.
 		register_rest_route(
@@ -103,16 +93,6 @@ class RestApiPro extends RestApi
 			)
 		);
 
-		// Wallet: Check prepaid credit balance (V2).
-		register_rest_route(
-			self::NAMESPACE,
-			'/wallet',
-			array(
-				'methods'             => 'GET',
-				'callback'            => array($this, 'handle_wallet'),
-				'permission_callback' => array($this, 'check_token'),
-			)
-		);
 
 		// Fingerprinting: Receive and analyze client-side signals.
 		register_rest_route(
@@ -138,13 +118,13 @@ class RestApiPro extends RestApi
 			)
 		);
 
-		// Admin: Lightning Streaming Analytics stats (capability-checked).
+		// Admin: USDT P2P Analytics stats (capability-checked).
 		register_rest_route(
 			self::NAMESPACE,
-			'/lightning-stats',
+			'/usdt-stats',
 			array(
 				'methods'             => 'GET',
-				'callback'            => array($this, 'handle_lightning_stats'),
+				'callback'            => array($this, 'handle_usdt_stats'),
 				'permission_callback' => function () {
 					return current_user_can('manage_options');
 				},
@@ -153,220 +133,130 @@ class RestApiPro extends RestApi
 	}
 
 	/**
-	 * Validates the X-AI-License-Token header.
+	 * Validates the X-Payment-Hash or X-AI-License-Token header.
 	 */
 	public function check_token(WP_REST_Request $request): bool|WP_Error
 	{
 		$agent = $this->detector ? $this->detector->classify() : array('matched' => false);
-
-		$required_scope = '';
-		$identifier     = $request->get_param('id');
-		if ($identifier) {
-			$post = null;
-			if (is_numeric($identifier)) {
-				$post = get_post((int) $identifier);
-			} else {
-				$posts = get_posts(array(
-					'name'           => $identifier,
-					'post_type'      => 'any',
-					'post_status'    => 'publish',
-					'posts_per_page' => 1,
-				));
-				if (!empty($posts)) {
-					$post = $posts[0];
-				}
-			}
-			if ($post) {
-				$required_scope = 'post:' . $post->ID;
-			}
-		}
-
-
-		// L402 / LSAT Lightning Validation.
-		// Accepts both 'L402' (current spec) and 'LSAT' (legacy, Joule/Aperture v1) prefixes.
-		// Format: Authorization: L402 <payment_hash>:<preimage>
-		$l402_valid    = false;
-		$l402_hash     = '';
-		$l402_sats     = 0;
-		$auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-		$l402_prefix_len = 0;
-		if (0 === strpos($auth_header, 'L402 ')) {
-			$l402_prefix_len = 5;
-		} elseif (0 === strpos($auth_header, 'LSAT ')) {
-			$l402_prefix_len = 5;
-		}
-		if ($l402_prefix_len > 0) {
-			$credentials = substr($auth_header, $l402_prefix_len);
-			$parts = explode(':', $credentials);
-			if (count($parts) === 2) {
-				$payment_hash = $parts[0];
-				$preimage     = $parts[1];
-				$l402_hash    = $payment_hash;
-
-				// --- TEST BYPASS START ---
-				if ('test_preimage' === $preimage) {
-					$l402_valid = true;
-					$l402_sats  = PricingEngine::get_price((int) $request->get_param('id'), $agent);
-				}
-				// --- TEST BYPASS END ---
-
-				if (!$l402_valid) {
-					$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
-					if ($lnbits) {
-						$l402_valid = $lnbits->is_invoice_paid($payment_hash);
-						if ($l402_valid) {
-							$l402_sats = PricingEngine::get_price((int) $request->get_param('id'), $agent);
-						}
-					}
-				}
-			}
-		}
-
-		// Future e-cash integrations (Cashu / Fedimint) via extensible filter.
-		$ecash_valid = apply_filters('aitamer_ecash_validate', false, $request);
-
-		$is_valid = LicenseVerifier::has_valid_token($required_scope) || $l402_valid || $ecash_valid;
+		$post_id = (int) $request->get_param('id');
 		$settings = get_option('aitamer_settings', array());
-		$defense  = $settings['active_defense'] ?? 'block';
 
-		if ($agent['matched'] && $this->logger) {
-			$post_id = (int) $request->get_param('id');
-			$protection = $is_valid ? 'api_content' : 'unauthorized';
-
-			$this->logger->log($agent, $protection, $post_id);
-		}
-
-		// Record successful L402 micropayment in billing table (prevents duplicate on re-use).
-		if ($l402_valid && ! empty($l402_hash)) {
-			$billing_key = 'aitlnx_billed_' . $l402_hash;
-			if (! get_transient($billing_key)) {
-				$stripe_manager = Plugin::get_instance()->get_component('stripe_manager');
-				if ($stripe_manager) {
-					$stripe_manager->log_transaction(array(
-						'agent_name'  => sanitize_text_field($agent['name'] ?? 'LN Agent'),
-						'amount'      => (float) $l402_sats,
-						'currency'    => 'SAT',
-						'provider_id' => 'ln_' . $l402_hash,
-						'status'      => \AiTamer\Enums\TransactionStatus::COMPLETED->value,
-					));
-				}
-				// Mark billed for 48h (invoice TTL) to prevent double-logging.
-				set_transient($billing_key, true, 2 * DAY_IN_SECONDS);
-			}
-		}
-
-		if ($is_valid) {
+		// 1. License Key Check (Standard).
+		if (LicenseVerifier::has_valid_token('post:' . $post_id)) {
 			return true;
 		}
 
-		// Trigger L402 challenge for any unauthorized request to this endpoint if Payment strategy is active.
-		if (Enums\DefenseStrategy::PAYMENT->value === $defense) {
-			// L402 Lightning via LNbits (Exclusively for AI Agents here).
-			$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
-			$ln_challenge = false;
-			$ln_invoice_data = null;
-			$post_id = (int) $request->get_param('id');
-			$sats    = PricingEngine::get_price($post_id, $agent);
+		// 2. USDT P2P Verification Logic.
+		$tx_hash   = $_SERVER['HTTP_X_PAYMENT_HASH'] ?? '';
+		$recipient = $settings['usdt_address'] ?? '';
+		$network   = $settings['usdt_network'] ?? 'polygon';
 
-			if ($lnbits && $lnbits->is_enabled()) {
-				$invoice = $lnbits->create_invoice($sats, 'Ai Tamer: Post ' . $post_id);
+		if (! empty($tx_hash) && ! empty($recipient)) {
+			global $wpdb;
+			$tolls_table = $wpdb->prefix . 'aitamer_tolls';
 
-				if (!is_wp_error($invoice)) {
-					header('Www-Authenticate: L402 macaroon="' . $invoice['payment_hash'] . '", invoice="' . $invoice['payment_request'] . '"');
-					header('Access-Control-Expose-Headers: Www-Authenticate');
-					$ln_challenge = true;
-					$ln_invoice_data = $invoice;
-				} else {
-					$ln_error = $invoice->get_error_message();
+			// Check if already paid.
+			$paid = $wpdb->get_var($wpdb->prepare(
+				"SELECT id FROM {$tolls_table} WHERE transaction_hash = %s AND status = 'paid' LIMIT 1",
+				sanitize_text_field($tx_hash)
+			));
+
+			if (! $paid) {
+				$usdt_verifier = new USDTVerifier();
+				$base_price    = (float) ($settings['usdt_price_usd'] ?? 0.10);
+				$unique_amount = $usdt_verifier->get_unique_amount($base_price, $post_id);
+
+				$is_verified = $usdt_verifier->verify($tx_hash, $unique_amount, $recipient, $network);
+				if (true === $is_verified) {
+					$wpdb->insert($tolls_table, array(
+						'transaction_hash' => sanitize_text_field($tx_hash),
+						'amount_usdt'      => $unique_amount,
+						'network'          => $network,
+						'post_id'          => $post_id,
+						'bot_ip'           => $_SERVER['REMOTE_ADDR'] ?? '',
+						'status'           => 'paid',
+						'created_at'       => current_time('mysql'),
+					));
+					$paid = true;
 				}
 			}
 
-			if ($ln_challenge) {
-				$error_data = array(
-					'status'     => 402,
-					'price_sats' => $sats,
-				);
-
-				$base_price = PricingEngine::get_base_price($post_id);
-				$error_data['pricing'] = array(
-					'base_sats'  => $base_price,
-					'multiplier' => ($base_price > 0) ? round($sats / $base_price, 2) : 1.0,
-				);
-
-				$error_data['l402'] = array(
-					'version'            => '1',
-					'payment_hash'       => $ln_invoice_data['payment_hash'],
-					'invoice'            => $ln_invoice_data['payment_request'],
-					'price_sats'         => $sats,
-					'auth_header_format' => 'Authorization: L402 <payment_hash>:<preimage>',
-				);
-
-				return new WP_Error(
-					'rest_payment_required',
-					__('Payment Required to access this content. Pay the BOLT11 invoice and retry with the Authorization: L402 header.', 'ai-tamer'),
-					$error_data
-				);
+			if ($paid) {
+				return true;
 			}
+		}
 
-			// If Payment strategy is active but Lightning is not ready.
+		$defense = $settings['active_defense'] ?? 'block';
+		if (Enums\DefenseStrategy::PAYMENT->value === $defense) {
+			$usdt_verifier = new USDTVerifier();
+			$base_price    = (float) ($settings['usdt_price_usd'] ?? 0.10);
+			$unique_amount = $usdt_verifier->get_unique_amount($base_price, $post_id);
+
+			header('W3C-Payment-Method: USDT');
+			header('WWW-Authenticate: USDT address="' . esc_attr($recipient) . '", amount="' . esc_attr((string) $unique_amount) . '", network="' . esc_attr($network) . '"');
+			header('Access-Control-Expose-Headers: WWW-Authenticate, W3C-Payment-Method');
+
 			return new WP_Error(
-				'rest_lightning_not_configured',
-				__('This content requires L402 Lightning payment, but the Lightning provider (LNbits) is not currently configured or reachable.', 'ai-tamer'),
+				'rest_payment_required',
+				__('Payment Required: Direct USDT P2P Transfer.', 'ai-tamer'),
 				array(
-					'status' => 503,
-					'detail' => $ln_error ?? __('Check LNbits settings in the admin panel.', 'ai-tamer')
+					'status'  => 402,
+					'payment' => array(
+						'method'  => 'USDT',
+						'address' => $recipient,
+						'amount'  => $unique_amount,
+						'network' => $network,
+					),
 				)
 			);
 		}
 
-		// Fallback to 401 if Payment is not the strategy or providers are not ready.
+		// Fallback to 401.
 		return new WP_Error(
 			'aitamer_unauthorized',
-			'A valid X-AI-License-Token is required to access this endpoint. Visit ' . home_url('/wp-json/ai-tamer/v1/license') . ' to view usage terms.',
+			'A valid X-AI-License-Token or X-Payment-Hash is required.',
 			array('status' => 401)
 		);
 	}
 
 	/**
+	 * GET /ai-tamer/v1/usdt-stats
+	 * (Capability-checked: manage_options)
+	 */
+	public function handle_usdt_stats(): WP_REST_Response
+	{
+		global $wpdb;
+		$tolls_table = $wpdb->prefix . 'aitamer_tolls';
+
+		$total_usdt = (float) ($wpdb->get_var(
+			$wpdb->prepare("SELECT SUM(amount_usdt) FROM `{$tolls_table}` WHERE status = %s", 'paid')
+		) ?: 0);
+
+		$total_tx = (int) ($wpdb->get_var(
+			$wpdb->prepare("SELECT COUNT(*) FROM `{$tolls_table}` WHERE status = %s", 'paid')
+		) ?: 0);
+
+		$recent = $wpdb->get_results(
+			$wpdb->prepare("SELECT * FROM `{$tolls_table}` WHERE status = %s ORDER BY id DESC LIMIT 5", 'paid'),
+			ARRAY_A
+		) ?: array();
+
+		return new WP_REST_Response(array(
+			'total_usdt'  => $total_usdt,
+			'total_tx'    => $total_tx,
+			'recent_tx'   => $recent,
+			'generated_at'=> gmdate('c'),
+		), 200);
+	}
+	/**
 	 * GET /ai-tamer/v1/license
-	 * Overrides the base license to add Stripe integration.
+	 * Base license implementation (Stripe integration removed).
 	 *
 	 * @return WP_REST_Response
 	 */
 	public function handle_license(): WP_REST_Response
 	{
-		$response = parent::handle_license();
-		$body     = $response->get_data();
-
-		$stripe = Plugin::get_instance()->get_stripe_manager();
-		if ($stripe && $stripe->is_enabled()) {
-			$sub_url      = $stripe->create_checkout_session('AI Agent', 0, 'subscription');
-			$voucher_url  = $stripe->create_checkout_session('AI Agent', 0, 'voucher');
-
-			$body['potentialAction'] = array();
-
-			if ($sub_url) {
-				$body['potentialAction'][] = array(
-					'@type' => 'BuyAction',
-					'name'  => 'Monthly Subscription (Unlimited)',
-					'url'   => $sub_url,
-				);
-				$body['subscription_url'] = $sub_url;
-			}
-
-			if ($voucher_url) {
-				$body['potentialAction'][] = array(
-					'@type' => 'BuyAction',
-					'name'  => 'Reading Voucher (Credits)',
-					'url'   => $voucher_url,
-				);
-				$body['voucher_url'] = $voucher_url;
-			}
-		}
-
-
-		$response->set_data($body);
-		return $response;
+		return parent::handle_license();
 	}
 
 	/**
@@ -510,18 +400,6 @@ class RestApiPro extends RestApi
 		return $response;
 	}
 
-	/**
-	 * Stripe Webhook.
-	 */
-	public function handle_stripe_webhook(WP_REST_Request $request): WP_REST_Response
-	{
-		$plugin = Plugin::get_instance();
-		$stripe = $plugin->get_stripe_manager();
-		if ($stripe) {
-			$stripe->handle_webhook($request->get_body(), $request->get_header('Stripe-Signature') ?: '');
-		}
-		return new WP_REST_Response(array('received' => true), 200);
-	}
 
 	/**
 	 * GET /catalog
@@ -578,45 +456,6 @@ class RestApiPro extends RestApi
 		return new WP_REST_Response(array('score' => $score, 'label' => $label, 'color' => $color), 200);
 	}
 
-	/**
-	 * GET /wallet
-	 * Returns the credit balance for the authenticated voucher.
-	 */
-	public function handle_wallet(WP_REST_Request $request): WP_REST_Response|WP_Error
-	{
-		$payload = LicenseVerifier::get_last_payload();
-
-		if (empty($payload['uid'])) {
-			return new WP_Error(
-				'aitamer_not_a_voucher',
-				__('The provided token is not a Reading Voucher and does not have a wallet balance.', 'ai-tamer'),
-				array('status' => 400)
-			);
-		}
-
-		global $wpdb;
-		$table = $wpdb->prefix . 'aitamer_wallets';
-		$wallet = $wpdb->get_row($wpdb->prepare(
-			"SELECT * FROM {$table} WHERE token_id = %s",
-			$payload['uid']
-		), ARRAY_A);
-
-		if (! $wallet) {
-			return new WP_Error(
-				'aitamer_wallet_not_found',
-				__('No wallet found for this token ID.', 'ai-tamer'),
-				array('status' => 404)
-			);
-		}
-
-		return new WP_REST_Response(array(
-			'token_id'   => $wallet['token_id'],
-			'balance'    => (int) $wallet['balance'],
-			'status'     => $wallet['status'],
-			'last_used'  => $wallet['last_used'],
-			'created_at' => $wallet['created_at'],
-		), 200);
-	}
 
 	/**
 	 * POST /fingerprint
@@ -658,62 +497,4 @@ class RestApiPro extends RestApi
 		return new WP_REST_Response(array('received' => true, 'score' => $risk_score), 200);
 	}
 
-	/**
-	 * GET /ai-tamer/v1/lightning-stats
-	 *
-	 * Returns aggregated Lightning micro-transaction stats for the admin dashboard.
-	 * Capability-checked: only users with manage_options can access.
-	 *
-	 * @return WP_REST_Response
-	 */
-	public function handle_lightning_stats(): WP_REST_Response
-	{
-		global $wpdb;
-
-		$billing_table = $wpdb->prefix . StripeManager::TABLE;
-
-		// Aggregate all LN rows (provider_id starts with 'ln_').
-		$total_sats = (float) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			"SELECT SUM(amount) FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
-		);
-
-		$total_transactions = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			"SELECT COUNT(*) FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
-		);
-
-		// Last 5 LN transactions.
-		$recent = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			"SELECT agent_name, amount, currency, provider_id, created_at FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT' ORDER BY id DESC LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL
-			ARRAY_A
-		) ?: array();
-
-		// Live LNbits wallet balance.
-		$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
-		$wallet_data = null;
-		if ($lnbits && $lnbits->is_enabled()) {
-			$wallet_result = $lnbits->get_wallet_balance();
-			if (!is_wp_error($wallet_result)) {
-				$wallet_data = $wallet_result;
-			}
-		}
-
-		// Cached BTC rate (piggybacks PricingEngine's transient — no extra API call).
-		$btc_rate = get_transient(PricingEngine::RATE_TRANSIENT_KEY);
-		if (!is_array($btc_rate)) {
-			$btc_rate = null;
-		}
-
-		$body = array(
-			'total_sats_earned'   => (int) $total_sats,
-			'total_transactions'  => $total_transactions,
-			'recent_transactions' => $recent,
-			'lnbits_wallet'       => $wallet_data,
-			'current_btc_rate'    => $btc_rate,
-			'generated_at'        => gmdate('c'),
-		);
-
-		$response = new WP_REST_Response($body, 200);
-		$response->header('Cache-Control', 'no-cache, no-store');
-		return $response;
-	}
 }

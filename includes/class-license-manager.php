@@ -247,8 +247,8 @@ class LicenseManager {
 			if ( preg_match_all( '/<h[2-3][^>]*>(.*?)<\/h[2-3]>.*?<p[^>]*>(.*?)<\/p>/is', $post_content, $matches, PREG_SET_ORDER ) ) {
 				$questions = array();
 				foreach ( $matches as $match ) {
-					$q_text = trim( strip_tags( $match[1] ) );
-					$a_text = trim( strip_tags( $match[2] ) );
+					$q_text = wp_strip_all_tags( $match[1] );
+					$a_text = wp_strip_all_tags( $match[2] );
 					if ( strpos( $q_text, '?' ) !== false || strpos( $q_text, '¿' ) !== false ) {
 						$questions[] = array(
 							'@type'          => 'Question',
