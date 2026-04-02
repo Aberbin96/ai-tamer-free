@@ -103,7 +103,7 @@ class AdminPro
 	{
 		// Licensing submenu (Hidden from sidebar).
 		add_submenu_page(
-			null,
+			'',
 			__('Licensing', 'ai-tamer'),
 			__('Licensing', 'ai-tamer'),
 			'manage_options',
@@ -113,7 +113,7 @@ class AdminPro
 
 		// Monetization submenu (Hidden from sidebar).
 		add_submenu_page(
-			null,
+			'',
 			__('Monetization', 'ai-tamer'),
 			__('Monetization', 'ai-tamer'),
 			'manage_options',

@@ -242,7 +242,7 @@ class Admin
 
 		// Audit Reports submenu (Hidden from sidebar).
 		add_submenu_page(
-			null,
+			'',
 			__('Audit Reports', 'ai-tamer'),
 			__('Audit Reports', 'ai-tamer'),
 			'manage_options',
