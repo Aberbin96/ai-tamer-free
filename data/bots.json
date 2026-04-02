@@ -4,14 +4,14 @@
       "name": "GPTBot",
       "user_agent": "GPTBot",
       "owner": "OpenAI",
-      "type": "aeo",
+      "type": "training",
       "docs": "https://platform.openai.com/docs/gptbot"
     },
     {
       "name": "ChatGPT-User",
       "user_agent": "ChatGPT-User",
       "owner": "OpenAI",
-      "type": "aeo",
+      "type": "training",
       "docs": "https://platform.openai.com/docs/plugins/bot"
     },
     {
@@ -25,7 +25,7 @@
       "name": "Google-Extended",
       "user_agent": "Google-Extended",
       "owner": "Google",
-      "type": "aeo",
+      "type": "training",
       "docs": "https://developers.google.com/search/docs/crawling-indexing/google-extended"
     },
     {
@@ -39,7 +39,7 @@
       "name": "ClaudeBot",
       "user_agent": "ClaudeBot",
       "owner": "Anthropic",
-      "type": "aeo",
+      "type": "training",
       "docs": "https://www.anthropic.com"
     },
     {
@@ -67,7 +67,7 @@
       "name": "PerplexityBot",
       "user_agent": "PerplexityBot",
       "owner": "Perplexity AI",
-      "type": "aeo",
+      "type": "search",
       "docs": "https://www.perplexity.ai"
     },
     {

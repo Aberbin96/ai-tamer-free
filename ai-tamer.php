@@ -38,6 +38,7 @@ require_once AITAMER_PLUGIN_DIR . 'includes/class-meta-box.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-content-filter.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-bot-updater.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-license-manager.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-notifications.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-rest-api.php';
 require_once AITAMER_PLUGIN_DIR . 'admin/class-admin.php';
 

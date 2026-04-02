@@ -17,6 +17,11 @@ use function is_admin;
 use function wp_schedule_event;
 use function wp_next_scheduled;
 use function __;
+use function wp_enqueue_script;
+use function wp_localize_script;
+use function esc_url_raw;
+use function rest_url;
+use function wp_create_nonce;
 
 defined('ABSPATH') || exit; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions
 
@@ -59,6 +64,9 @@ class Plugin
 	/** @var RestApi */
 	private $rest_api;
 
+	/** @var Notifications */
+	private $notifications;
+
 	/** @var array Registry for extra components (Pro). */
 	private $components = array();
 
@@ -95,6 +103,7 @@ class Plugin
 
 		$this->bot_updater     = new BotUpdater();
 		$this->license_manager = new LicenseManager();
+		$this->notifications   = new Notifications();
 
 		// Inject REST API (can be overridden by Pro).
 		$this->rest_api = apply_filters('aitamer_rest_api', new RestApi($this->detector, $this->logger), $this->detector, $this->logger);
@@ -122,6 +131,7 @@ class Plugin
 	{
 		// Boot the REST API (always — available on frontend and admin).
 		$this->rest_api->register();
+		$this->notifications->register();
 
 		// Auto-create/upgrade the DB table if needed.
 		if (get_option('aitamer_db_version') !== '1.1') {
@@ -139,6 +149,9 @@ class Plugin
 
 		// Inject <meta> tags in <head>.
 		add_action('wp_head', array($this->protector, 'inject_meta_tags'), 1);
+
+		// Fingerprinting Script Injection
+		add_action('wp_enqueue_scripts', array($this, 'enqueue_fingerprint_script'));
 
 		// Append rules to the virtual robots.txt.
 		add_filter('robots_txt', array($this->protector, 'append_robots_txt'), 10, 2);
@@ -217,6 +230,30 @@ class Plugin
 		// On the frontend, if it's a bot, we apply at least header/meta protection.
 		$protection = $agent['matched'] ? 'headers' : 'none';
 		$this->logger->log($agent, $protection);
+	}
+
+	/**
+	 * Enqueues the fingerprint script on the frontend.
+	 */
+	public function enqueue_fingerprint_script(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		if (empty($settings['enable_fingerprinting'])) {
+			return; // Can be toggled from settings if desired, or assume always on
+		}
+
+		wp_enqueue_script(
+			'aitamer-fingerprint',
+			AITAMER_PLUGIN_URL . 'assets/js/fingerprint.js',
+			array(),
+			AITAMER_VERSION,
+			true
+		);
+
+		wp_localize_script('aitamer-fingerprint', 'aiTamerApi', array(
+			'root'  => esc_url_raw(rest_url()),
+			'nonce' => wp_create_nonce('wp_rest'),
+		));
 	}
 
 	/**

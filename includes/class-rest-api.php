@@ -43,6 +43,9 @@ use function get_transient;
 use function set_transient;
 use function __;
 use function _x;
+use function is_user_logged_in;
+use function current_user_can;
+use function sanitize_text_field;
 
 defined('ABSPATH') || exit;
 
@@ -98,6 +101,28 @@ class RestApi
 				'permission_callback' => '__return_true',
 			)
 		);
+
+		// Fingerprinting: Receive and analyze client-side signals.
+		register_rest_route(
+			self::NAMESPACE,
+			'/fingerprint',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array($this, 'handle_fingerprint'),
+				'permission_callback' => function () {
+					return is_user_logged_in() || current_user_can('read') || true;
+				},
+				'args'                => array(
+					'webdriver'  => array('type' => 'boolean'),
+					'chrome'     => array('type' => 'boolean'),
+					'plugins'    => array('type' => 'integer'),
+					'mimeTypes'  => array('type' => 'integer'),
+					'innerWidth' => array('type' => 'integer'),
+					'outerWidth' => array('type' => 'integer'),
+					'webgl'      => array('type' => 'string'),
+				),
+			)
+		);
 	}
 
 	/**
@@ -136,5 +161,45 @@ class RestApi
 		$response = new WP_REST_Response($body, 200);
 		$response->header('Content-Type', 'application/ld+json; charset=utf-8');
 		return $response;
+	}
+
+	/**
+	 * POST /fingerprint
+	 */
+	public function handle_fingerprint(WP_REST_Request $request): WP_REST_Response
+	{
+		$data = array(
+			'webdriver'  => $request->get_param('webdriver'),
+			'chrome'     => $request->get_param('chrome'),
+			'plugins'    => (int) $request->get_param('plugins'),
+			'mimeTypes'  => (int) $request->get_param('mimeTypes'),
+			'innerWidth' => (int) $request->get_param('innerWidth'),
+			'outerWidth' => (int) $request->get_param('outerWidth'),
+			'webgl'      => sanitize_text_field((string) $request->get_param('webgl')),
+			'ip'         => $_SERVER['REMOTE_ADDR'] ?? '',
+		);
+
+		// Evaluate Fingerprint heuristic score based on client signals
+		$risk_score = Detector::evaluate_fingerprint($data);
+
+		if ($risk_score > 0 && $this->detector && $this->logger) {
+			$action = ($risk_score >= 50) ? 'fingerprint_blocked' : 'fingerprint_suspicious';
+			
+			$dummy_agent = array(
+				'name'    => 'Headless Browser (Detected via FP: ' . $risk_score . ')',
+				'type'    => 'bot',
+				'matched' => true,
+				'ip'      => $data['ip']
+			);
+			
+			$this->logger->log($dummy_agent, $action);
+		}
+
+		if ($risk_score >= 50) {
+			// Add to Limiter actively (simulated ban for the IP via transients or similar)
+			set_transient('aitamer_fp_block_' . md5($data['ip']), true, 3600); // 1 hour block
+		}
+
+		return new WP_REST_Response(array('received' => true, 'score' => $risk_score), 200);
 	}
 }

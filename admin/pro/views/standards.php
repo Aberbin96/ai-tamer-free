@@ -60,6 +60,55 @@ defined( 'ABSPATH' ) || exit;
 				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When enabled in General Settings, AI Tamer serves a dynamic /llms.txt file that points agents to your machine-readable Catalog and License endpoints.', 'ai-tamer' ); ?></p>
 				<p><a href="<?php echo esc_url( home_url( '/llms.txt' ) ); ?>" target="_blank" class="button button-link"><?php esc_html_e( 'View your llms.txt', 'ai-tamer' ); ?></a></p>
 			</div>
+
+			<div class="aitamer-standard-item">
+				<h3><?php esc_html_e( 'L402 Protocol — Machine-Payable Content', 'ai-tamer' ); ?></h3>
+				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'The L402 protocol (formerly LSAT) enables AI agents to pay for content access autonomously using the Lightning Network. No account creation, API keys, or human intervention required — just standard HTTP headers and Bitcoin micropayments.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When a bot requests protected content, AI Tamer returns HTTP 402 (Payment Required) with a Www-Authenticate header containing a BOLT11 Lightning invoice. The agent pays the invoice and retries with an Authorization header containing the payment proof.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Header format:', 'ai-tamer' ); ?></em></p>
+				<code style="display:block; background:#f0f0f0; padding:10px; margin:8px 0; border-radius:4px; font-size:12px; word-break:break-all;">
+					Www-Authenticate: L402 macaroon="&lt;payment_hash&gt;", invoice="&lt;bolt11&gt;"<br>
+					Authorization: L402 &lt;payment_hash&gt;:&lt;preimage&gt;
+				</code>
+				<p><strong><?php esc_html_e( 'Compatibility:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'AI Tamer accepts both the current L402 prefix and the legacy LSAT prefix for backward compatibility with older browser extensions (Joule) and agent tooling (Aperture v1).', 'ai-tamer' ); ?></p>
+				<p>
+					<a href="https://github.com/lightning/blips/blob/master/blip-0032.md" target="_blank" class="button button-link"><?php esc_html_e( 'L402 BLIP-0032 Spec', 'ai-tamer' ); ?></a>
+					<a href="https://lightning.engineering/posts/2020-03-30-lsat/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Lightning Labs — LSAT Overview', 'ai-tamer' ); ?></a>
+					<a href="https://docs.getalby.com/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Alby Extension Docs', 'ai-tamer' ); ?></a>
+				</p>
+			</div>
+
+			<div class="aitamer-standard-item">
+				<h3><?php esc_html_e( 'Value-for-Value — Podcasting 2.0 Keysend', 'ai-tamer' ); ?></h3>
+				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'The Value-for-Value (V4V) model enables direct, peer-to-peer micropayments from consumers to creators without intermediaries. Originally designed for podcasting, V4V is now being adopted by AI agents that want to voluntarily compensate content creators.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When a Lightning Node Public Key is configured in the Monetization settings, AI Tamer exposes a value4value block in the /ai-tamer/v1/license endpoint following the Podcasting 2.0 specification. V4V-aware apps (Fountain, Breez, Alby) can discover this metadata and stream sats directly to your node via Keysend.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Standard:', 'ai-tamer' ); ?></em> <?php
+					echo wp_kses(
+						sprintf(
+							/* translators: %s: <podcast:value> tag name */
+							__( 'Follows the %s RSS tag specification, adapted for JSON-LD. Uses method="keysend" with your Lightning node public key as the recipient address.', 'ai-tamer' ),
+							'<code>&lt;podcast:value&gt;</code>'
+						),
+						array( 'code' => array() )
+					);
+				?></p>
+				<p>
+					<a href="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#value" target="_blank" class="button button-link"><?php esc_html_e( 'Podcast Namespace — Value Tag Spec', 'ai-tamer' ); ?></a>
+					<a href="https://podcasting2.org/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Podcasting 2.0', 'ai-tamer' ); ?></a>
+				</p>
+			</div>
+
+			<div class="aitamer-standard-item">
+				<h3><?php esc_html_e( 'Federated E-Cash (Cashu / Fedimint)', 'ai-tamer' ); ?></h3>
+				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'E-cash protocols like Cashu bring privacy-preserving micropayments to the web. Blinded tokens allow agents to pay for content without revealing their identity, while mints backed by Bitcoin ensure real economic value.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Cashu:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'A Chaumian e-cash protocol using blinded tokens. AI Tamer provides an extensible filter hook (aitamer_ecash_validate) that allows third-party plugins to accept Cashu tokens as payment. Tokens can be passed via the X-Cashu-Token header.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Fedimint:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'A federated custody protocol. Users of Fedimint federations can already pay AI Tamer L402 invoices through their federation\'s Lightning gateway — no additional plugin integration needed.', 'ai-tamer' ); ?></p>
+				<p><em><?php esc_html_e( 'Fedi:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'Consumer app built on Fedimint. Payments appear as standard Lightning transactions on the server side, making it fully compatible with AI Tamer without any changes.', 'ai-tamer' ); ?></p>
+				<p>
+					<a href="https://github.com/cashubtc/nuts" target="_blank" class="button button-link"><?php esc_html_e( 'Cashu NUTs (Protocol Spec)', 'ai-tamer' ); ?></a>
+					<a href="https://fedimint.org/docs/intro" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Fedimint Documentation', 'ai-tamer' ); ?></a>
+				</p>
+			</div>
 		</div>
 
 		<div class="aitamer-card sidebar">
@@ -71,6 +120,25 @@ defined( 'ABSPATH' ) || exit;
 			<div class="aitamer-info-box tip">
 				<h4><?php esc_html_e( 'Pro Tip', 'ai-tamer' ); ?></h4>
 				<p><?php esc_html_e( 'Implementing iptc:DigitalSourceType is currently the gold standard for certifying human vs. AI origin in professional media workflows.', 'ai-tamer' ); ?></p>
+			</div>
+			<div class="aitamer-info-box">
+				<h4><?php esc_html_e( 'L402 Simplified Flow', 'ai-tamer' ); ?></h4>
+				<p><?php esc_html_e( 'AI Tamer uses the payment_hash as the macaroon identifier in the L402 challenge (LNbits simplified flow). Full LND Macaroon baking is not required. This is clearly documented in the 402 response body for agent transparency.', 'ai-tamer' ); ?></p>
+			</div>
+			<div class="aitamer-info-box tip">
+				<h4><?php esc_html_e( 'Extensibility', 'ai-tamer' ); ?></h4>
+				<p><?php
+					echo wp_kses(
+						sprintf(
+							/* translators: %1$s, %2$s, %3$s: filter hook names */
+							__( 'Developers can extend AI Tamer\'s payment layer via three filters: %1$s for alternative payment tokens (Cashu), %2$s for pricing adjustments, and %3$s for base price overrides.', 'ai-tamer' ),
+							'<code>aitamer_ecash_validate</code>',
+							'<code>aitamer_pricing_multiplier</code>',
+							'<code>aitamer_base_price_sats</code>'
+						),
+						array( 'code' => array() )
+					);
+				?></p>
 			</div>
 		</div>
 	</div>

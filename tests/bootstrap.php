@@ -44,7 +44,8 @@ require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-watermarker.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-heuristic-detector.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-c2pa-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-media-pro.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-web3-toll.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-pricing-engine.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/class-notifications.php';
 
 // Ensure BrainMonkey is torn down after tests.
 register_shutdown_function(function () {

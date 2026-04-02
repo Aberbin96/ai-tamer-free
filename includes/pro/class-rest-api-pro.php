@@ -7,6 +7,17 @@ use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
 use function current_user_can;
+use function get_transient;
+use function set_transient;
+use function get_option;
+use function get_post;
+use function get_posts;
+use function wp_unslash;
+use function sanitize_text_field;
+use function esc_attr;
+use function home_url;
+use function is_wp_error;
+use function __;
 
 defined('ABSPATH') || exit;
 
@@ -127,26 +138,16 @@ class RestApiPro extends RestApi
 			)
 		);
 
-		// Web3 Data Toll: Verify transaction and issue token.
+		// Admin: Lightning Streaming Analytics stats (capability-checked).
 		register_rest_route(
 			self::NAMESPACE,
-			'/pay-toll',
+			'/lightning-stats',
 			array(
-				'methods'             => 'POST',
-				'callback'            => array($this, 'handle_pay_toll'),
-				'permission_callback' => '__return_true', // Anyone can attempt to pay.
-				'args'                => array(
-					'tx_hash' => array(
-						'type'              => 'string',
-						'required'          => true,
-						'sanitize_callback' => 'sanitize_text_field',
-					),
-					'post_id' => array(
-						'type'              => 'integer',
-						'required'          => true,
-						'sanitize_callback' => 'absint',
-					),
-				),
+				'methods'             => 'GET',
+				'callback'            => array($this, 'handle_lightning_stats'),
+				'permission_callback' => function () {
+					return current_user_can('manage_options');
+				},
 			)
 		);
 	}
@@ -180,13 +181,41 @@ class RestApiPro extends RestApi
 			}
 		}
 
-		$web3_token = isset($_SERVER['HTTP_X_AI_TOLL_TOKEN']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_AI_TOLL_TOKEN'])) : '';
-		$web3_valid = false;
-		if ( $web3_token && class_exists('\AiTamer\Web3Toll') && isset($post) && $post ) {
-			$web3_valid = \AiTamer\Web3Toll::validate_post_token( $web3_token, $post->ID );
+
+		// L402 / LSAT Lightning Validation.
+		// Accepts both 'L402' (current spec) and 'LSAT' (legacy, Joule/Aperture v1) prefixes.
+		// Format: Authorization: L402 <payment_hash>:<preimage>
+		$l402_valid    = false;
+		$l402_hash     = '';
+		$l402_sats     = 0;
+		$auth_header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+		$l402_prefix_len = 0;
+		if (0 === strpos($auth_header, 'L402 ')) {
+			$l402_prefix_len = 5;
+		} elseif (0 === strpos($auth_header, 'LSAT ')) {
+			$l402_prefix_len = 5;
+		}
+		if ($l402_prefix_len > 0) {
+			$credentials = substr($auth_header, $l402_prefix_len);
+			$parts = explode(':', $credentials);
+			if (count($parts) === 2) {
+				$payment_hash = $parts[0];
+				$l402_hash    = $payment_hash;
+
+				$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
+				if ($lnbits) {
+					$l402_valid = $lnbits->is_invoice_paid($payment_hash);
+					if ($l402_valid) {
+						$l402_sats = PricingEngine::get_price((int) $request->get_param('id'), $agent);
+					}
+				}
+			}
 		}
 
-		$is_valid = LicenseVerifier::has_valid_token($required_scope) || $web3_valid;
+		// Future e-cash integrations (Cashu / Fedimint) via extensible filter.
+		$ecash_valid = apply_filters('aitamer_ecash_validate', false, $request);
+
+		$is_valid = LicenseVerifier::has_valid_token($required_scope) || $l402_valid || $ecash_valid;
 		$settings = get_option('aitamer_settings', array());
 		$defense  = $settings['active_defense'] ?? 'block';
 
@@ -194,8 +223,26 @@ class RestApiPro extends RestApi
 			$post_id = (int) $request->get_param('id');
 			$protection = $is_valid ? 'api_content' : 'unauthorized';
 
-
 			$this->logger->log($agent, $protection, $post_id);
+		}
+
+		// Record successful L402 micropayment in billing table (prevents duplicate on re-use).
+		if ($l402_valid && ! empty($l402_hash)) {
+			$billing_key = 'aitlnx_billed_' . $l402_hash;
+			if (! get_transient($billing_key)) {
+				$stripe_manager = Plugin::get_instance()->get_component('stripe_manager');
+				if ($stripe_manager) {
+					$stripe_manager->log_transaction(array(
+						'agent_name'  => sanitize_text_field($agent['name'] ?? 'LN Agent'),
+						'amount'      => (float) $l402_sats,
+						'currency'    => 'SAT',
+						'provider_id' => 'ln_' . $l402_hash,
+						'status'      => \AiTamer\Enums\TransactionStatus::COMPLETED->value,
+					));
+				}
+				// Mark billed for 48h (invoice TTL) to prevent double-logging.
+				set_transient($billing_key, true, 2 * DAY_IN_SECONDS);
+			}
 		}
 
 		if ($is_valid) {
@@ -213,28 +260,69 @@ class RestApiPro extends RestApi
 					}
 				}
 
-				$crypto_wallet = '';
-				if (!empty($settings['web3_toll_enabled'])) {
-					$crypto_wallet = $settings['base_wallet_address'] ?? '';
-					$price  = $settings['usdc_price_per_request'] ?? '0.01';
-					if ( $crypto_wallet ) {
-						header('Www-Authenticate: L402 macaroon="", invoice="usdc_base:' . esc_attr($crypto_wallet) . '?amount=' . esc_attr($price) . '"');
+
+				// L402 Lightning via LNbits.
+				// Follows the L402 spec: https://github.com/lightning/blips/blob/master/blip-0032.md
+				// The 'macaroon' field contains the payment_hash (LNbits simplified flow).
+				// Full LND Macaroon baking is not used since LNbits manages its own auth.
+				$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
+				$ln_challenge = false;
+				$ln_invoice_data = null;
+				if ($lnbits && $lnbits->is_enabled()) {
+					$post_id = (int) $request->get_param('id');
+					$sats = PricingEngine::get_price($post_id, $agent);
+					$invoice = $lnbits->create_invoice($sats, 'Ai Tamer: Post ' . $post_id);
+
+					if (!is_wp_error($invoice)) {
+						// L402 spec-compliant challenge header.
+						header('Www-Authenticate: L402 macaroon="' . $invoice['payment_hash'] . '", invoice="' . $invoice['payment_request'] . '"');
+						// Expose headers for browser extensions (Alby, Joule) via CORS.
+						header('Access-Control-Expose-Headers: Www-Authenticate, X-Payment-Link');
+						$ln_challenge = true;
+						$ln_invoice_data = $invoice;
 					}
 				}
 
-				if ($payment_url || $crypto_wallet) {
+				if ($payment_url || $ln_challenge) {
 					$msg = __('Payment Required to access this content.', 'ai-tamer');
-					if ($crypto_wallet) {
-						$msg .= ' ' . __('For Crypto (L402), submit USDC on Base and use X-AI-Toll-Token.', 'ai-tamer');
+					if ($ln_challenge) {
+						$msg .= ' ' . __('For Lightning (L402), pay the BOLT11 invoice and use the Authorization header.', 'ai-tamer');
 					}
 					if ($payment_url) {
 						$msg .= ' ' . __('For Fiat, purchase a license via the X-Payment-Link header.', 'ai-tamer');
 					}
 
+					$error_data = array(
+						'status'      => 402,
+						'payment_url' => $payment_url,
+					);
+
+					// Expose pricing metadata for agent negotiation.
+					if (isset($sats)) {
+						$base_price = PricingEngine::get_base_price((int) $request->get_param('id'));
+						$error_data['price_sats'] = $sats;
+						$error_data['pricing']    = array(
+							'base_sats'  => $base_price,
+							'multiplier' => ($base_price > 0) ? round($sats / $base_price, 2) : 1.0,
+						);
+					}
+
+					// L402 structured metadata for programmatic clients (lnget, Lightning Agent Tools).
+					if ($ln_invoice_data) {
+						$error_data['l402'] = array(
+							'version'            => '1',
+							'payment_hash'       => $ln_invoice_data['payment_hash'],
+							'invoice'            => $ln_invoice_data['payment_request'],
+							'price_sats'         => $sats ?? 0,
+							'auth_header_format' => 'Authorization: L402 <payment_hash>:<preimage>',
+							'note'               => 'The macaroon field contains the payment_hash (LNbits simplified flow). Pay the BOLT11 invoice to obtain the preimage.',
+						);
+					}
+
 					return new WP_Error(
 						'rest_payment_required',
 						$msg,
-						array('status' => 402, 'payment_url' => $payment_url)
+						$error_data
 					);
 				}
 			}
@@ -288,6 +376,33 @@ class RestApiPro extends RestApi
 					'url'   => $voucher_url,
 				);
 				$body['voucher_url'] = $voucher_url;
+			}
+		}
+
+		// Value-for-Value / Podcasting 2.0 compatibility.
+		// Follows the <podcast:value> specification adapted for JSON.
+		// See: https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#value
+		$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
+		if ($lnbits && $lnbits->is_enabled()) {
+			$settings       = get_option('aitamer_settings', array());
+			$node_pubkey    = $settings['lnbits_node_pubkey'] ?? '';
+			$suggested_sats = PricingEngine::get_base_price(0);
+
+			if (!empty($node_pubkey)) {
+				$body['value4value'] = array(
+					'type'                  => 'lightning',
+					'method'                => 'keysend',
+					'suggested_amount_sats' => $suggested_sats,
+					'recipients'            => array(
+						array(
+							'name'    => get_bloginfo('name'),
+							'type'    => 'wallet',
+							'address' => $node_pubkey,
+							'split'   => 100,
+							'fee'     => false,
+						),
+					),
+				);
 			}
 		}
 
@@ -563,20 +678,20 @@ class RestApiPro extends RestApi
 		// Evaluate Fingerprint heuristic score based on client signals
 		$risk_score = HeuristicDetector::evaluate_fingerprint($data);
 
-		if ($risk_score >= 50 && $this->detector) {
-			// Severe mismatch. Log it and flag IP.
+		if ($risk_score > 0 && $this->detector && $this->logger) {
+			$action = ($risk_score >= 50) ? 'fingerprint_blocked' : 'fingerprint_suspicious';
+
 			$dummy_agent = array(
-				'name'    => 'Headless Browser (Detected via FP)',
+				'name'    => 'Headless Browser (Detected via FP: ' . $risk_score . ')',
 				'type'    => 'bot',
 				'matched' => true,
 				'ip'      => $data['ip']
 			);
-			
-			// Optional: If you want to log the specific signal, add it to 'protection' or a new meta
-			if ($this->logger) {
-				$this->logger->log($dummy_agent, 'fingerprint_blocked');
-			}
-			
+
+			$this->logger->log($dummy_agent, $action);
+		}
+
+		if ($risk_score >= 50) {
 			// Add to Limiter actively (simulated ban for the IP via transients or similar)
 			set_transient('aitamer_fp_block_' . md5($data['ip']), true, 3600); // 1 hour block
 		}
@@ -585,32 +700,61 @@ class RestApiPro extends RestApi
 	}
 
 	/**
-	 * POST /pay-toll
-	 * Validates a Web3 transaction hash and issues a session token.
+	 * GET /ai-tamer/v1/lightning-stats
+	 *
+	 * Returns aggregated Lightning micro-transaction stats for the admin dashboard.
+	 * Capability-checked: only users with manage_options can access.
+	 *
+	 * @return WP_REST_Response
 	 */
-	public function handle_pay_toll(WP_REST_Request $request): WP_REST_Response|WP_Error
+	public function handle_lightning_stats(): WP_REST_Response
 	{
-		$tx_hash = $request->get_param('tx_hash');
-		$post_id = (int) $request->get_param('post_id');
+		global $wpdb;
 
-		if ( ! class_exists('\AiTamer\Web3Toll') ) {
-			return new WP_Error('aitamer_web3_disabled', __('Web3 Toll component is missing.', 'ai-tamer'), array('status' => 501));
+		$billing_table = $wpdb->prefix . StripeManager::TABLE;
+
+		// Aggregate all LN rows (provider_id starts with 'ln_').
+		$total_sats = (float) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT SUM(amount) FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
+		);
+
+		$total_transactions = (int) $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT COUNT(*) FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT'" // phpcs:ignore WordPress.DB.PreparedSQL
+		);
+
+		// Last 5 LN transactions.
+		$recent = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			"SELECT agent_name, amount, currency, provider_id, created_at FROM `{$billing_table}` WHERE provider_id LIKE 'ln_%' AND currency = 'SAT' ORDER BY id DESC LIMIT 5", // phpcs:ignore WordPress.DB.PreparedSQL
+			ARRAY_A
+		) ?: array();
+
+		// Live LNbits wallet balance.
+		$lnbits = Plugin::get_instance()->get_component('lnbits_manager');
+		$wallet_data = null;
+		if ($lnbits && $lnbits->is_enabled()) {
+			$wallet_result = $lnbits->get_wallet_balance();
+			if (!is_wp_error($wallet_result)) {
+				$wallet_data = $wallet_result;
+			}
 		}
 
-		$verification = \AiTamer\Web3Toll::verify_transaction($tx_hash);
-		
-		if ( true !== $verification ) {
-			return new WP_Error('aitamer_web3_tx_invalid', $verification, array('status' => 400));
+		// Cached BTC rate (piggybacks PricingEngine's transient — no extra API call).
+		$btc_rate = get_transient(PricingEngine::RATE_TRANSIENT_KEY);
+		if (!is_array($btc_rate)) {
+			$btc_rate = null;
 		}
 
-		// Valid payment! Issue a token for this post.
-		$token = \AiTamer\Web3Toll::issue_post_token($post_id);
+		$body = array(
+			'total_sats_earned'   => (int) $total_sats,
+			'total_transactions'  => $total_transactions,
+			'recent_transactions' => $recent,
+			'lnbits_wallet'       => $wallet_data,
+			'current_btc_rate'    => $btc_rate,
+			'generated_at'        => gmdate('c'),
+		);
 
-		return new WP_REST_Response(array(
-			'success' => true,
-			'message' => __('Payment verified successfully.', 'ai-tamer'),
-			'token'   => $token,
-			'post_id' => $post_id,
-		), 200);
+		$response = new WP_REST_Response($body, 200);
+		$response->header('Cache-Control', 'no-cache, no-store');
+		return $response;
 	}
 }

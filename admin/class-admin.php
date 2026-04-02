@@ -12,12 +12,14 @@ defined('ABSPATH') || exit;
 
 use AiTamer\Enums\DefenseStrategy;
 use AiTamer\Enums\LicensePolicy;
+use AiTamer\Logger;
 
 use function add_action;
 use function add_filter;
 use function apply_filters;
 use function add_menu_page;
 use function add_submenu_page;
+use function wp_add_dashboard_widget;
 use function add_settings_field;
 use function add_settings_section;
 use function absint;
@@ -83,6 +85,7 @@ class Admin
 	 */
 	private function __construct()
 	{
+		add_action('wp_dashboard_setup', array($this, 'register_dashboard_widget'));
 		add_action('admin_menu', array($this, 'register_menu'));
 		add_action('admin_init', array($this, 'register_settings'));
 		add_action('admin_post_aitamer_download_report', array($this, 'handle_download_report'));
@@ -90,6 +93,85 @@ class Admin
 		add_action('save_post', array($this, 'clear_api_cache'));
 		add_filter('attachment_fields_to_edit', array($this, 'add_certification_field'), 10, 2);
 		add_action('edit_attachment', array($this, 'save_certification_field'));
+	}
+
+	/**
+	 * Registers the WordPress dashboard widget.
+	 */
+	public function register_dashboard_widget(): void
+	{
+		wp_add_dashboard_widget(
+			'aitamer_monetization_widget',
+			__('AI Tamer — Monetization', 'ai-tamer'),
+			array($this, 'render_wp_dashboard_widget')
+		);
+	}
+
+	/**
+	 * Renders the WordPress dashboard widget.
+	 */
+	public function render_wp_dashboard_widget(): void
+	{
+		$stats = Logger::get_stats(10); // Display stats for recent period
+		$total_bots = (int) ($stats['total'] ?? 0);
+		$intercepted = 0;
+		$potential_earnings = 0.0;
+		$current_earnings = apply_filters('aitamer_monetization_earnings', 0.00);
+
+		foreach (($stats['top_bots'] ?? array()) as $bot) {
+			if (in_array($bot['bot_type'], array('training', 'scraper'), true)) {
+				$intercepted += (int) $bot['hits'];
+				// Pessimistically calculate earnings per bot type.
+				$bot_val = apply_filters('aitamer_bot_monetization_value', 0.0, $bot['bot_name']);
+				if (empty($bot_val)) {
+					$normalized = strtolower($bot['bot_name']);
+					if (strpos($normalized, 'gptbot') !== false || strpos($normalized, 'chatgpt') !== false) {
+						$bot_val = 0.001;
+					} elseif (strpos($normalized, 'claudebot') !== false || strpos($normalized, 'anthropic') !== false) {
+						$bot_val = 0.0005;
+					} elseif (strpos($normalized, 'google') !== false) {
+						$bot_val = 0.0002;
+					} else {
+						// Scrapers generally do not pay.
+						$bot_val = 0.00;
+					}
+				}
+				$potential_earnings += (int) $bot['hits'] * $bot_val;
+			}
+		}
+
+		?>
+		<div class="aitamer-wp-dashboard-widget" style="padding: 10px 0;">
+			<p style="margin: 0 0 8px;">
+				<strong><?php esc_html_e('Bots Entered:', 'ai-tamer'); ?></strong> 
+				<span><?php echo esc_html(number_format_i18n($total_bots)); ?></span>
+			</p>
+			<p style="margin: 0 0 15px;">
+				<strong><?php esc_html_e('Bots Intercepted:', 'ai-tamer'); ?></strong> 
+				<span style="color: #d63638;"><?php echo esc_html(number_format_i18n($intercepted)); ?></span>
+			</p>
+			<hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;" />
+			<p style="margin: 0 0 8px; font-weight: 600;">
+				<?php esc_html_e('Potential Earnings (Est.):', 'ai-tamer'); ?>
+				<br/>
+				<span style="font-size: 1.2em; color: #2271b1;">$<?php echo esc_html(number_format_i18n($potential_earnings, 4)); ?></span>
+			</p>
+			<p style="margin: 0 0 15px; font-weight: 600;">
+				<?php esc_html_e('Current Earnings:', 'ai-tamer'); ?>
+				<br/>
+				<span style="font-size: 1.2em; color: <?php echo apply_filters('aitamer_is_pro_active', false) ? '#00a32a' : '#888'; ?>;">
+					$<?php echo esc_html(number_format_i18n($current_earnings, 2)); ?>
+				</span>
+			</p>
+			<?php if (! apply_filters('aitamer_is_pro_active', false)) : ?>
+				<p style="margin-top: 15px;">
+					<a href="<?php echo esc_url(admin_url('admin.php?page=ai-tamer')); ?>" class="button button-primary">
+						<?php esc_html_e('Monetize Agents', 'ai-tamer'); ?>
+					</a>
+				</p>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 
@@ -106,6 +188,11 @@ class Admin
 			$url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/assets/css/admin-style.css';
 			wp_enqueue_style('aitamer-admin', $url, array(), AITAMER_VERSION);
 		}
+
+		/**
+		 * Allow Pro version to enqueue its own assets.
+		 */
+		do_action('aitamer_admin_enqueue_assets', $hook, $this);
 	}
 
 	/**
@@ -331,6 +418,59 @@ class Admin
 			'aitamer_bandwidth',
 			array('key' => 'bandwidth_kb_limit', 'min' => 100, 'max' => 102400)
 		);
+
+		// Notifications section.
+		add_settings_section(
+			'aitamer_notifications',
+			__('Real-time Notifications', 'ai-tamer'),
+			null,
+			'ai-tamer-settings'
+		);
+
+		add_settings_field(
+			'notifications_enabled',
+			__('Enable notifications', 'ai-tamer'),
+			array($this, 'render_checkbox_field'),
+			'ai-tamer-settings',
+			'aitamer_notifications',
+			array('key' => 'notifications_enabled')
+		);
+
+		add_settings_field(
+			'notification_channels',
+			__('Notification Channels', 'ai-tamer'),
+			array($this, 'render_notification_channels_field'),
+			'ai-tamer-settings',
+			'aitamer_notifications',
+			array()
+		);
+
+		add_settings_field(
+			'slack_webhook_url',
+			__('Slack Webhook URL', 'ai-tamer'),
+			array($this, 'render_text_field'),
+			'ai-tamer-settings',
+			'aitamer_notifications',
+			array('key' => 'slack_webhook_url', 'class' => 'regular-text')
+		);
+
+		add_settings_field(
+			'discord_webhook_url',
+			__('Discord Webhook URL', 'ai-tamer'),
+			array($this, 'render_text_field'),
+			'ai-tamer-settings',
+			'aitamer_notifications',
+			array('key' => 'discord_webhook_url', 'class' => 'regular-text')
+		);
+
+		add_settings_field(
+			'notification_events',
+			__('Notification Triggers', 'ai-tamer'),
+			array($this, 'render_notification_events_field'),
+			'ai-tamer-settings',
+			'aitamer_notifications',
+			array()
+		);
 	}
 
 	/**
@@ -365,6 +505,11 @@ class Admin
 			'active_defense'          => $defense,
 			'license_policy'          => LicensePolicy::NO_TRAINING->value,
 			'protected_post_types'    => isset($input['protected_post_types']) && is_array($input['protected_post_types']) ? array_map('sanitize_text_field', $input['protected_post_types']) : array('post'),
+			'notifications_enabled'   => ! empty($input['notifications_enabled']),
+			'notification_channels'   => isset($input['notification_channels']) && is_array($input['notification_channels']) ? array_map('sanitize_text_field', $input['notification_channels']) : array('email'),
+			'slack_webhook_url'       => esc_url_raw($input['slack_webhook_url'] ?? ''),
+			'discord_webhook_url'     => esc_url_raw($input['discord_webhook_url'] ?? ''),
+			'notification_events'     => isset($input['notification_events']) && is_array($input['notification_events']) ? array_map('sanitize_text_field', $input['notification_events']) : array(),
 		);
 
 		if (isset($input['license_policy'])) {
@@ -435,6 +580,69 @@ class Admin
 			absint($args['min'] ?? 1),
 			absint($args['max'] ?? 500)
 		);
+	}
+
+	/**
+	 * Renders a text input field.
+	 */
+	public function render_text_field(array $args): void
+	{
+		$key      = $args['key'];
+		$settings = get_option('aitamer_settings', array());
+		$value    = $settings[$key] ?? '';
+		printf(
+			'<input type="text" id="%1$s" name="aitamer_settings[%1$s]" value="%2$s" class="%3$s">',
+			esc_attr($key),
+			esc_attr($value),
+			esc_attr($args['class'] ?? 'regular-text')
+		);
+	}
+
+	/**
+	 * Renders notification channels checkboxes.
+	 */
+	public function render_notification_channels_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		$selected = $settings['notification_channels'] ?? array('email');
+		$channels = array(
+			'email'   => __('Email', 'ai-tamer'),
+			'slack'   => __('Slack (Webhook)', 'ai-tamer'),
+			'discord' => __('Discord (Webhook)', 'ai-tamer'),
+		);
+
+		foreach ($channels as $id => $label) {
+			printf(
+				'<label><input type="checkbox" name="aitamer_settings[notification_channels][]" value="%s" %s> %s</label><br>',
+				esc_attr($id),
+				checked(in_array($id, (array) $selected, true), true, false),
+				esc_html($label)
+			);
+		}
+	}
+
+	/**
+	 * Renders notification events checkboxes.
+	 */
+	public function render_notification_events_field(): void
+	{
+		$settings = get_option('aitamer_settings', array());
+		$selected = $settings['notification_events'] ?? array();
+		$events = array(
+			'high_intensity'   => __('High Intensity Activity (Rate Limits)', 'ai-tamer'),
+			'payment_received' => __('New Payments (Stripe/Crypto)', 'ai-tamer'),
+			'security_alert'   => __('Security Threats (Fingerprint Blocks)', 'ai-tamer'),
+			'new_bot'          => __('New Bots Detected', 'ai-tamer'),
+		);
+
+		foreach ($events as $id => $label) {
+			printf(
+				'<label><input type="checkbox" name="aitamer_settings[notification_events][]" value="%s" %s> %s</label><br>',
+				esc_attr($id),
+				checked(in_array($id, (array) $selected, true), true, false),
+				esc_html($label)
+			);
+		}
 	}
 
 	/**

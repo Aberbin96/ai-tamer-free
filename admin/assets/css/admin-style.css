@@ -25,7 +25,55 @@
 	--at-radius-sm:   3px;
 	--at-font-mono:   'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
-
+:root {
+	--color-surface-tint: #00a32a;
+	--color-primary-fixed-dim: #00a32a;
+  	--color-primary: #00a32a;
+	--color-inverse-primary: #006b5f;
+	--color-error-container: #93000a;
+	--color-outline: #909098;
+	--color-on-secondary-container: #aeb7df;
+	--color-tertiary-container: #6e4d5b;
+	--color-surface-bright: #373943;
+	--color-on-primary-fixed: #00201c;
+	--color-tertiary-fixed-dim: #e6bbcc;
+	--color-on-primary: #003731;
+	--color-secondary: #bcc5ee;
+	--color-surface: #11131c;
+	--color-on-tertiary-fixed: #2d1320;
+	--color-secondary-container: #3f486a;
+	--color-primary-fixed: #8cf5e4;
+	--color-on-surface-variant: #c6c6cf;
+	--color-surface-dim: #11131c;
+	--color-outline-variant: #45464e;
+	--color-on-tertiary-container: #ecc1d2;
+	--color-on-primary-fixed-variant: #00761e;
+	--color-on-error: #690005;
+	--color-surface-container-lowest: #0c0e17;
+	--color-on-primary-container: #75decd;
+	--color-primary-container: #00761e;
+	--color-surface-variant: #32343e;
+	--color-surface-container-low: #191b24;
+	--color-on-surface: #e1e1ef;
+	--color-surface-container-highest: #32343e;
+	--color-on-error-container: #ffdad6;
+	--color-inverse-surface: #e1e1ef;
+	--color-background: #11131c;
+	--color-tertiary: #e6bbcc;
+	--color-error: #ffb4ab;
+	--color-surface-container-high: #282933;
+	--color-on-secondary-fixed: #101a39;
+	--color-on-secondary: #262f4f;
+	--color-on-secondary-fixed-variant: #3c4567;
+	--color-on-tertiary-fixed-variant: #5d3d4c;
+	--color-secondary-fixed-dim: #bcc5ee;
+	--color-on-background: #e1e1ef;
+	--color-tertiary-fixed: #ffd8e7;
+	--color-inverse-on-surface: #2e303a;
+	--color-surface-container: #1d1f29;
+	--color-on-tertiary: #442835;
+	--color-secondary-fixed: #dce1ff;
+}
 /* =========================================================
    Base Container
    ========================================================= */
@@ -582,4 +630,57 @@
 .aitamer-pagination .dots {
 	color: var(--at-muted);
 	padding: 0 4px;
+
+/* =========================================================
+   Notification Settings (Real-time)
+   ========================================================= */
+.aitamer-wrap .form-table td fieldset label {
+	display: inline-block;
+	margin-bottom: 8px;
+	font-weight: 500;
+}
+
+.aitamer-wrap .form-table input[type="text"].regular-text {
+	width: 100%;
+	max-width: 400px;
+}
+
+.aitamer-notification-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.aitamer-wrap .notification-trigger-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 12px;
+	background: var(--at-surface-2);
+	border: 1px solid var(--at-border);
+	border-radius: var(--at-radius);
+	margin-bottom: 6px;
+	transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+	cursor: pointer;
+}
+
+.aitamer-wrap .notification-trigger-label:hover {
+	border-color: var(--at-green);
+	background: var(--at-green-dim);
+	transform: translateX(4px);
+}
+
+.aitamer-wrap .notification-trigger-label input {
+	margin: 0 !important;
+}
+
+.aitamer-wrap .notification-trigger-label .trigger-icon {
+	width: 16px;
+	height: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	font-size: 10px;
 }

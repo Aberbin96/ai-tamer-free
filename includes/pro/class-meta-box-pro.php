@@ -64,6 +64,36 @@ class MetaBoxPro extends MetaBox
 				</span>
 			</label>
 		</p>
+
+		<hr style="border:0;border-top:1px solid #ccd0d4;margin:15px 0;" />
+
+		<!-- Per-Post Lightning Price -->
+		<p style="margin:10px 0;">
+			<?php
+			$price_override = get_post_meta($post->ID, '_aitamer_price_sats', true);
+			$global_price   = PricingEngine::get_base_price(0);
+			?>
+			<label for="aitamer_price_sats" style="display:block;margin-bottom:5px;font-weight:600;">
+				⚡ <?php esc_html_e('Lightning Price (Sats)', 'ai-tamer'); ?>
+			</label>
+			<input type="number"
+				name="aitamer_price_sats"
+				id="aitamer_price_sats"
+				value="<?php echo esc_attr($price_override); ?>"
+				placeholder="<?php echo esc_attr($global_price); ?>"
+				min="1"
+				style="width:100%;box-sizing:border-box;"
+			/>
+			<small style="color:#666; font-size:11px; display:block; line-height:1.2; margin-top:4px;">
+				<?php
+				printf(
+					/* translators: %s: global price in satoshis */
+					esc_html__('Leave blank to use the global price (%s sats). Set a custom value for this article.', 'ai-tamer'),
+					number_format($global_price)
+				);
+				?>
+			</small>
+		</p>
 <?php
 	}
 
@@ -75,5 +105,12 @@ class MetaBoxPro extends MetaBox
 	protected function save_pro_fields(int $post_id): void
 	{
 		update_post_meta($post_id, '_aitamer_certified_human', isset($_POST['aitamer_certified_human']) ? 'yes' : 'no');
+
+		// Per-post Lightning price override.
+		if (isset($_POST['aitamer_price_sats']) && '' !== $_POST['aitamer_price_sats']) {
+			update_post_meta($post_id, '_aitamer_price_sats', absint($_POST['aitamer_price_sats']));
+		} else {
+			delete_post_meta($post_id, '_aitamer_price_sats');
+		}
 	}
 }

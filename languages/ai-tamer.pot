@@ -238,7 +238,7 @@ msgid "USDC Price Per Post"
 msgstr ""
 
 #: admin/pro/class-admin-pro.php:352
-msgid "Amount of USDC required per article view (e.g. 0.05)."
+msgid "Amount of USDC required per article view (e.g. 0.01)."
 msgstr ""
 
 #: admin/pro/class-admin-pro.php:360

@@ -116,12 +116,15 @@ class RestApiTest extends TestCase
 		Monkey\Functions\expect('get_the_author_meta')->andReturn('Admin');
 		Monkey\Functions\expect('get_permalink')->andReturn('https://example.com/post');
 
+		Monkey\Functions\expect('AiTamer\get_transient')->andReturn(false);
+		Monkey\Functions\expect('AiTamer\set_transient')->andReturn(true);
+		Monkey\Functions\expect('get_transient')->andReturn(false);
+		Monkey\Functions\expect('set_transient')->andReturn(true);
+
 		// Stub caching and block functions.
 		Monkey\Functions\stubs(array(
 			'wp_cache_get'  => false,
 			'wp_cache_set'  => true,
-			'get_transient' => false,
-			'set_transient' => true,
 			'do_blocks'     => function ($content) {
 				return $content;
 			},

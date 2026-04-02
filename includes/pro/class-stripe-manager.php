@@ -12,6 +12,7 @@
 namespace AiTamer;
 
 use AiTamer\Enums\LicenseScope;
+use AiTamer\Enums\TransactionStatus;
 use function get_option;
 use function update_option;
 use function home_url;
@@ -23,6 +24,17 @@ use function wp_remote_retrieve_response_code;
 use function wp_parse_args;
 use function get_transient;
 use function set_transient;
+use function wp_mail;
+use function wp_die;
+use function sanitize_text_field;
+use function wp_unslash;
+use function esc_html;
+use function esc_url;
+use function get_permalink;
+use function add_query_arg;
+use function current_time;
+use function dbDelta;
+use function do_action;
 
 defined('ABSPATH') || exit;
 
@@ -49,7 +61,7 @@ class StripeManager implements PaymentProvider
 	 */
 	public function register(): void
 	{
-		// Placeholder for webhook or other hooks.
+		add_action('init', array($this, 'handle_return_url'));
 	}
 
 	/**
@@ -95,11 +107,11 @@ class StripeManager implements PaymentProvider
 		}
 
 		$price_id = $settings['price_id'] ?? '';
-		$success_url = add_query_arg('aitamer_stripe', 'success', home_url('/'));
+		$success_url = add_query_arg(array('aitamer_stripe' => 'success', 'session_id' => '{CHECKOUT_SESSION_ID}'), home_url('/'));
 
 		if ($post_id > 0 && ! empty($settings['price_id_micropayment'])) {
 			$price_id = $settings['price_id_micropayment'];
-			$success_url = add_query_arg('aitamer_stripe', 'success', get_permalink($post_id));
+			$success_url = add_query_arg(array('aitamer_stripe' => 'success', 'session_id' => '{CHECKOUT_SESSION_ID}'), get_permalink($post_id));
 		} elseif ('voucher' === $type && ! empty($settings['price_id_voucher'])) {
 			$price_id = $settings['price_id_voucher'];
 		}
@@ -170,6 +182,15 @@ class StripeManager implements PaymentProvider
 
 		if ('checkout.session.completed' === $event->type) {
 			$session = $event->data->object;
+
+			global $wpdb;
+			$table = $wpdb->prefix . self::TABLE;
+			$exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE provider_id = %s", $session->id));
+			if ($exists) {
+				Plugin::log("AI Tamer Webhook: transaction {$session->id} already processed (likely via Return URL).");
+				return;
+			}
+
 			$agent   = $session->metadata->agent_name ?? 'AI Agent';
 			$days    = (int) ($session->metadata->license_days ?? 365);
 			$sub_id  = $session->subscription ?? '';
@@ -200,11 +221,135 @@ class StripeManager implements PaymentProvider
 				'amount'      => ($session->amount_total / 100), // Stripe is in cents.
 				'currency'    => strtoupper($session->currency),
 				'provider_id' => $session->id,
-				'status'      => 'completed',
+				'status'      => TransactionStatus::COMPLETED->value,
 			));
+
+
+			do_action( 'aitamer_notification', 'payment_received', array(
+				'agent_name' => $agent,
+				'amount'     => ( $session->amount_total / 100 ),
+				'currency'   => strtoupper( $session->currency ),
+				'method'     => 'Stripe Webhook',
+			) );
 
 			Plugin::log("AI Tamer: Issued token via webhook for {$agent}. Token: " . substr($token, 0, 10) . '...');
 		}
+	}
+
+	/**
+	 * Handles users returning from a successful Stripe checkout, retrieves the session, and emails the generated token.
+	 */
+	public function handle_return_url(): void
+	{
+		if (empty($_GET['aitamer_stripe']) || 'success' !== $_GET['aitamer_stripe'] || empty($_GET['session_id'])) {
+			return;
+		}
+
+		$session_id = sanitize_text_field(wp_unslash($_GET['session_id']));
+
+		// Check if token already generated and saved in transient for display
+		$token = get_transient('ait_stripe_tok_' . $session_id);
+		
+		if (! $token) {
+			global $wpdb;
+			$table = $wpdb->prefix . self::TABLE;
+			$exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE provider_id = %s", $session_id));
+
+			if (! $exists) {
+				$settings = self::get_settings();
+				$secret   = ('yes' === $settings['test_mode']) ? $settings['test_secret'] : $settings['live_secret'];
+				if (!empty($secret)) {
+					// Fetch Session
+					$response = wp_remote_get(
+						'https://api.stripe.com/v1/checkout/sessions/' . $session_id,
+						array('headers' => array('Authorization' => 'Bearer ' . $secret))
+					);
+
+					if (200 === wp_remote_retrieve_response_code($response)) {
+						$session = json_decode(wp_remote_retrieve_body($response));
+
+						if ('complete' === $session->status || 'paid' === $session->payment_status) {
+							$agent   = $session->metadata->agent_name ?? 'AI Agent';
+							$days    = (int) ($session->metadata->license_days ?? 365);
+							$sub_id  = $session->subscription ?? '';
+							$scope   = \AiTamer\Enums\LicenseScope::GLOBAL->value;
+							if (! empty($session->metadata->post_id)) {
+								$scope = 'post:' . $session->metadata->post_id;
+								$days  = 1 / 24;
+							}
+
+							$credits  = 0;
+							if (isset($session->metadata->is_voucher) || (! empty($settings['price_id_voucher']) && ! empty($session->line_items->data[0]->price->id) && $session->line_items->data[0]->price->id === $settings['price_id_voucher'])) {
+								$credits = (int) ($session->metadata->voucher_credits ?? ($settings['voucher_credits'] ?? 0));
+								$days    = (int) ($session->metadata->license_days ?? ($settings['voucher_validity_days'] ?? 365));
+							}
+
+							$token = LicenseVerifier::issue_token($agent, $days, $sub_id, $scope, $credits);
+
+							$this->log_transaction(array(
+								'agent_name'  => $agent,
+								'amount'      => ($session->amount_total / 100),
+								'currency'    => strtoupper($session->currency),
+								'provider_id' => $session->id,
+								'status'      => TransactionStatus::COMPLETED->value,
+							));
+
+							set_transient('ait_stripe_tok_' . $session_id, $token, 12 * HOUR_IN_SECONDS);
+
+							do_action( 'aitamer_notification', 'payment_received', array(
+								'agent_name' => $agent,
+								'amount'     => ( $session->amount_total / 100 ),
+								'currency'   => strtoupper( $session->currency ),
+								'method'     => 'Stripe Return URL',
+							) );
+
+							// Email delivery
+							$email_address = $session->customer_details->email ?? '';
+							if (! empty($email_address)) {
+								$subject = 'Your AI Tamer License Token';
+								$message = "Thank you for supporting our content platform.\n\nYour API Token:\n" . $token . "\n\nPlease pass this token via the X-AI-License-Token header.";
+								wp_mail($email_address, $subject, $message);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Render the screen
+		?>
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>AI Tamer &mdash; Purchase Complete</title>
+			<style>
+				body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background: #f0f0f1; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+				.container { background: #fff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 500px; text-align: center; }
+				h1 { color: #1d2327; font-size: 24px; margin-bottom: 20px; }
+				p { color: #3c434a; line-height: 1.5; margin-bottom: 20px; }
+				.token-box { background: #f6f7f7; border: 1px solid #dcdcde; padding: 15px; border-radius: 4px; border-left: 4px solid #00a32a; font-family: monospace; word-break: break-all; margin-bottom: 20px; color: #1d2327; font-size: 16px; font-weight: 500;}
+				.btn { display: inline-block; padding: 10px 20px; background: #2271b1; color: #fff; text-decoration: none; border-radius: 4px; font-weight: 600; }
+				.btn:hover { background: #135e96; }
+			</style>
+		</head>
+		<body>
+			<div class="container">
+				<h1>Payment Complete</h1>
+				<?php if (! empty($token)) : ?>
+					<p>Thank you for purchasing a license. Your token has been generated and sent to your email.</p>
+					<div class="token-box"><?php echo esc_html($token); ?></div>
+					<p>Please use this token in the <code>X-AI-License-Token</code> header when accessing our endpoints.</p>
+				<?php else : ?>
+					<p>Payment successful, but the token is still processing. Please check your email shortly.</p>
+				<?php endif; ?>
+				<a href="<?php echo esc_url(home_url('/')); ?>" class="btn">Return to Site</a>
+			</div>
+		</body>
+		</html>
+		<?php
+		exit;
 	}
 
 	/**

@@ -86,13 +86,6 @@ class Protector
 		$post_id = (int) get_the_ID();
 		$required_scope = 'post:' . $post_id;
 
-		// Skip if bot has a valid Web3 Toll session token (Crypto per-article).
-		if ( ! empty($settings['web3_toll_enabled']) ) {
-			$token = isset($_SERVER['HTTP_X_AI_TOLL_TOKEN']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_AI_TOLL_TOKEN'])) : '';
-			if ( $token && class_exists('\AiTamer\Web3Toll') && \AiTamer\Web3Toll::validate_post_token( $token, $post_id ) ) {
-				return; // Paid for this post via Web3! Grant access.
-			}
-		}
 
 		// Skip if bot has a valid standard license token.
 		if (LicenseVerifier::has_valid_token($required_scope)) {
@@ -115,25 +108,10 @@ class Protector
 				}
 			}
 
-			// Add Crypto Header if enabled
-			$crypto_wallet = '';
-			if (! empty($settings['web3_toll_enabled'])) {
-				$crypto_wallet = $settings['base_wallet_address'] ?? '';
-				$price  = $settings['usdc_price_per_request'] ?? '0.01';
-				if ( $crypto_wallet ) {
-					header('Www-Authenticate: L402 macaroon="", invoice="usdc_base:' . esc_attr($crypto_wallet) . '?amount=' . esc_attr($price) . '"');
-				}
-			}
-
-			if ( $payment_url || $crypto_wallet ) {
+			if ($payment_url) {
 				$msg = __('Payment Required to access this content.', 'ai-tamer');
-				if ($crypto_wallet) {
-					$msg .= ' ' . __('For Crypto (L402), submit USDC on Base and use X-AI-Toll-Token.', 'ai-tamer');
-				}
-				if ($payment_url) {
-					$msg .= ' ' . __('For Fiat, purchase a license via the X-Payment-Link header.', 'ai-tamer');
-				}
-				
+				$msg .= ' ' . __('For Fiat, purchase a license via the X-Payment-Link header.', 'ai-tamer');
+
 				wp_die(
 					$msg,
 					__('Payment Required', 'ai-tamer'),
