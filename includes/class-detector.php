@@ -1,39 +1,41 @@
 <?php
+
 /**
- * Agent Detection Engine.
- *
- * Classifies incoming requests as 'human', 'search', 'training', or 'scraper'
- * by matching User-Agent strings against the known-bots list.
+ * Detector — classifies requests as AI agents or humans.
  *
  * @package Ai_Tamer
  */
 
 namespace AiTamer;
 
-use function stripos;
+use function hash;
 use function md5;
-use function get_transient;
-use function set_transient;
-use function do_action;
-use function sanitize_text_field;
-use function wp_unslash;
-use function apply_filters;
+use function stripos;
+use function preg_match;
+use function explode;
+use function trim;
+use function is_array;
+use function array_merge;
+use function json_decode;
+use function file_get_contents;
+use function file_exists;
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 
 /**
  * Detector class.
+ *
+ * Checks User-Agent strings against a known list of AI crawlers
+ * and performs basic heuristic validation.
  */
-class Detector {
+class Detector
+{
 
-	/** @var array Loaded bot definitions from data/bots.json. */
+	/** @var array Cached bot definitions. */
 	private array $bots = array();
 
-	/** @var array|null Cache for the current request classification. */
-	private ?array $current = null;
-
 	/**
-	 * Constructor — loads the bot list.
+	 * Constructor.
 	 */
 	public function __construct() {
 		$this->bots = $this->load_bots();
@@ -49,79 +51,115 @@ class Detector {
 		if ( ! file_exists( $file ) ) {
 			return array();
 		}
-		$data = json_decode( file_get_contents( $file ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions
+
+		// Use WP_Filesystem if available, otherwise fallback to safe read for test environments.
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			$file_inc = ABSPATH . 'wp-admin/includes/file.php';
+			if ( file_exists( $file_inc ) ) {
+				require_once $file_inc;
+				\WP_Filesystem();
+			}
+		}
+
+		if ( ! empty( $wp_filesystem ) ) {
+			$json = $wp_filesystem->get_contents( $file );
+		} else {
+			// Fallback for tests/CLI where WP_Filesystem isn't bootstrapped.
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$json = @file_get_contents( $file );
+		}
+
+		if ( ! $json ) {
+			return array();
+		}
+
+		$data = json_decode( $json, true );
 		return is_array( $data['bots'] ?? null ) ? $data['bots'] : array();
 	}
 
 	/**
-	 * Classifies the current HTTP request.
-	 * Results are cached for the duration of the PHP process.
+	 * Classifies the current request.
 	 *
-	 * @return array{name: string, type: string, matched: bool}
+	 * @return array{matched: bool, name: string, type: string, confidence: float}
 	 */
 	public function classify(): array {
-		if ( null !== $this->current ) {
-			return $this->current;
-		}
-
-		$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
-
-		$settings = get_option( 'aitamer_settings', array() );
-		$whitelist_dev_tools = ! empty( $settings['whitelist_dev_tools'] );
-
-		foreach ( $this->bots as $bot ) {
-			$pattern = isset( $bot['user_agent'] ) ? $bot['user_agent'] : '';
-			if ( $pattern && false !== stripos( $ua, $pattern ) ) {
-				
-				// Whitelist Developer Tools if enabled.
-				if ( $whitelist_dev_tools && ! empty( $bot['is_dev_tool'] ) ) {
-					return $this->current = array(
-						'name'    => 'human',
-						'type'    => 'human',
-						'matched' => false,
-					);
-				}
-
-				$this->current = array(
-					'name'    => $bot['name'],
-					'type'    => $bot['type'],
-					'matched' => true,
+		$ua = isset( $_SERVER['HTTP_USER_AGENT'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+		
+		// Whitelist Dev Tools (curl, Postman, etc.) if enabled.
+		$settings = \get_option('aitamer_settings', array());
+		if ( ! empty( $settings['whitelist_dev_tools'] ) ) {
+			if ( preg_match( '/(curl|PostmanRuntime|Wget)/i', $ua ) ) {
+				return array(
+					'matched'    => false,
+					'name'       => 'human',
+					'type'       => 'human',
+					'confidence' => 1.0,
 				);
-
-				// Notify if this bot was not seen in the last 24h.
-				$notify_key = 'ait_notify_new_bot_' . md5( $bot['name'] );
-				if ( ! get_transient( $notify_key ) ) {
-					set_transient( $notify_key, true, DAY_IN_SECONDS );
-					do_action( 'aitamer_notification', 'new_bot', array(
-						'bot_name'   => $bot['name'],
-						'bot_type'   => $bot['type'],
-						'user_agent' => $ua,
-					) );
-				}
-
-				return $this->current;
 			}
 		}
 
-		// No match — treat as a human visitor.
-		$this->current = array(
-			'name'    => 'human',
-			'type'    => 'human',
-			'matched' => false,
-		);
-
-		// Advanced fingerprinting: Check for "stealth" bots via Sec-Fetch headers.
-		// Legit browsers send Sec-Fetch-Dest, Sec-Fetch-Mode, etc.
-		// If these are missing or anomalous while claimining to be a browser, it's likely a bot.
-		if ( $this->is_anomalous_request( $ua ) ) {
-			$this->current = array(
-				'name'    => 'stealth_bot',
-				'type'    => 'scraper',
-				'matched' => true,
+		if ( empty( $ua ) ) {
+			return array(
+				'matched'    => true,
+				'name'       => 'Anonymous Scraper',
+				'type'       => 'scraper',
+				'confidence' => 0.5,
 			);
 		}
 
-		return $this->current;
+		// 1. Exact list match.
+		foreach ( $this->bots as $bot ) {
+			if ( stripos( $ua, (string) $bot['user_agent'] ) !== false ) {
+				// Trigger notification for first-time detection in this window.
+				$this->maybe_notify_new_bot($bot);
+
+				return array(
+					'matched'    => true,
+					'name'       => $bot['name'],
+					'type'       => $bot['type'],
+					'confidence' => 1.0,
+				);
+			}
+		}
+
+		// 2. Heuristic check: look for "bot", "crawler", "scraper", "spider".
+		if ( preg_match( '/(bot|crawler|scraper|spider)/i', $ua ) ) {
+			return array(
+				'matched'    => true,
+				'name'       => 'Generic Bot',
+				'type'       => 'scraper',
+				'confidence' => 0.8,
+			);
+		}
+
+		// 3. Behavioral fingerprint (Anomaly Detection).
+		if ( $this->is_anomalous_request( $ua ) ) {
+			return array(
+				'matched'    => true,
+				'name'       => 'Anomalous Bot',
+				'type'       => 'scraper',
+				'confidence' => 0.6,
+			);
+		}
+
+		return array(
+			'matched'    => false,
+			'name'       => 'Human Visitor',
+			'type'       => 'human',
+			'confidence' => 1.0,
+		);
+	}
+
+	/**
+	 * Notifies about a new bot detection if not already notified recently.
+	 */
+	private function maybe_notify_new_bot( array $bot ): void {
+		$key = 'ait_notify_new_' . md5( (string) $bot['name'] );
+		if ( ! \get_transient( $key ) ) {
+			\set_transient( $key, true, DAY_IN_SECONDS );
+			\do_action( 'aitamer_notification', 'new_bot', $bot );
+		}
 	}
 
 	/**
@@ -134,124 +172,61 @@ class Detector {
 		// Only check if it claims to be a common browser (Chrome, Safari, Firefox, Edge).
 		$is_browser_ua = preg_match( '/(Chrome|Safari|Firefox|Edg)\//i', $ua );
 		if ( ! $is_browser_ua ) {
-			return false; // If it doesn't pretend to be a browser, let list-based detection handle it.
+			return false;
 		}
 
 		$anomaly_score = 0;
 
 		// 1. Missing Accept-Language
-		// Real browsers ALWAYS send their language preferences (e.g., es-ES, en-US). Scrapers/Bots often skip it.
-		$accept_language = isset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ? $_SERVER['HTTP_ACCEPT_LANGUAGE'] : '';
+		$accept_language = isset( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_ACCEPT_LANGUAGE'] ) ) : '';
 		if ( empty( $accept_language ) ) {
 			$anomaly_score += 2;
 		}
 
 		// 2. Anomalous Accept Header
-		// A standard browser navigating a page explicitly asks for HTML. Bots might use wildcard '*/*'.
-		$accept = isset( $_SERVER['HTTP_ACCEPT'] ) ? $_SERVER['HTTP_ACCEPT'] : '';
+		$accept = isset( $_SERVER['HTTP_ACCEPT'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_ACCEPT'] ) ) : '';
 		if ( empty( $accept ) || $accept === '*/*' || $accept === 'application/json' ) {
 			$anomaly_score += 1;
 		}
 
-		// 3. Missing Modern Fetch Metadata (Since ~2020)
-		// Missing Sec-Fetch on a request claiming to be a modern Chrome/Firefox is highly suspicious.
-		$dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
-		$mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
+		// 3. Missing Modern Fetch Metadata
+		$dest = isset( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_SEC_FETCH_DEST'] ) ) : '';
+		$mode = isset( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_SEC_FETCH_MODE'] ) ) : '';
 		
 		if ( empty( $dest ) || empty( $mode ) ) {
 			$anomaly_score += 2;
 		}
 
 		// 4. Missing Client Hints (Chrome/Edge 89+)
-		// If UA says Chrome 90+ but has no Sec-CH-UA, it's very likely a spoofed scraper library.
 		if ( preg_match( '/(?:Chrome|Edg)\/([0-9]{2,})/', $ua, $matches ) ) {
 			$version = (int) $matches[1];
-			// Apple limits Client Hints on WebKit/Safari, so we only strictly penalize non-Safari engines impersonating Chrome
-			if ( $version >= 90 && false === stripos( $ua, 'Safari' ) || preg_match( '/Chrome\//i', $ua ) ) {
-				$ch_ua = isset( $_SERVER['HTTP_SEC_CH_UA'] ) ? $_SERVER['HTTP_SEC_CH_UA'] : '';
+			if ( $version >= 90 && ( false === stripos( $ua, 'Safari' ) || preg_match( '/Chrome\//i', $ua ) ) ) {
+				$ch_ua = isset( $_SERVER['HTTP_SEC_CH_UA'] ) ? \sanitize_text_field( \wp_unslash( $_SERVER['HTTP_SEC_CH_UA'] ) ) : '';
 				if ( empty( $ch_ua ) ) {
 					$anomaly_score += 2;
 				}
 			}
 		}
 
-		// If the score reaches 3 or more, it has accumulated too many critical falsehoods for a real browser.
-		if ( $anomaly_score >= 3 ) {
-			return true;
-		}
-
-		return false;
+		return $anomaly_score >= 3;
 	}
 
 	/**
-	 * Returns true if this request is from a known training/scraper bot.
+	 * Returns true if current agent is classified as training/scraper.
 	 *
 	 * @return bool
 	 */
 	public function is_training_agent(): bool {
 		$agent = $this->classify();
-		return in_array( $agent['type'], array( 'training', 'scraper' ), true );
+		return in_array( $agent['type'] ?? '', array( 'training', 'scraper' ), true );
 	}
 
 	/**
-	 * Returns true if this request is from any known bot.
-	 *
-	 * @return bool
-	 */
-	public function is_bot(): bool {
-		$agent = $this->classify();
-		return $agent['matched'];
-	}
-
-	/**
-	 * Returns all loaded bot definitions.
+	 * Returns list of bots.
 	 *
 	 * @return array
 	 */
 	public function get_bots(): array {
 		return $this->bots;
-	}
-
-	/**
-	 * Evaluates fingerprint data to detect headless browsers and scrapers.
-	 *
-	 * @param array $data Fingerprint payload.
-	 * @return int Risk score (0-100).
-	 */
-	public static function evaluate_fingerprint(array $data): int
-	{
-		$score = 0;
-
-		// 1. Direct Headless indicator (Selenium, Puppeteer without stealth)
-		if (!empty($data['webdriver']) && $data['webdriver'] === true) {
-			$score += 50;
-		}
-
-		// 2. Chrome object missing (Headless Chrome defaults)
-		if (isset($data['chrome']) && $data['chrome'] === false) {
-			$score += 30;
-		}
-
-		// 3. No plugins or MIME types installed (headless environments)
-		if (isset($data['plugins']) && (int)$data['plugins'] === 0) {
-			$score += 20;
-		}
-
-		// 4. Software WebGL renderers (run on VPS without GPUs)
-		if (!empty($data['webgl'])) {
-			$webgl = strtolower($data['webgl']);
-			if (strpos($webgl, 'swiftshader') !== false || strpos($webgl, 'llvmpipe') !== false || strpos($webgl, 'mesa offscreen') !== false) {
-				$score += 40;
-			}
-		}
-
-		// 5. Unrealistic window dimensions
-		if (isset($data['innerWidth']) && isset($data['outerWidth'])) {
-			if ($data['innerWidth'] === 800 && $data['outerWidth'] === 800) {
-				$score += 15; // Common default viewport for puppeteer
-			}
-		}
-
-		return min(100, $score);
 	}
 }

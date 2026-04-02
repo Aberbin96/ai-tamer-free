@@ -266,7 +266,8 @@ class Logger {
 
 		$top_bots = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT bot_name, bot_type, COUNT(*) AS hits FROM `{$table}` GROUP BY bot_name, bot_type ORDER BY hits DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT bot_name, bot_type, COUNT(*) AS hits FROM %i GROUP BY bot_name, bot_type ORDER BY hits DESC LIMIT %d',
+				$table,
 				$limit
 			),
 			ARRAY_A
@@ -274,7 +275,8 @@ class Logger {
 
 		$top_posts = $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"SELECT post_id, COUNT(*) AS hits FROM `{$table}` WHERE post_id IS NOT NULL GROUP BY post_id ORDER BY hits DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'SELECT post_id, COUNT(*) AS hits FROM %i WHERE post_id IS NOT NULL GROUP BY post_id ORDER BY hits DESC LIMIT %d',
+				$table,
 				$limit
 			),
 			ARRAY_A
@@ -295,7 +297,8 @@ class Logger {
 		$table = $wpdb->prefix . self::TABLE;
 		$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 			$wpdb->prepare(
-				"DELETE FROM `{$table}` WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				'DELETE FROM %i WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)',
+				$table,
 				$days
 			)
 		);

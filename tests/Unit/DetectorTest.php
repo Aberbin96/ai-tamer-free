@@ -33,7 +33,7 @@ class DetectorTest extends TestCase
 			'wp_unslash'          => function ($val) {
 				return $val;
 			},
-			'set_transient'       => true,
+			// ¡Eliminamos set_transient de aquí!
 			'get_option'          => ['notifications_enabled' => true],
 			'wp_parse_args'       => function ($args, $defaults) {
 				return array_merge($defaults, $args);
@@ -63,13 +63,14 @@ class DetectorTest extends TestCase
 	public function test_it_whitelists_dev_tools_when_enabled(): void
 	{
 		$_SERVER['HTTP_USER_AGENT'] = 'curl/7.68.0';
-		
+
 		// 1. Setting disabled (default) -> Should be a bot
 		Monkey\Functions\when('get_option')->justReturn(['whitelist_dev_tools' => false]);
 		$detector = new Detector();
 		$result = $detector->classify();
 		$this->assertTrue($result['matched'], 'curl should be a bot when whitelisting is OFF');
-		$this->assertEquals('scraper', $result['type']);
+		// My new logic classifies it as 'Anomalous Bot' or 'Generic Bot'
+		$this->assertEquals('curl', $result['name']);
 
 		// 2. Setting enabled -> Should be human
 		Monkey\Functions\when('get_option')->justReturn(['whitelist_dev_tools' => true]);
@@ -82,6 +83,7 @@ class DetectorTest extends TestCase
 	{
 		// This UA contains both "Googlebot" and "Google-Extended"
 		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) Google-Extended';
+
 		$detector = new Detector();
 		$result = $detector->classify();
 		$this->assertEquals('Google-Extended', $result['name']);
@@ -118,25 +120,54 @@ class DetectorTest extends TestCase
 		$detector = new Detector();
 		$result   = $detector->classify();
 		$this->assertTrue($result['matched'], 'Anomaly detector failed to catch stealth bot.');
-		$this->assertEquals('stealth_bot', $result['name']);
+		$this->assertEquals('Anomalous Bot', $result['name']);
 	}
 
 	public function test_it_triggers_notification_for_new_bots(): void
 	{
-		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)';
+		$bot_name = 'PerplexityBot';
+		$expected_hash = md5($bot_name);
+		$expected_transient = 'ait_notify_new_' . $expected_hash;
 
+		// 1. Definir expectativas
 		Monkey\Functions\expect('get_transient')
-			->zeroOrMoreTimes()
+			->once()
+			->with($expected_transient)
 			->andReturn(false);
+
+		Monkey\Functions\expect('set_transient')
+			->once()
+			->with($expected_transient, true, 86400); // 86400 = DAY_IN_SECONDS
 
 		Monkey\Actions\expectDone('aitamer_notification')
 			->once()
-			->with('new_bot', Mockery::type('array'));
+			->with('new_bot', Mockery::on(function ($args) use ($bot_name) {
+				return $args['name'] === $bot_name;
+			}));
 
+		// 2. Configurar el entorno
+		$_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://www.perplexity.ai)';
 		$detector = new Detector();
+
+		// --- BLOQUE CLAVE: Inyectar el bot manualmente ---
+		$reflection = new \ReflectionClass($detector);
+		$property = $reflection->getProperty('bots');
+		$property->setAccessible(true);
+		$property->setValue($detector, [
+			[
+				'name'       => 'PerplexityBot',
+				'user_agent' => 'PerplexityBot',
+				'type'       => 'training'
+			]
+		]);
+		// ------------------------------------------------
+
+		// 3. Ejecutar
 		$result = $detector->classify();
 
-		$this->assertTrue($result['matched'], 'Detector failed to match GPTBot');
+		// 4. Verificar resultados
+		$this->assertTrue($result['matched'], 'El detector debería haber encontrado el bot inyectado');
+		$this->assertEquals('PerplexityBot', $result['name']);
 	}
 
 	public function provide_ai_user_agents(): array

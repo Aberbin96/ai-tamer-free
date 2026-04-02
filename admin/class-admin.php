@@ -57,8 +57,17 @@ use function wp_localize_script;
 use function rest_url;
 use function wp_create_nonce;
 use function sanitize_text_field;
-
-
+use function wp_unslash;
+use function sanitize_key;
+use function wp_verify_nonce;
+use function wp_next_scheduled;
+use function wp_schedule_single_event;
+use function update_post_meta;
+use function delete_post_meta;
+use function get_post_meta;
+use function is_array;
+use function array_map;
+use function in_array;
 
 /**
  * Admin class.
@@ -241,7 +250,7 @@ class Admin
 			array($this, 'render_audit_page')
 		);
 
-		// Register Pro submenus via hook (obfuscated from Free).
+		// Register Pro submenus via hook.
 		do_action('aitamer_admin_register_menus', $this);
 	}
 
@@ -364,7 +373,7 @@ class Admin
 			array()
 		);
 
-		// Register Pro settings via hook (obfuscated from Free).
+		// Register Pro settings via hook.
 		do_action('aitamer_admin_register_settings', $this);
 
 		// Rate Limiting section.
@@ -506,6 +515,7 @@ class Admin
 			'notifications_enabled',
 			'notification_channels',
 			'slack_webhook_url',
+			'discord_webhook_url',
 			'notification_events',
 			'alby_account',
 		);
@@ -543,8 +553,6 @@ class Admin
 				}
 			} else {
 				// Special handling for checkboxes: if we are on a page that HAS the checkbox but it's not sent, it's UNCHECKED.
-				// If we are on a different page, we keep the previous value.
-				// We detect this by checking if OTHER fields from the same form are present.
 				$is_general_form = isset($input['active_defense']) || isset($input['license_policy']) || isset($input['alby_account']);
 				$is_notify_form  = isset($input['slack_webhook_url']) || isset($input['discord_webhook_url']);
 
@@ -796,7 +804,7 @@ class Admin
 	 */
 	public function render_navigation_tabs(): void
 	{
-		$current_page = $_GET['page'] ?? 'ai-tamer';
+		$current_page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : 'ai-tamer';
 
 		$tabs = array(
 			'ai-tamer-settings' => __('Settings', 'ai-tamer'),
@@ -861,7 +869,7 @@ class Admin
 			exit;
 		}
 
-		$days = absint($_GET['days'] ?? 30) ?: 30;
+		$days = isset($_GET['days']) ? absint(wp_unslash($_GET['days'])) : 30;
 		$file = AuditReport::generate($days);
 
 		if (! $file || ! file_exists($file)) {

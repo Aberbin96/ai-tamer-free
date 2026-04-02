@@ -19,31 +19,28 @@ $aitamer_potential_earnings = 0.0;
 
 foreach (($aitamer_stats['top_bots'] ?? array()) as $aitamer_bot) {
 	if (in_array($aitamer_bot['bot_type'], array('training', 'scraper'), true)) {
-		$hits = (int) $aitamer_bot['hits'];
-		$aitamer_training += $hits;
+		$aitamer_hits = (int) $aitamer_bot['hits'];
+		$aitamer_training += $aitamer_hits;
 		
-		$bot_name = (string) ($aitamer_bot['bot_name'] ?? '');
-		$bot_val  = (float) apply_filters('aitamer_bot_monetization_value', 0.0, $bot_name);
-		if ($bot_val <= 0) {
-			$normalized = strtolower($bot_name);
-			if (strpos($normalized, 'gptbot') !== false || strpos($normalized, 'chatgpt') !== false) {
-				$bot_val = 0.001;
-			} elseif (strpos($normalized, 'claudebot') !== false || strpos($normalized, 'anthropic') !== false) {
-				$bot_val = 0.0005;
-			} elseif (strpos($normalized, 'google') !== false) {
-				$bot_val = 0.0002;
+		$aitamer_bot_name = (string) ($aitamer_bot['bot_name'] ?? '');
+		$aitamer_bot_val  = (float) apply_filters('aitamer_bot_monetization_value', 0.0, $aitamer_bot_name);
+		if ($aitamer_bot_val <= 0) {
+			$aitamer_normalized = strtolower($aitamer_bot_name);
+			if (strpos($aitamer_normalized, 'gptbot') !== false || strpos($aitamer_normalized, 'chatgpt') !== false) {
+				$aitamer_bot_val = 0.001;
+			} elseif (strpos($aitamer_normalized, 'claudebot') !== false || strpos($aitamer_normalized, 'anthropic') !== false) {
+				$aitamer_bot_val = 0.0005;
+			} elseif (strpos($aitamer_normalized, 'google') !== false) {
+				$aitamer_bot_val = 0.0002;
 			} else {
-				$bot_val = 0.00;
+				$aitamer_bot_val = 0.00;
 			}
 		}
-		$aitamer_potential_earnings += $hits * $bot_val;
+		$aitamer_potential_earnings += $aitamer_hits * $aitamer_bot_val;
 	}
 }
-// Shield Health: percentage of visits that are NOT training/scrapers (deprecated, always 100% for Audit Coverage).
+
 $aitamer_score = 100;
-?>
-<?php
-// Tabs removed from Dashboard to keep it clean.
 ?>
 <div class="wrap aitamer-wrap">
 

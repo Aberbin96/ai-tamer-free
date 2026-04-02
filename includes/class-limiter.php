@@ -12,6 +12,13 @@ use function get_transient;
 use function set_transient;
 use function do_action;
 use function absint;
+use function sanitize_text_field;
+use function wp_unslash;
+use function get_option;
+use function wp_parse_args;
+use function hash;
+use function md5;
+use function status_header;
 
 defined('ABSPATH') || exit;
 
@@ -68,7 +75,7 @@ class Limiter
 	 */
 	public function check(array $agent): void
 	{
-		$ip  = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
+		$ip = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
 
 		// Fingerprinting Block Check (Highest Priority)
 		if (get_transient('aitamer_fp_block_' . md5($ip))) {
@@ -78,7 +85,7 @@ class Limiter
 				set_transient($throttle_key, true, HOUR_IN_SECONDS);
 				do_action('aitamer_notification', 'security_alert', array(
 					'ip'         => $ip,
-					'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+					'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : 'unknown',
 					'reason'     => 'Fingerprinting validation failed (Automated behavior)',
 				));
 			}
@@ -104,7 +111,6 @@ class Limiter
 		}
 
 		$rpm = absint($settings['rpm'] ?: self::DEFAULT_RPM);
-		$ip  = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : 'unknown';
 		$key = 'aitamer_rate_' . hash('sha256', $agent['name'] . $ip);
 
 		$count = (int) get_transient($key);

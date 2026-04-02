@@ -17,13 +17,14 @@ use function home_url;
 use function esc_url_raw;
 use function current_time;
 use function time;
-use function date;
+use function gmdate;
 use function hexdec;
 use function ltrim;
 use function sprintf;
 use function in_array;
 use function ucwords;
 use function str_replace;
+use function sanitize_text_field;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -146,7 +147,7 @@ class Notifications {
 					'description' => $this->get_plain_text_message( $event, $data ),
 					'color'       => hexdec( ltrim( $this->get_event_color( $event ), '#' ) ),
 					'footer'      => array( 'text' => get_bloginfo( 'name' ) ),
-					'timestamp'   => date( 'c' ),
+					'timestamp'   => gmdate( 'c' ),
 				),
 			),
 		);
@@ -196,7 +197,7 @@ class Notifications {
 		
 		foreach ( $data as $key => $val ) {
 			$label = ucwords( str_replace( '_', ' ', $key ) );
-			$output .= "{$label}: {$val}\n";
+			$output .= "{$label}: " . sanitize_text_field( (string) $val ) . "\n";
 		}
 
 		$output .= "\nManage Settings: " . admin_url( 'admin.php?page=ai-tamer-settings' );

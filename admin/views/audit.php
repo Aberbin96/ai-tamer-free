@@ -10,11 +10,20 @@ defined('ABSPATH') || exit;
 
 use AiTamer\AuditReport;
 use AiTamer\Logger;
+use AiTamer\Admin;
 
 global $wpdb;
+
+/**
+ * Security: Nonce verification for filtering/pagination.
+ */
+if (isset($_GET['aitamer_audit_nonce']) && ! wp_verify_nonce(sanitize_key(wp_unslash($_GET['aitamer_audit_nonce'])), 'aitamer_audit_filter')) {
+	wp_die(esc_html__('Security check failed.', 'ai-tamer'));
+}
+
 $aitamer_table = $wpdb->prefix . Logger::TABLE;
 $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-	"SELECT COUNT(*) FROM `{$aitamer_table}`" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$wpdb->prepare('SELECT COUNT(*) FROM %i', $aitamer_table)
 ) ?: 0);
 ?>
 <div class="wrap aitamer-wrap">
@@ -32,7 +41,7 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 	</div>
 
 	<?php
-	\AiTamer\Admin::get_instance()->render_navigation_tabs();
+	Admin::get_instance()->render_navigation_tabs();
 	?>
 
 	<?php if (isset($_GET['aitamer_error'])) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended 
@@ -45,24 +54,24 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 	<!-- Metrics -->
 	<?php
 	$aitamer_oldest = $wpdb->get_var( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		"SELECT created_at FROM `{$aitamer_table}` ORDER BY id ASC LIMIT 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->prepare('SELECT created_at FROM %i ORDER BY id ASC LIMIT 1', $aitamer_table)
 	);
 	$aitamer_days = 0;
 	if ($aitamer_oldest) {
-		$aitamer_diff = time() - strtotime($aitamer_oldest);
-		$aitamer_days = min(30, max(1, ceil($aitamer_diff / DAY_IN_SECONDS)));
+		$aitamer_diff = time() - strtotime((string) $aitamer_oldest);
+		$aitamer_days = (int) min(30, max(1, ceil($aitamer_diff / DAY_IN_SECONDS)));
 	}
 	?>
 	<div class="aitamer-card">
 		<div class="aitamer-metrics">
 			<div class="aitamer-metric green">
 				<div class="aitamer-metric-label"><?php esc_html_e('Secure Logs', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n((int) $aitamer_total)); ?></div>
+				<div class="aitamer-metric-value"><?php echo esc_html(number_format_i18n($aitamer_total)); ?></div>
 				<div class="aitamer-metric-sub"><?php esc_html_e('Protected access records', 'ai-tamer'); ?></div>
 			</div>
 			<div class="aitamer-metric amber">
 				<div class="aitamer-metric-label"><?php esc_html_e('Audit History', 'ai-tamer'); ?></div>
-				<div class="aitamer-metric-value"><?php echo esc_html((int) $aitamer_days); ?> <?php echo esc_html(_n('Day', 'Days', (int) $aitamer_days, 'ai-tamer')); ?></div>
+				<div class="aitamer-metric-value"><?php echo esc_html($aitamer_days); ?> <?php echo esc_html(_n('Day', 'Days', $aitamer_days, 'ai-tamer')); ?></div>
 				<div class="aitamer-metric-sub"><?php esc_html_e('Activity period recorded', 'ai-tamer'); ?></div>
 			</div>
 		</div>
@@ -87,7 +96,7 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 			printf(
 				/* translators: %s: total records */
 				esc_html__('There are currently %s access records available in the log database.', 'ai-tamer'),
-				'<strong style="color:var(--at-green);">' . esc_html(number_format_i18n((int) $aitamer_total)) . '</strong>'
+				'<strong style="color:var(--at-green);">' . esc_html(number_format_i18n($aitamer_total)) . '</strong>'
 			);
 			?>
 		</p>
@@ -95,10 +104,10 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 		<!-- Log Preview Table -->
 		<?php
 		// Filtering and Pagination logic.
-		$aitamer_paged      = absint( wp_unslash( $_GET['paged'] ?? 1 ) );
-		$aitamer_bot_type   = sanitize_text_field( wp_unslash( $_GET['bot_type'] ?? '' ) );
-		$aitamer_protection = sanitize_text_field( wp_unslash( $_GET['protection'] ?? '' ) );
-		$aitamer_search     = sanitize_text_field( wp_unslash( $_GET['s'] ?? '' ) );
+		$aitamer_paged      = isset($_GET['paged']) ? absint(wp_unslash($_GET['paged'])) : 1;
+		$aitamer_bot_type   = isset($_GET['bot_type']) ? sanitize_text_field(wp_unslash($_GET['bot_type'])) : '';
+		$aitamer_protection = isset($_GET['protection']) ? sanitize_text_field(wp_unslash($_GET['protection'])) : '';
+		$aitamer_search     = isset($_GET['s']) ? sanitize_text_field(wp_unslash($_GET['s'])) : '';
 		$aitamer_per_page   = 25;
 		$aitamer_offset     = ( $aitamer_paged - 1 ) * $aitamer_per_page;
 
@@ -112,7 +121,7 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 
 		$aitamer_recent      = Logger::get_logs($aitamer_filter_args);
 		$aitamer_count       = Logger::count_logs($aitamer_filter_args);
-		$aitamer_total_pages = ceil($aitamer_count / $aitamer_per_page);
+		$aitamer_total_pages = (int) ceil($aitamer_count / $aitamer_per_page);
 		?>
 
 		<div class="aitamer-card">
@@ -214,15 +223,17 @@ $aitamer_total  = (int) ($wpdb->get_var( // phpcs:ignore WordPress.DB.DirectData
 				<?php if ($aitamer_total_pages > 1) : ?>
 					<div class="aitamer-pagination">
 						<?php
-						// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-						echo paginate_links(array(
-							'base'      => add_query_arg('paged', '%#%'),
+						echo wp_kses_post(paginate_links(array(
+							'base'      => add_query_arg(array(
+								'paged'                => '%#%',
+								'aitamer_audit_nonce' => isset($_GET['aitamer_audit_nonce']) ? sanitize_key($_GET['aitamer_audit_nonce']) : wp_create_nonce('aitamer_audit_filter'),
+							)),
 							'format'    => '',
 							'prev_text' => '&laquo; ' . __('Prev', 'ai-tamer'),
 							'next_text' => __('Next', 'ai-tamer') . ' &raquo;',
 							'total'     => $aitamer_total_pages,
 							'current'   => $aitamer_paged,
-						));
+						)));
 						?>
 					</div>
 				<?php endif; ?>

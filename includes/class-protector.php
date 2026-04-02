@@ -14,10 +14,22 @@ use function sanitize_text_field;
 use function home_url;
 use function esc_attr;
 use function esc_url;
+use function esc_html;
+use function esc_html__;
 use function absint;
 use function get_bloginfo;
 use function get_the_title;
 use function current_time;
+use function wp_unslash;
+use function get_the_ID;
+use function is_singular;
+use function in_array;
+use function get_post;
+use function wp_send_json_error;
+use function apply_filters;
+use function wp_send_json;
+use function wp_json_encode;
+use function wp_die;
 
 use AiTamer\Traits\MarkdownConverter;
 
@@ -105,11 +117,11 @@ class Protector
 		// Handle PAYMENT strategy (402).
 		if (Enums\DefenseStrategy::PAYMENT->value === $defense) {
 			global $wpdb;
-			$bot_ip      = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? '' ) );
+			$bot_ip      = isset($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
 			$tolls_table = $wpdb->prefix . 'aitamer_tolls';
 
 			// 1. Check for X-Payment-Hash header.
-			$tx_hash = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_PAYMENT_HASH'] ?? '' ) );
+			$tx_hash = isset($_SERVER['HTTP_X_PAYMENT_HASH']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_X_PAYMENT_HASH'])) : '';
 
 			// Define the unique amount for this post.
 			$usdt_verifier = new USDTVerifier();
@@ -121,9 +133,10 @@ class Protector
 			if (! empty($tx_hash) && ! empty($recipient)) {
 				// Check if already verified in DB.
 				$paid = $wpdb->get_var($wpdb->prepare(
-					"SELECT id FROM %i WHERE transaction_hash = %s AND status = 'paid' LIMIT 1",
+					'SELECT id FROM %i WHERE transaction_hash = %s AND status = %s LIMIT 1',
 					$tolls_table,
-					sanitize_text_field($tx_hash)
+					sanitize_text_field($tx_hash),
+					'paid'
 				));
 
 				if (! $paid) {
@@ -169,7 +182,7 @@ class Protector
 				),
 			);
 
-			wp_die( wp_json_encode($error_data), esc_html__('Payment Required', 'ai-tamer'), array('response' => 402));
+			wp_die(wp_json_encode($error_data), esc_html__('Payment Required', 'ai-tamer'), array('response' => 402));
 		}
 
 		// Fallback to BLOCK strategy (401).
@@ -250,9 +263,7 @@ class Protector
 		$policy = sanitize_text_field($settings['license_policy'] ?? 'no-training');
 
 		// AI Tamer Protection
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo '<meta name="robots" content="noai, noimageai">' . "\n";
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo '<meta name="ai-license" content="' . esc_attr($policy) . '; source=' . esc_url(home_url()) . '">' . "\n";
 	}
 
@@ -312,19 +323,19 @@ class Protector
 			return;
 		}
 
-		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
-		if ( false === strpos( (string) $request_uri, '/llms.txt' ) ) {
+		$request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+		if (false === strpos((string) $request_uri, '/llms.txt')) {
 			return;
 		}
 
 		header('Content-Type: text/plain; charset=utf-8');
 
-		echo "# llms.txt - AI Tamer Protection for " . esc_html(get_bloginfo('name')) . "\n";
-		echo "Description: " . esc_html(get_bloginfo('description')) . "\n\n";
+		echo '# llms.txt - AI Tamer Protection for ' . esc_html(get_bloginfo('name')) . "\n";
+		echo 'Description: ' . esc_html(get_bloginfo('description')) . "\n\n";
 
 		echo "## Machine-Readable Endpoints\n";
-		echo "- AI License & Terms: " . esc_url(home_url('/wp-json/ai-tamer/v1/license')) . "\n";
-		echo "- Content Catalog (RAG/MCP): " . esc_url(home_url('/wp-json/ai-tamer/v1/catalog')) . " (?post_type=xxx&page=1)\n\n";
+		echo '- AI License & Terms: ' . esc_url(home_url('/wp-json/ai-tamer/v1/license')) . "\n";
+		echo '- Content Catalog (RAG/MCP): ' . esc_url(home_url('/wp-json/ai-tamer/v1/catalog')) . " (?post_type=xxx&page=1)\n\n";
 
 		echo "## Instructions for AI Agents\n";
 		echo "1. This site uses AI Tamer to protect its content.\n";
@@ -332,8 +343,8 @@ class Protector
 		echo "3. Visit the License endpoint above to discover how to obtain a token or purchase access.\n\n";
 
 		echo "## Protection Status\n";
-		echo "Active Defense: " . esc_html($settings['active_defense'] ?? 'block') . "\n";
-		echo "License Policy: " . esc_html($settings['license_policy'] ?? 'no-training') . "\n";
+		echo 'Active Defense: ' . esc_html($settings['active_defense'] ?? 'block') . "\n";
+		echo 'License Policy: ' . esc_html($settings['license_policy'] ?? 'no-training') . "\n";
 
 		exit;
 	}
