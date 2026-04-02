@@ -41,6 +41,8 @@ class PluginPro
 		// Activation logic.
 		add_action('aitamer_plugin_activate', array($this, 'handle_pro_activation'));
 
+		// Mark Pro as active.
+		add_filter('aitamer_is_pro_active', '__return_true');
 	}
 
 	/**
@@ -74,9 +76,9 @@ class PluginPro
 	 */
 	public function register_pro_components($plugin)
 	{
-		$plugin->add_component('stripe_manager', new StripeManager());
 		$plugin->add_component('c2pa_manager', new C2paManager());
 		$plugin->add_component('media_pro', new MediaPro());
+		$plugin->add_component('lnbits_manager', new LnbitsManager());
 	}
 
 	/**
@@ -87,9 +89,6 @@ class PluginPro
 	public function register_pro_hooks($plugin)
 	{
 		// Billing & Wallet DB upgrade.
-		if (get_option('aitamer_billing_db_version') !== '1.1') {
-			StripeManager::install_table();
-		}
 
 		// C2PA registration.
 		$c2pa = $plugin->get_component('c2pa_manager');
@@ -105,33 +104,6 @@ class PluginPro
 
 		// Async Media Processing Hooks.
 		add_action('aitamer_process_media', array('\AiTamer\Watermarker', 'process_media_async'));
-
-		// Fingerprinting Script Injection
-		add_action('wp_enqueue_scripts', array($this, 'enqueue_fingerprint_script'));
-	}
-
-	/**
-	 * Enqueues the fingerprint script on the frontend.
-	 */
-	public function enqueue_fingerprint_script()
-	{
-		$settings = get_option('aitamer_settings', array());
-		if (empty($settings['enable_fingerprinting'])) {
-			return; // Can be toggled from settings if desired, or assume always on
-		}
-
-		wp_enqueue_script(
-			'aitamer-fingerprint',
-			plugin_dir_url(dirname(__DIR__)) . 'assets/js/fingerprint.js',
-			array(),
-			'1.0.0',
-			true
-		);
-
-		wp_localize_script('aitamer-fingerprint', 'aiTamerApi', array(
-			'root'  => esc_url_raw(rest_url()),
-			'nonce' => wp_create_nonce('wp_rest'),
-		));
 	}
 
 	/**
@@ -139,9 +111,6 @@ class PluginPro
 	 */
 	public function handle_pro_activation()
 	{
-		// Install billing table.
-		StripeManager::install_table();
-
 		// Add Pro-specific default options.
 		$settings = get_option('aitamer_settings', array());
 		$pro_defaults = array(
@@ -149,8 +118,6 @@ class PluginPro
 			'enable_c2pa'         => true,
 			'show_c2pa_badge'      => false,
 		);
-		
 		update_option('aitamer_settings', array_merge($pro_defaults, $settings));
 	}
-
 }

@@ -26,7 +26,10 @@ define('AITAMER_PLUGIN_URL', plugin_dir_url(__FILE__));
 // Autoload classes.
 require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-defense-strategy.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-license-policy.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-notification-channel.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/enums/class-transaction-status.php';
 
+require_once AITAMER_PLUGIN_DIR . 'includes/traits/trait-markdown-converter.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-ai-tamer.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-detector.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/class-protector.php';

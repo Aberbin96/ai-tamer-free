@@ -7,28 +7,29 @@
    Design Tokens
    ========================================================= */
 .aitamer-wrap {
-	--at-bg:          #f0f0f1; /* WP Light Background */
-	--at-surface:     #ffffff; /* White cards */
-	--at-surface-2:   #f6f7f7; /* Subtle hover/input background */
-	--at-border:      #dcdcde; /* WP Standard border */
-	--at-text:        #1d2327; /* WP Dark text */
-	--at-muted:       #646970; /* WP Muted text */
-	--at-green:       #00a32a; /* Slightly deeper green for contrast on white */
-	--at-green-dim:   #e5f5e8; /* Soft green tint */
-	--at-amber:       #bd8600; /* Darker amber for readability */
-	--at-amber-dim:   #fcf5e5; /* Soft amber tint */
-	--at-red:         #d63638; /* WP Error red */
-	--at-red-dim:     #fcf0f1; /* Soft red tint */
-	--at-blue:        #2271b1; /* WP Link blue */
-	--at-blue-dim:    #f0f6fa; /* Soft blue tint */
-	--at-radius:      4px;    /* Matches WP UI */
-	--at-radius-sm:   3px;
-	--at-font-mono:   'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+	--at-bg: #f0f0f1; /* WP Light Background */
+	--at-surface: #ffffff; /* White cards */
+	--at-surface-2: #f6f7f7; /* Subtle hover/input background */
+	--at-border: #dcdcde; /* WP Standard border */
+	--at-text: #1d2327; /* WP Dark text */
+	--at-muted: #646970; /* WP Muted text */
+	--at-green: #00a32a; /* Slightly deeper green for contrast on white */
+	--at-green-dim: #e5f5e8; /* Soft green tint */
+	--at-amber: #bd8600; /* Darker amber for readability */
+	--at-amber-dim: #fcf5e5; /* Soft amber tint */
+	--at-red: #d63638; /* WP Error red */
+	--at-red-dim: #fcf0f1; /* Soft red tint */
+	--at-blue: #2271b1; /* WP Link blue */
+	--at-blue-dim: #f0f6fa; /* Soft blue tint */
+	--at-radius: 4px; /* Matches WP UI */
+	--at-radius-sm: 3px;
+	--at-font-mono:
+		"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 :root {
 	--color-surface-tint: #00a32a;
 	--color-primary-fixed-dim: #00a32a;
-  	--color-primary: #00a32a;
+	--color-primary: #00a32a;
 	--color-inverse-primary: #006b5f;
 	--color-error-container: #93000a;
 	--color-outline: #909098;
@@ -134,7 +135,7 @@
 	border-radius: var(--at-radius);
 	padding: 20px;
 	margin-bottom: 20px;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .aitamer-card-header {
@@ -161,21 +162,29 @@
 	padding: 16px 20px;
 	position: relative;
 	overflow: hidden;
-	box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .aitamer-metric::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 0;
 	left: 0;
 	right: 0;
 	height: 2px;
 }
-.aitamer-metric.green::before  { background: var(--at-green); }
-.aitamer-metric.amber::before  { background: var(--at-amber); }
-.aitamer-metric.red::before    { background: var(--at-red); }
-.aitamer-metric.blue::before   { background: var(--at-blue); }
+.aitamer-metric.green::before {
+	background: var(--at-green);
+}
+.aitamer-metric.amber::before {
+	background: var(--at-amber);
+}
+.aitamer-metric.red::before {
+	background: var(--at-red);
+}
+.aitamer-metric.blue::before {
+	background: var(--at-blue);
+}
 
 .aitamer-metric-label {
 	font-size: 10px;
@@ -193,10 +202,18 @@
 	color: var(--at-text);
 }
 
-.aitamer-metric.green .aitamer-metric-value { color: var(--at-green); }
-.aitamer-metric.amber .aitamer-metric-value { color: var(--at-amber); }
-.aitamer-metric.red   .aitamer-metric-value { color: var(--at-red); }
-.aitamer-metric.blue  .aitamer-metric-value { color: var(--at-blue); }
+.aitamer-metric.green .aitamer-metric-value {
+	color: var(--at-green);
+}
+.aitamer-metric.amber .aitamer-metric-value {
+	color: var(--at-amber);
+}
+.aitamer-metric.red .aitamer-metric-value {
+	color: var(--at-red);
+}
+.aitamer-metric.blue .aitamer-metric-value {
+	color: var(--at-blue);
+}
 
 .aitamer-metric-sub {
 	font-size: 11px;
@@ -265,14 +282,46 @@
 	padding: 3px 8px;
 	border-radius: var(--at-radius-sm);
 }
-.aitamer-badge-status.blocked    { background: var(--at-red-dim);   color: var(--at-red);   border: 1px solid var(--at-red); }
-.aitamer-badge-status.allowed    { background: var(--at-green-dim); color: var(--at-green); border: 1px solid var(--at-green); }
-.aitamer-badge-status.limited    { background: var(--at-amber-dim); color: var(--at-amber); border: 1px solid var(--at-amber); }
-.aitamer-badge-status.training   { background: var(--at-red-dim);   color: var(--at-red);   border: 1px solid var(--at-red); }
-.aitamer-badge-status.search     { background: var(--at-blue-dim);  color: var(--at-blue);  border: 1px solid var(--at-blue); }
-.aitamer-badge-status.scraper    { background: var(--at-amber-dim); color: var(--at-amber); border: 1px solid var(--at-amber); }
-.aitamer-badge-status.active     { background: var(--at-green-dim); color: var(--at-green); border: 1px solid var(--at-green); }
-.aitamer-badge-status.expired    { background: var(--at-surface-2); color: var(--at-muted); border: 1px solid var(--at-border); }
+.aitamer-badge-status.blocked {
+	background: var(--at-red-dim);
+	color: var(--at-red);
+	border: 1px solid var(--at-red);
+}
+.aitamer-badge-status.allowed {
+	background: var(--at-green-dim);
+	color: var(--at-green);
+	border: 1px solid var(--at-green);
+}
+.aitamer-badge-status.limited {
+	background: var(--at-amber-dim);
+	color: var(--at-amber);
+	border: 1px solid var(--at-amber);
+}
+.aitamer-badge-status.training {
+	background: var(--at-red-dim);
+	color: var(--at-red);
+	border: 1px solid var(--at-red);
+}
+.aitamer-badge-status.search {
+	background: var(--at-blue-dim);
+	color: var(--at-blue);
+	border: 1px solid var(--at-blue);
+}
+.aitamer-badge-status.scraper {
+	background: var(--at-amber-dim);
+	color: var(--at-amber);
+	border: 1px solid var(--at-amber);
+}
+.aitamer-badge-status.active {
+	background: var(--at-green-dim);
+	color: var(--at-green);
+	border: 1px solid var(--at-green);
+}
+.aitamer-badge-status.expired {
+	background: var(--at-surface-2);
+	color: var(--at-muted);
+	border: 1px solid var(--at-border);
+}
 
 /* =========================================================
    Buttons
@@ -298,7 +347,10 @@
 	font-size: 12px;
 	transition: opacity 0.15s;
 }
-.aitamer-btn-primary:hover { opacity: 0.85; color: #fff !important; }
+.aitamer-btn-primary:hover {
+	opacity: 0.85;
+	color: #fff !important;
+}
 
 .aitamer-btn-ghost {
 	display: inline-flex;
@@ -313,7 +365,9 @@
 	cursor: pointer;
 	text-decoration: none;
 	font-size: 12px;
-	transition: border-color 0.15s, background 0.15s;
+	transition:
+		border-color 0.15s,
+		background 0.15s;
 }
 
 .aitamer-btn-ghost:hover {
@@ -336,7 +390,9 @@
 	font-size: 11px;
 	transition: background 0.15s;
 }
-.aitamer-btn-danger:hover { background: var(--at-red-dim) !important; }
+.aitamer-btn-danger:hover {
+	background: var(--at-red-dim) !important;
+}
 
 /* =========================================================
    Forms & Settings
@@ -451,8 +507,13 @@
 }
 
 @keyframes aitamer-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.4; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.4;
+	}
 }
 
 /* =========================================================
@@ -478,7 +539,9 @@
 	gap: 16px;
 	margin-bottom: 24px;
 }
-.aitamer-page-header .aitamer-page-title { margin: 0; }
+.aitamer-page-header .aitamer-page-title {
+	margin: 0;
+}
 .aitamer-page-header .aitamer-page-desc {
 	font-size: 12px;
 	color: var(--at-muted);
@@ -630,6 +693,44 @@
 .aitamer-pagination .dots {
 	color: var(--at-muted);
 	padding: 0 4px;
+}
+
+/* =========================================================
+   Navigation Tabs Refinement
+   ========================================================= */
+.aitamer-nav-tab-wrapper {
+	background: transparent !important;
+	border-bottom: 1px solid var(--at-border) !important;
+	padding: 0 !important;
+	display: flex !important;
+	gap: 4px;
+}
+
+.aitamer-nav-tab-wrapper .nav-tab {
+	margin: 0 !important;
+	padding: 8px 16px !important;
+	font-size: 13px !important;
+	font-weight: 500 !important;
+	border: 1px solid transparent !important;
+	border-bottom: none !important;
+	border-radius: 4px 4px 0 0 !important;
+	background: transparent !important;
+	color: var(--at-muted) !important;
+	transition: all 0.15s !important;
+}
+
+.aitamer-nav-tab-wrapper .nav-tab:hover {
+	background: var(--at-surface-2) !important;
+	color: var(--at-text) !important;
+}
+
+.aitamer-nav-tab-wrapper .nav-tab-active {
+	background: var(--at-surface) !important;
+	border-color: var(--at-border) !important;
+	border-bottom: 2px solid var(--at-green) !important;
+	color: var(--at-text) !important;
+	font-weight: 600 !important;
+}
 
 /* =========================================================
    Notification Settings (Real-time)

@@ -1,156 +1,208 @@
 <?php
+
 /**
  * Standards and Documentation page view.
  *
  * @package Ai_Tamer
  */
 
-defined( 'ABSPATH' ) || exit;
+defined('ABSPATH') || exit;
 ?>
 <div class="wrap aitamer-wrap">
 
 	<div class="aitamer-page-header">
 		<div>
-			<h1 class="aitamer-page-title"><?php esc_html_e( 'Technical Standards & Documentation', 'ai-tamer' ); ?></h1>
-			<p class="aitamer-page-desc"><?php esc_html_e( 'How AI Tamer implements global standards for content provenance and protection.', 'ai-tamer' ); ?></p>
+			<h1 class="aitamer-page-title"><?php esc_html_e('Technical Standards & Documentation', 'ai-tamer'); ?></h1>
+			<p class="aitamer-page-desc"><?php esc_html_e('How AI Tamer implements global standards for content provenance and protection.', 'ai-tamer'); ?></p>
 		</div>
 	</div>
 
 	<div class="aitamer-grid">
 		<div class="aitamer-card">
-			<h2 class="aitamer-card-title"><?php esc_html_e( 'Our Defense Strategy', 'ai-tamer' ); ?></h2>
+			<h2 class="aitamer-card-title"><?php esc_html_e('Our Defense Strategy', 'ai-tamer'); ?></h2>
 			<p class="aitamer-intro">
-				<?php esc_html_e( 'AI Tamer is not just a bot blocker; it is a content integrity system. We follow global standards to ensure that AI agents recognize your authority over your content.', 'ai-tamer' ); ?>
+				<?php esc_html_e('AI Tamer is not just a bot blocker; it is a content integrity system. We follow global standards to ensure that AI agents recognize your authority over your content.', 'ai-tamer'); ?>
 			</p>
-			
+
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'C2PA & Verifiable Provenance', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'Providing a "Proof of Human Origin" helps future AI-driven search engines (like Perplexity or Google AI Overviews) trust your data. By signing your content, you distinguish it from the flood of low-quality synthetic data.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'We attach a DigitalDocument manifest with a SHA-256 integrity hash to every supported post.', 'ai-tamer' ); ?></p>
-				<p><a href="https://c2pa.org/specifications/" target="_blank" class="button button-link"><?php esc_html_e( 'C2PA Technical Specs', 'ai-tamer' ); ?></a></p>
+				<h3><?php esc_html_e('C2PA & Verifiable Provenance', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('Providing a "Proof of Human Origin" helps future AI-driven search engines (like Perplexity or Google AI Overviews) trust your data. By signing your content, you distinguish it from the flood of low-quality synthetic data.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Implementation:', 'ai-tamer'); ?></em> <?php esc_html_e('We attach a DigitalDocument manifest with a SHA-256 integrity hash to every supported post.', 'ai-tamer'); ?></p>
+				<p><a href="https://c2pa.org/specifications/" target="_blank" class="button button-link"><?php esc_html_e('C2PA Technical Specs', 'ai-tamer'); ?></a></p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'Direct Directives (Schema.org)', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'Modern AI bots look for these specific fields to determine if they have permission to use your work for training. Being explicit here is your first line of legal and technical defense.', 'ai-tamer' ); ?></p>
-				<p><em>usageInfo & acquireLicensePage:</em> <?php esc_html_e( 'Standard properties to link your AI usage policy and training licenses.', 'ai-tamer' ); ?></p>
-				<p><a href="https://schema.org/usageInfo" target="_blank" class="button button-link"><?php esc_html_e( 'Schema.org Reference', 'ai-tamer' ); ?></a></p>
+				<h3><?php esc_html_e('Direct Directives (Schema.org)', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('Modern AI bots look for these specific fields to determine if they have permission to use your work for training. Being explicit here is your first line of legal and technical defense.', 'ai-tamer'); ?></p>
+				<p><em>usageInfo & acquireLicensePage:</em> <?php esc_html_e('Standard properties to link your AI usage policy and training licenses.', 'ai-tamer'); ?></p>
+				<p><a href="https://schema.org/usageInfo" target="_blank" class="button button-link"><?php esc_html_e('Schema.org Reference', 'ai-tamer'); ?></a></p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'Deep Defense (IPTC Media Metadata)', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'If an image is scraped or downloaded, it loses its connection to your site. By injecting IPTC metadata directly into the file, your "Human Origin" certification travels with the asset itself.', 'ai-tamer' ); ?></p>
-				<p><em>Digital Source Type:</em> <?php esc_html_e( 'We use "originalMediaDigitalSource" to certify the asset was captured by a human, not generated by an algorithm.', 'ai-tamer' ); ?></p>
-				<p><strong><?php esc_html_e( 'How to Certify:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'Go to your Media Library, edit any image, and check the "Human Origin" box. The metadata will be injected permanently into the file.', 'ai-tamer' ); ?></p>
-				<p><a href="https://www.iptc.org/std/photometadata/specification/IPTC-PhotoMetadata#digital-source-type" target="_blank" class="button button-link"><?php esc_html_e( 'IPTC Standards', 'ai-tamer' ); ?></a></p>
+				<h3><?php esc_html_e('Deep Defense (IPTC Media Metadata)', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('If an image is scraped or downloaded, it loses its connection to your site. By injecting IPTC metadata directly into the file, your "Human Origin" certification travels with the asset itself.', 'ai-tamer'); ?></p>
+				<p><em>Digital Source Type:</em> <?php esc_html_e('We use "originalMediaDigitalSource" to certify the asset was captured by a human, not generated by an algorithm.', 'ai-tamer'); ?></p>
+				<p><strong><?php esc_html_e('How to Certify:', 'ai-tamer'); ?></strong> <?php esc_html_e('Go to your Media Library, edit any image, and check the "Human Origin" box. The metadata will be injected permanently into the file.', 'ai-tamer'); ?></p>
+				<p><a href="https://www.iptc.org/std/photometadata/specification/IPTC-PhotoMetadata#digital-source-type" target="_blank" class="button button-link"><?php esc_html_e('IPTC Standards', 'ai-tamer'); ?></a></p>
 			</div>
 
 
 
 			<div class="aitamer-standard-item">
 				<h3>AI-Specific Robots Directives</h3>
-				<p><?php esc_html_e( 'We support granular control for modern AI crawlers through robots.txt and X-Robots-Tag.', 'ai-tamer' ); ?></p>
-				<p><strong>GPTBot:</strong> <a href="https://platform.openai.com/docs/gptbot" target="_blank"><?php esc_html_e( 'OpenAI Documentation', 'ai-tamer' ); ?></a></p>
-				<p><strong>Google-Extended:</strong> <a href="https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers#google-extended" target="_blank"><?php esc_html_e( 'Google Documentation', 'ai-tamer' ); ?></a></p>
+				<p><?php esc_html_e('We support granular control for modern AI crawlers through robots.txt and X-Robots-Tag.', 'ai-tamer'); ?></p>
+				<p><strong>GPTBot:</strong> <a href="https://platform.openai.com/docs/gptbot" target="_blank"><?php esc_html_e('OpenAI Documentation', 'ai-tamer'); ?></a></p>
+				<p><strong>Google-Extended:</strong> <a href="https://developers.google.com/search/docs/crawling-indexing/overview-google-crawlers#google-extended" target="_blank"><?php esc_html_e('Google Documentation', 'ai-tamer'); ?></a></p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'llms.txt — Machine-Readable Sitemap', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'Large Language Models (LLMs) and RAG agents need a way to quickly discover which content is available and what the licensing terms are without crawling every page.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When enabled in General Settings, AI Tamer serves a dynamic /llms.txt file that points agents to your machine-readable Catalog and License endpoints.', 'ai-tamer' ); ?></p>
-				<p><a href="<?php echo esc_url( home_url( '/llms.txt' ) ); ?>" target="_blank" class="button button-link"><?php esc_html_e( 'View your llms.txt', 'ai-tamer' ); ?></a></p>
+				<h3><?php esc_html_e('llms.txt — Machine-Readable Sitemap', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('Large Language Models (LLMs) and RAG agents need a way to quickly discover which content is available and what the licensing terms are without crawling every page.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Implementation:', 'ai-tamer'); ?></em> <?php esc_html_e('When enabled in General Settings, AI Tamer serves a dynamic /llms.txt file that points agents to your machine-readable Catalog and License endpoints.', 'ai-tamer'); ?></p>
+				<p><a href="<?php echo esc_url(home_url('/llms.txt')); ?>" target="_blank" class="button button-link"><?php esc_html_e('View your llms.txt', 'ai-tamer'); ?></a></p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'L402 Protocol — Machine-Payable Content', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'The L402 protocol (formerly LSAT) enables AI agents to pay for content access autonomously using the Lightning Network. No account creation, API keys, or human intervention required — just standard HTTP headers and Bitcoin micropayments.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When a bot requests protected content, AI Tamer returns HTTP 402 (Payment Required) with a Www-Authenticate header containing a BOLT11 Lightning invoice. The agent pays the invoice and retries with an Authorization header containing the payment proof.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Header format:', 'ai-tamer' ); ?></em></p>
+				<h3><?php esc_html_e('L402 Protocol — Machine-Payable Content', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('The L402 protocol (formerly LSAT) enables AI agents to pay for content access autonomously using the Lightning Network. No account creation, API keys, or human intervention required — just standard HTTP headers and Bitcoin micropayments.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Implementation:', 'ai-tamer'); ?></em> <?php esc_html_e('When a bot requests protected content, AI Tamer returns HTTP 402 (Payment Required) with a Www-Authenticate header containing a BOLT11 Lightning invoice. The agent pays the invoice and retries with an Authorization header containing the payment proof.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Header format:', 'ai-tamer'); ?></em></p>
 				<code style="display:block; background:#f0f0f0; padding:10px; margin:8px 0; border-radius:4px; font-size:12px; word-break:break-all;">
 					Www-Authenticate: L402 macaroon="&lt;payment_hash&gt;", invoice="&lt;bolt11&gt;"<br>
 					Authorization: L402 &lt;payment_hash&gt;:&lt;preimage&gt;
 				</code>
-				<p><strong><?php esc_html_e( 'Compatibility:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'AI Tamer accepts both the current L402 prefix and the legacy LSAT prefix for backward compatibility with older browser extensions (Joule) and agent tooling (Aperture v1).', 'ai-tamer' ); ?></p>
+				<p><strong><?php esc_html_e('Compatibility:', 'ai-tamer'); ?></strong> <?php esc_html_e('AI Tamer accepts both the current L402 prefix and the legacy LSAT prefix for backward compatibility with older browser extensions (Joule) and agent tooling (Aperture v1).', 'ai-tamer'); ?></p>
 				<p>
-					<a href="https://github.com/lightning/blips/blob/master/blip-0032.md" target="_blank" class="button button-link"><?php esc_html_e( 'L402 BLIP-0032 Spec', 'ai-tamer' ); ?></a>
-					<a href="https://lightning.engineering/posts/2020-03-30-lsat/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Lightning Labs — LSAT Overview', 'ai-tamer' ); ?></a>
-					<a href="https://docs.getalby.com/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Alby Extension Docs', 'ai-tamer' ); ?></a>
+					<a href="https://github.com/lightning/blips/blob/master/blip-0032.md" target="_blank" class="button button-link"><?php esc_html_e('L402 BLIP-0032 Spec', 'ai-tamer'); ?></a>
+					<a href="https://lightning.engineering/posts/2020-03-30-lsat/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e('Lightning Labs — LSAT Overview', 'ai-tamer'); ?></a>
+					<a href="https://docs.getalby.com/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e('Alby Extension Docs', 'ai-tamer'); ?></a>
 				</p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'Value-for-Value — Podcasting 2.0 Keysend', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'The Value-for-Value (V4V) model enables direct, peer-to-peer micropayments from consumers to creators without intermediaries. Originally designed for podcasting, V4V is now being adopted by AI agents that want to voluntarily compensate content creators.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Implementation:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'When a Lightning Node Public Key is configured in the Monetization settings, AI Tamer exposes a value4value block in the /ai-tamer/v1/license endpoint following the Podcasting 2.0 specification. V4V-aware apps (Fountain, Breez, Alby) can discover this metadata and stream sats directly to your node via Keysend.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Standard:', 'ai-tamer' ); ?></em> <?php
-					echo wp_kses(
-						sprintf(
-							/* translators: %s: <podcast:value> tag name */
-							__( 'Follows the %s RSS tag specification, adapted for JSON-LD. Uses method="keysend" with your Lightning node public key as the recipient address.', 'ai-tamer' ),
-							'<code>&lt;podcast:value&gt;</code>'
-						),
-						array( 'code' => array() )
-					);
-				?></p>
+				<h3><?php esc_html_e('Value-for-Value — Podcasting 2.0 Keysend', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('The Value-for-Value (V4V) model enables direct, peer-to-peer micropayments from consumers to creators without intermediaries. Originally designed for podcasting, V4V is now being adopted by AI agents that want to voluntarily compensate content creators.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Implementation:', 'ai-tamer'); ?></em> <?php esc_html_e('When a Lightning Node Public Key is configured in the Monetization settings, AI Tamer exposes a value4value block in the /ai-tamer/v1/license endpoint following the Podcasting 2.0 specification. V4V-aware apps (Fountain, Breez, Alby) can discover this metadata and stream sats directly to your node via Keysend.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Standard:', 'ai-tamer'); ?></em> <?php
+																			echo wp_kses(
+																				sprintf(
+																					/* translators: %s: <podcast:value> tag name */
+																					__('Follows the %s RSS tag specification, adapted for JSON-LD. Uses method="keysend" with your Lightning node public key as the recipient address.', 'ai-tamer'),
+																					'<code>&lt;podcast:value&gt;</code>'
+																				),
+																				array('code' => array())
+																			);
+																			?></p>
 				<p>
-					<a href="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#value" target="_blank" class="button button-link"><?php esc_html_e( 'Podcast Namespace — Value Tag Spec', 'ai-tamer' ); ?></a>
-					<a href="https://podcasting2.org/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Podcasting 2.0', 'ai-tamer' ); ?></a>
+					<a href="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md#value" target="_blank" class="button button-link"><?php esc_html_e('Podcast Namespace — Value Tag Spec', 'ai-tamer'); ?></a>
+					<a href="https://podcasting2.org/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e('Podcasting 2.0', 'ai-tamer'); ?></a>
 				</p>
 			</div>
 
 			<div class="aitamer-standard-item">
-				<h3><?php esc_html_e( 'Federated E-Cash (Cashu / Fedimint)', 'ai-tamer' ); ?></h3>
-				<p><strong><?php esc_html_e( 'Why:', 'ai-tamer' ); ?></strong> <?php esc_html_e( 'E-cash protocols like Cashu bring privacy-preserving micropayments to the web. Blinded tokens allow agents to pay for content without revealing their identity, while mints backed by Bitcoin ensure real economic value.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Cashu:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'A Chaumian e-cash protocol using blinded tokens. AI Tamer provides an extensible filter hook (aitamer_ecash_validate) that allows third-party plugins to accept Cashu tokens as payment. Tokens can be passed via the X-Cashu-Token header.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Fedimint:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'A federated custody protocol. Users of Fedimint federations can already pay AI Tamer L402 invoices through their federation\'s Lightning gateway — no additional plugin integration needed.', 'ai-tamer' ); ?></p>
-				<p><em><?php esc_html_e( 'Fedi:', 'ai-tamer' ); ?></em> <?php esc_html_e( 'Consumer app built on Fedimint. Payments appear as standard Lightning transactions on the server side, making it fully compatible with AI Tamer without any changes.', 'ai-tamer' ); ?></p>
+				<h3><?php esc_html_e('Federated E-Cash (Cashu / Fedimint)', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('E-cash protocols like Cashu bring privacy-preserving micropayments to the web. Blinded tokens allow agents to pay for content without revealing their identity, while mints backed by Bitcoin ensure real economic value.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Cashu:', 'ai-tamer'); ?></em> <?php esc_html_e('A Chaumian e-cash protocol using blinded tokens. AI Tamer provides an extensible filter hook (aitamer_ecash_validate) that allows third-party plugins to accept Cashu tokens as payment. Tokens can be passed via the X-Cashu-Token header.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Fedimint:', 'ai-tamer'); ?></em> <?php esc_html_e('A federated custody protocol. Users of Fedimint federations can already pay AI Tamer L402 invoices through their federation\'s Lightning gateway — no additional plugin integration needed.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Fedi:', 'ai-tamer'); ?></em> <?php esc_html_e('Consumer app built on Fedimint. Payments appear as standard Lightning transactions on the server side, making it fully compatible with AI Tamer without any changes.', 'ai-tamer'); ?></p>
 				<p>
-					<a href="https://github.com/cashubtc/nuts" target="_blank" class="button button-link"><?php esc_html_e( 'Cashu NUTs (Protocol Spec)', 'ai-tamer' ); ?></a>
-					<a href="https://fedimint.org/docs/intro" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e( 'Fedimint Documentation', 'ai-tamer' ); ?></a>
+					<a href="https://github.com/cashubtc/nuts" target="_blank" class="button button-link"><?php esc_html_e('Cashu NUTs (Protocol Spec)', 'ai-tamer'); ?></a>
+					<a href="https://fedimint.org/docs/intro" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e('Fedimint Documentation', 'ai-tamer'); ?></a>
+				</p>
+			</div>
+
+			<div class="aitamer-standard-item">
+				<h3><?php esc_html_e('Non-Custodial USDT P2P (402 Payment Required)', 'ai-tamer'); ?></h3>
+				<p><strong><?php esc_html_e('Why:', 'ai-tamer'); ?></strong> <?php esc_html_e('For users who prefer stablecoins, AI Tamer supports direct P2P payments in USDT (ERC-20/Polygon). This model bypasses all intermediaries and centralized processors, delivering funds directly to your wallet while maintaining programmatic access for bots.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Implementation:', 'ai-tamer'); ?></em> <?php esc_html_e('When a bot requests protected content, AI Tamer returns HTTP 402 with your public wallet address and a required price. The agent sends the USDT transfer and provides the transaction hash in the X-Payment-Hash header.', 'ai-tamer'); ?></p>
+				<p><em><?php esc_html_e('Verification Engine:', 'ai-tamer'); ?></em> <?php esc_html_e('AI Tamer uses a stateless verifier API (hosted on Vercel) to confirm the transaction exists on-chain. To prevent transaction reuse, the system automatically appends unique "micro-cents" (based on post ID) to the base price.', 'ai-tamer'); ?></p>
+				<p>
+					<a href="https://ethereum.org/en/developers/docs/standards/tokens/erc-20/" target="_blank" class="button button-link"><?php esc_html_e('ERC-20 Standard', 'ai-tamer'); ?></a>
+					<a href="https://polygon.technology/" target="_blank" class="button button-link" style="margin-left:8px;"><?php esc_html_e('Polygon Network', 'ai-tamer'); ?></a>
 				</p>
 			</div>
 		</div>
 
 		<div class="aitamer-card sidebar">
-			<h2 class="aitamer-card-title"><?php esc_html_e( 'Technical Architecture', 'ai-tamer' ); ?></h2>
+			<h2 class="aitamer-card-title"><?php esc_html_e('Technical Architecture', 'ai-tamer'); ?></h2>
 			<div class="aitamer-info-box">
 				<h4>CreativeWork vs DigitalDocument</h4>
-				<p><?php esc_html_e( 'Instead of using ClaimReview (fact-checking), AI Tamer extends CreativeWork with custom properties or uses DigitalDocument with a hash-based identifier to ensure content integrity.', 'ai-tamer' ); ?></p>
+				<p><?php esc_html_e('Instead of using ClaimReview (fact-checking), AI Tamer extends CreativeWork with custom properties or uses DigitalDocument with a hash-based identifier to ensure content integrity.', 'ai-tamer'); ?></p>
 			</div>
 			<div class="aitamer-info-box tip">
-				<h4><?php esc_html_e( 'Pro Tip', 'ai-tamer' ); ?></h4>
-				<p><?php esc_html_e( 'Implementing iptc:DigitalSourceType is currently the gold standard for certifying human vs. AI origin in professional media workflows.', 'ai-tamer' ); ?></p>
+				<h4><?php esc_html_e('Pro Tip', 'ai-tamer'); ?></h4>
+				<p><?php esc_html_e('Implementing iptc:DigitalSourceType is currently the gold standard for certifying human vs. AI origin in professional media workflows.', 'ai-tamer'); ?></p>
 			</div>
 			<div class="aitamer-info-box">
-				<h4><?php esc_html_e( 'L402 Simplified Flow', 'ai-tamer' ); ?></h4>
-				<p><?php esc_html_e( 'AI Tamer uses the payment_hash as the macaroon identifier in the L402 challenge (LNbits simplified flow). Full LND Macaroon baking is not required. This is clearly documented in the 402 response body for agent transparency.', 'ai-tamer' ); ?></p>
+				<h4><?php esc_html_e('L402 Simplified Flow', 'ai-tamer'); ?></h4>
+				<p><?php esc_html_e('AI Tamer uses the payment_hash as the macaroon identifier in the L402 challenge (LNbits simplified flow). Full LND Macaroon baking is not required. This is clearly documented in the 402 response body for agent transparency.', 'ai-tamer'); ?></p>
+			</div>
+			<div class="aitamer-info-box">
+				<h4><?php esc_html_e('Non-Custodial Architecture', 'ai-tamer'); ?></h4>
+				<p><?php esc_html_e('Your WordPress site never touches your private keys. AI Tamer only "checks" the blockchain via a stateless verifier to confirm that a payment was made to your public address. This ensures zero risk for your funds.', 'ai-tamer'); ?></p>
 			</div>
 			<div class="aitamer-info-box tip">
-				<h4><?php esc_html_e( 'Extensibility', 'ai-tamer' ); ?></h4>
+				<h4><?php esc_html_e('Extensibility', 'ai-tamer'); ?></h4>
 				<p><?php
 					echo wp_kses(
 						sprintf(
 							/* translators: %1$s, %2$s, %3$s: filter hook names */
-							__( 'Developers can extend AI Tamer\'s payment layer via three filters: %1$s for alternative payment tokens (Cashu), %2$s for pricing adjustments, and %3$s for base price overrides.', 'ai-tamer' ),
+							__('Developers can extend AI Tamer\'s payment layer via three filters: %1$s for alternative payment tokens (Cashu), %2$s for pricing adjustments, and %3$s for base price overrides.', 'ai-tamer'),
 							'<code>aitamer_ecash_validate</code>',
 							'<code>aitamer_pricing_multiplier</code>',
 							'<code>aitamer_base_price_sats</code>'
 						),
-						array( 'code' => array() )
+						array('code' => array())
 					);
-				?></p>
+					?></p>
 			</div>
 		</div>
 	</div>
 
 </div>
 <style>
-.aitamer-standard-item { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
-.aitamer-standard-item:last-child { border-bottom: none; }
-.aitamer-standard-item h3 { margin-top: 0; color: #1d2327; }
-.aitamer-info-box { background: #f0f6fb; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #72aee6; }
-.aitamer-info-box.tip { border-left-color: #68de7c; background: #f2fbf4; }
-.aitamer-info-box h4 { margin-top: 0; margin-bottom: 10px; }
-.aitamer-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-@media (max-width: 782px) { .aitamer-grid { grid-template-columns: 1fr; } }
+	.aitamer-standard-item {
+		margin-bottom: 25px;
+		padding-bottom: 20px;
+		border-bottom: 1px solid #eee;
+	}
+
+	.aitamer-standard-item:last-child {
+		border-bottom: none;
+	}
+
+	.aitamer-standard-item h3 {
+		margin-top: 0;
+		color: #1d2327;
+	}
+
+	.aitamer-info-box {
+		background: #f0f6fb;
+		padding: 15px;
+		border-radius: 4px;
+		margin-bottom: 20px;
+		border-left: 4px solid #72aee6;
+	}
+
+	.aitamer-info-box.tip {
+		border-left-color: #68de7c;
+		background: #f2fbf4;
+	}
+
+	.aitamer-info-box h4 {
+		margin-top: 0;
+		margin-bottom: 10px;
+	}
+
+	.aitamer-grid {
+		display: grid;
+		grid-template-columns: 2fr 1fr;
+		gap: 20px;
+	}
+
+	@media (max-width: 782px) {
+		.aitamer-grid {
+			grid-template-columns: 1fr;
+		}
+	}
 </style>

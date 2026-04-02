@@ -140,25 +140,25 @@ class Admin
 			}
 		}
 
-		?>
+?>
 		<div class="aitamer-wp-dashboard-widget" style="padding: 10px 0;">
 			<p style="margin: 0 0 8px;">
-				<strong><?php esc_html_e('Bots Entered:', 'ai-tamer'); ?></strong> 
+				<strong><?php esc_html_e('Bots Entered:', 'ai-tamer'); ?></strong>
 				<span><?php echo esc_html(number_format_i18n($total_bots)); ?></span>
 			</p>
 			<p style="margin: 0 0 15px;">
-				<strong><?php esc_html_e('Bots Intercepted:', 'ai-tamer'); ?></strong> 
+				<strong><?php esc_html_e('Bots Intercepted:', 'ai-tamer'); ?></strong>
 				<span style="color: #d63638;"><?php echo esc_html(number_format_i18n($intercepted)); ?></span>
 			</p>
 			<hr style="border: 0; border-top: 1px solid #ddd; margin: 15px 0;" />
 			<p style="margin: 0 0 8px; font-weight: 600;">
 				<?php esc_html_e('Potential Earnings (Est.):', 'ai-tamer'); ?>
-				<br/>
+				<br />
 				<span style="font-size: 1.2em; color: #2271b1;">$<?php echo esc_html(number_format_i18n($potential_earnings, 4)); ?></span>
 			</p>
 			<p style="margin: 0 0 15px; font-weight: 600;">
 				<?php esc_html_e('Current Earnings:', 'ai-tamer'); ?>
-				<br/>
+				<br />
 				<span style="font-size: 1.2em; color: <?php echo apply_filters('aitamer_is_pro_active', false) ? '#00a32a' : '#888'; ?>;">
 					$<?php echo esc_html(number_format_i18n($current_earnings, 2)); ?>
 				</span>
@@ -171,7 +171,7 @@ class Admin
 				</p>
 			<?php endif; ?>
 		</div>
-		<?php
+<?php
 	}
 
 
@@ -481,41 +481,91 @@ class Admin
 	 */
 	public function sanitize_settings($input): array
 	{
+		$settings = get_option('aitamer_settings', array());
+
 		if (! is_array($input)) {
-			return get_option('aitamer_settings', array());
-		}
-		$allowed_defenses = array_map(fn($case) => $case->value, DefenseStrategy::cases());
-		$defense          = $input['active_defense'] ?? DefenseStrategy::BLOCK->value;
-		if (! in_array($defense, $allowed_defenses, true)) {
-			$defense = DefenseStrategy::BLOCK->value;
+			return $settings;
 		}
 
-		$settings = array(
-			'block_training_bots'     => ! empty($input['block_training_bots']),
-			'auto_update_bots'        => ! empty($input['auto_update_bots']),
-			'inject_meta_tags'        => ! empty($input['inject_meta_tags']),
-			'inject_http_headers'     => ! empty($input['inject_http_headers']),
-			'crawl_delay_enabled'     => ! empty($input['crawl_delay_enabled']),
-			'crawl_delay'             => absint($input['crawl_delay'] ?? 10) ?: 10,
-			'rate_limit_enabled'      => ! empty($input['rate_limit_enabled']),
-			'rpm'                     => absint($input['rpm'] ?? 30) ?: 30,
-			'bandwidth_limit_enabled' => ! empty($input['bandwidth_limit_enabled']),
-			'bandwidth_kb_limit'      => absint($input['bandwidth_kb_limit'] ?? 5120) ?: 5120,
-			'enable_llms_txt'         => ! empty($input['enable_llms_txt']),
-			'active_defense'          => $defense,
-			'license_policy'          => LicensePolicy::NO_TRAINING->value,
-			'protected_post_types'    => isset($input['protected_post_types']) && is_array($input['protected_post_types']) ? array_map('sanitize_text_field', $input['protected_post_types']) : array('post'),
-			'notifications_enabled'   => ! empty($input['notifications_enabled']),
-			'notification_channels'   => isset($input['notification_channels']) && is_array($input['notification_channels']) ? array_map('sanitize_text_field', $input['notification_channels']) : array('email'),
-			'slack_webhook_url'       => esc_url_raw($input['slack_webhook_url'] ?? ''),
-			'discord_webhook_url'     => esc_url_raw($input['discord_webhook_url'] ?? ''),
-			'notification_events'     => isset($input['notification_events']) && is_array($input['notification_events']) ? array_map('sanitize_text_field', $input['notification_events']) : array(),
+		// List of all known keys to handle them correctly.
+		$keys = array(
+			'block_training_bots',
+			'auto_update_bots',
+			'inject_meta_tags',
+			'inject_http_headers',
+			'crawl_delay_enabled',
+			'crawl_delay',
+			'rate_limit_enabled',
+			'rpm',
+			'bandwidth_limit_enabled',
+			'bandwidth_kb_limit',
+			'enable_llms_txt',
+			'active_defense',
+			'license_policy',
+			'protected_post_types',
+			'notifications_enabled',
+			'notification_channels',
+			'slack_webhook_url',
+			'discord_webhook_url',
+			'notification_events',
 		);
 
-		if (isset($input['license_policy'])) {
-			$allowed_policies = array_map(fn($case) => $case->value, LicensePolicy::cases());
-			if (in_array($input['license_policy'], $allowed_policies, true)) {
-				$settings['license_policy'] = $input['license_policy'];
+		foreach ($keys as $key) {
+			if (isset($input[$key])) {
+				switch ($key) {
+					case 'active_defense':
+						$allowed_defenses = array_map(fn($case) => $case->value, DefenseStrategy::cases());
+						$settings[$key]   = in_array($input[$key], $allowed_defenses, true) ? $input[$key] : DefenseStrategy::BLOCK->value;
+						break;
+					case 'license_policy':
+						$allowed_policies = array_map(fn($case) => $case->value, LicensePolicy::cases());
+						$settings[$key]   = in_array($input[$key], $allowed_policies, true) ? $input[$key] : LicensePolicy::NO_TRAINING->value;
+						break;
+					case 'protected_post_types':
+					case 'notification_channels':
+					case 'notification_events':
+						$settings[$key] = is_array($input[$key]) ? array_map('sanitize_text_field', $input[$key]) : array();
+						break;
+					case 'crawl_delay':
+					case 'rpm':
+					case 'bandwidth_kb_limit':
+						$settings[$key] = absint($input[$key]) ?: 10;
+						break;
+					case 'slack_webhook_url':
+					case 'discord_webhook_url':
+						$settings[$key] = esc_url_raw($input[$key]);
+						break;
+					default:
+						// Handle checkboxes and others.
+						$settings[$key] = ! empty($input[$key]);
+						break;
+				}
+			} else {
+				// Special handling for checkboxes: if we are on a page that HAS the checkbox but it's not sent, it's UNCHECKED.
+				// If we are on a different page, we keep the previous value.
+				// We detect this by checking if OTHER fields from the same form are present.
+				$is_general_form = isset($input['active_defense']) || isset($input['license_policy']);
+				$is_notify_form  = isset($input['slack_webhook_url']) || isset($input['discord_webhook_url']);
+
+				$checkbox_keys = array(
+					'block_training_bots',
+					'auto_update_bots',
+					'inject_meta_tags',
+					'inject_http_headers',
+					'crawl_delay_enabled',
+					'rate_limit_enabled',
+					'bandwidth_limit_enabled',
+					'enable_llms_txt',
+					'notifications_enabled'
+				);
+
+				if (in_array($key, $checkbox_keys, true)) {
+					if ($is_general_form && ! in_array($key, array('notifications_enabled'), true)) {
+						$settings[$key] = false;
+					} elseif ($is_notify_form && 'notifications_enabled' === $key) {
+						$settings[$key] = false;
+					}
+				}
 			}
 		}
 

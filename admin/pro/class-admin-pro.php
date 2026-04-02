@@ -34,6 +34,11 @@ use function add_settings_field;
 use function add_settings_section;
 use function esc_url_raw;
 use function get_option;
+use function esc_js;
+use function wp_add_inline_script;
+use function error_log;
+use function dirname;
+use function file_put_contents;
 
 /**
  * AdminPro class — handles Pro-only admin registrations.
@@ -48,10 +53,9 @@ class AdminPro
 		add_action('aitamer_admin_register_menus', array($this, 'register_menus'));
 		add_action('aitamer_admin_register_settings', array($this, 'register_settings'));
 		add_filter('aitamer_admin_sanitize_settings', array($this, 'sanitize_pro_settings'), 10, 2);
-		add_filter('aitamer_admin_sanitize_stripe_settings', array($this, 'sanitize_pro_stripe_settings'), 10, 2);
 
 		// Assets.
-		add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
+		add_action('aitamer_admin_enqueue_assets', array($this, 'enqueue_pro_assets'), 10, 2);
 
 		// Active Defense hooks.
 		add_filter('aitamer_admin_defense_strategies', array($this, 'add_pro_strategies'));
@@ -65,7 +69,7 @@ class AdminPro
 	 *
 	 * @param string $hook The current admin page hook.
 	 */
-	public function enqueue_assets($hook): void
+	public function enqueue_pro_assets($hook): void
 	{
 		if (in_array($hook, array('post.php', 'post-new.php'), true)) {
 			$js_url = plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/pro/assets/js/admin-editor.js';
@@ -81,6 +85,53 @@ class AdminPro
 				'rest_url' => rest_url(),
 				'nonce'    => wp_create_nonce('wp_rest'),
 			));
+		}
+
+		$is_monetization = (isset($_GET['page']) && 'ai-tamer-monetization' === $_GET['page']) || false !== strpos($hook, 'ai-tamer-monetization');
+
+		if ($is_monetization) {
+			$data = array(
+				'rest_url'      => rest_url('ai-tamer/v1/lightning-stats'),
+				'nonce'         => wp_create_nonce('wp_rest'),
+				'poll_interval' => 30000,
+				'i18n'          => array(
+					'polling'       => __('Live — polling every 30s', 'ai-tamer'),
+					'error'         => __('Error', 'ai-tamer'),
+					'network_error' => __('Network error', 'ai-tamer'),
+					'parse_error'   => __('Parse error', 'ai-tamer'),
+					'timeout'       => __('Timeout', 'ai-tamer'),
+					'http_error'    => __('HTTP', 'ai-tamer'),
+					'no_tx'         => __('No Lightning transactions yet.', 'ai-tamer'),
+					'rate_missing'  => __('Exchange rate unavailable — will use manual sats fallback.', 'ai-tamer'),
+					'approx_sats'   => __('≈ %s sats (based on current exchange rate)', 'ai-tamer'),
+				),
+				'btc_rates'     => get_transient(PricingEngine::RATE_TRANSIENT_KEY) ?: array(),
+			);
+
+			// Bulletproof localization: attach to jquery-core.
+			$js_data = 'window.aitamerLN = ' . wp_json_encode($data) . ';';
+			$js_data .= ' console.log("⚡ AI Tamer Pro: Assets block triggered.");';
+			wp_add_inline_script('jquery-core', $js_data, 'after');
+
+			// Use unique handles to bypass any previous registry issues.
+			$stats_handle = 'aitamer-pro-stats';
+			$sync_handle  = 'aitamer-pro-sync';
+
+			wp_enqueue_script(
+				$stats_handle,
+				plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/pro/assets/js/lightning-stats.js',
+				array('jquery'),
+				AITAMER_VERSION,
+				true
+			);
+
+			wp_enqueue_script(
+				$sync_handle,
+				plugin_dir_url(AITAMER_PLUGIN_FILE) . 'admin/pro/assets/js/pricing-sync.js',
+				array('jquery', $stats_handle),
+				AITAMER_VERSION,
+				true
+			);
 		}
 	}
 
@@ -233,45 +284,17 @@ class AdminPro
 			$settings['active_defense'] = DefenseStrategy::PAYMENT->value;
 		}
 
-		// Web3 Data Toll Settings
-		$settings['web3_toll_enabled'] = ! empty($input['web3_toll_enabled']);
-		$settings['base_wallet_address'] = sanitize_text_field($input['base_wallet_address'] ?? '');
-		$settings['usdc_price_per_request'] = sanitize_text_field($input['usdc_price_per_request'] ?? '0.01');
-		$settings['base_rpc_node_url'] = esc_url_raw($input['base_rpc_node_url'] ?? 'https://mainnet.base.org');
-		$settings['plugin_license_key'] = sanitize_text_field($input['plugin_license_key'] ?? '');
+		$settings['plugin_license_key']     = sanitize_text_field($input['plugin_license_key'] ?? '');
+
+		$allowed_currencies = array('usd', 'eur');
+		$currency = strtolower(sanitize_text_field($input['lnbits_pricing_currency'] ?? 'usd'));
+		$settings['lnbits_pricing_currency'] = in_array($currency, $allowed_currencies, true) ? $currency : 'usd';
+
+		$settings['lnbits_pricing_fiat']     = max(0, (float) ($input['lnbits_pricing_fiat'] ?? 0.01));
 
 		return $settings;
 	}
 
-	/**
-	 * Sanitize Pro Stripe settings.
-	 *
-	 * @param array $settings Sanitized Stripe settings.
-	 * @param array $input    Raw Input.
-	 * @return array
-	 */
-	public function sanitize_pro_stripe_settings(array $settings, array $input): array
-	{
-		$settings['enabled']               = (isset($input['enabled']) && 'yes' === $input['enabled']) ? 'yes' : 'no';
-		$settings['test_mode']             = (isset($input['test_mode']) && 'no' === $input['test_mode']) ? 'no' : 'yes';
-		$settings['test_publishable']      = sanitize_text_field($input['test_publishable'] ?? '');
-		$settings['test_secret']           = sanitize_text_field($input['test_secret'] ?? '');
-		$settings['live_publishable']      = sanitize_text_field($input['live_publishable'] ?? '');
-		$settings['live_secret']           = sanitize_text_field($input['live_secret'] ?? '');
-		$settings['price_id']              = sanitize_text_field($input['price_id'] ?? '');
-		$settings['price_id_micropayment'] = sanitize_text_field($input['price_id_micropayment'] ?? '');
-
-		if (isset($input['price_id_voucher'])) {
-			$settings['price_id_voucher'] = sanitize_text_field($input['price_id_voucher']);
-		}
-		if (isset($input['voucher_credits'])) {
-			$settings['voucher_credits'] = absint($input['voucher_credits']);
-		}
-		if (isset($input['voucher_validity_days'])) {
-			$settings['voucher_validity_days'] = absint($input['voucher_validity_days']);
-		}
-		return $settings;
-	}
 
 	/**
 	 * Register Pro settings.
@@ -336,61 +359,107 @@ class AdminPro
 			array('key' => 'show_c2pa_badge', 'description' => __('Display a visual "Verified Human" shield at the bottom of authenticated posts.', 'ai-tamer'))
 		);
 
-		// 2. Web3 Data Toll section.
+
+		// 3. LNbits Lightning section.
 		add_settings_section(
-			'aitamer_web3_toll',
-			__('Web3 Data Toll (Crypto Micropayments)', 'ai-tamer'),
+			'aitamer_lnbits',
+			__('Lightning Network (LNbits / L402)', 'ai-tamer'),
 			null,
 			'ai-tamer-monetization'
 		);
 
 		add_settings_field(
-			'web3_toll_enabled',
-			__('Enable Web3 Data Toll', 'ai-tamer'),
+			'lnbits_enabled',
+			__('Enable Lightning Micropayments', 'ai-tamer'),
 			array($admin, 'render_checkbox_field'),
 			'ai-tamer-monetization',
-			'aitamer_web3_toll',
-			array('key' => 'web3_toll_enabled', 'description' => __('Allow AI agents to pay per article request using USDC on the Base network. Requires Active Defense to be set to "Payment Required".', 'ai-tamer'))
+			'aitamer_lnbits',
+			array('key' => 'lnbits_enabled', 'description' => __('Allow robots/AI agents to pay per article in Satoshis via LNbits.', 'ai-tamer'))
 		);
 
 		add_settings_field(
-			'base_wallet_address',
-			__('Base Wallet Address', 'ai-tamer'),
+			'lnbits_url',
+			__('LNbits Instance URL', 'ai-tamer'),
 			function () use ($admin) {
 				$settings = get_option('aitamer_settings', array());
-				$value = $settings['base_wallet_address'] ?? '';
-				printf('<input type="text" id="base_wallet_address" name="aitamer_settings[base_wallet_address]" value="%s" class="regular-text">', esc_attr($value));
-				echo '<p class="description">' . esc_html__('Your EVM compatible wallet address on the Base network to receive USDC.', 'ai-tamer') . '</p>';
+				$value = $settings['lnbits_url'] ?? 'https://legend.lnbits.com';
+				printf('<input type="url" id="lnbits_url" name="aitamer_settings[lnbits_url]" value="%s" class="regular-text">', esc_url($value));
+				echo '<p class="description">' . esc_html__('Default: https://legend.lnbits.com. Or your own self-hosted instance.', 'ai-tamer') . '</p>';
 			},
 			'ai-tamer-monetization',
-			'aitamer_web3_toll'
+			'aitamer_lnbits'
 		);
 
 		add_settings_field(
-			'usdc_price_per_request',
-			__('USDC Price Per Post', 'ai-tamer'),
+			'lnbits_api_key',
+			__('LNbits Invoice API Key', 'ai-tamer'),
 			function () use ($admin) {
 				$settings = get_option('aitamer_settings', array());
-				$value = $settings['usdc_price_per_request'] ?? '0.01';
-				printf('<input type="text" id="usdc_price_per_request" name="aitamer_settings[usdc_price_per_request]" value="%s" class="small-text">', esc_attr($value));
-				echo '<p class="description">' . esc_html__('Amount of USDC required per article view (e.g. 0.05).', 'ai-tamer') . '</p>';
+				$value = $settings['lnbits_api_key'] ?? '';
+				printf('<input type="password" id="lnbits_api_key" name="aitamer_settings[lnbits_api_key]" value="%s" class="regular-text">', esc_attr($value));
+				echo '<p class="description">' . esc_html__('Your LNbits "Invoice Read/Write" API key.', 'ai-tamer') . '</p>';
 			},
 			'ai-tamer-monetization',
-			'aitamer_web3_toll'
+			'aitamer_lnbits'
 		);
 
+
+
+		// Fiat Currency selector.
 		add_settings_field(
-			'base_rpc_node_url',
-			__('Base RPC Node URL', 'ai-tamer'),
-			function () use ($admin) {
+			'lnbits_pricing_currency',
+			__('Fiat Currency', 'ai-tamer'),
+			function () {
 				$settings = get_option('aitamer_settings', array());
-				$value = $settings['base_rpc_node_url'] ?? 'https://mainnet.base.org';
-				printf('<input type="url" id="base_rpc_node_url" name="aitamer_settings[base_rpc_node_url]" value="%s" class="regular-text">', esc_url($value));
-				echo '<p class="description">' . esc_html__('Public RPC node or your personal Alchemy/Infura Base URL used to verify transactions.', 'ai-tamer') . '</p>';
+				$currency = $settings['lnbits_pricing_currency'] ?? 'usd';
+				printf(
+					'<div id="aitamer-fiat-currency-row"><select name="aitamer_settings[lnbits_pricing_currency]" id="lnbits_pricing_currency">' .
+						'<option value="usd" %s>USD ($)</option>' .
+						'<option value="eur" %s>EUR (€)</option>' .
+						'</select><p class="description">%s</p></div>',
+					selected($currency, 'usd', false),
+					selected($currency, 'eur', false),
+					esc_html__('Currency used for the fiat price. Exchange rate is fetched from CoinGecko every 15 minutes.', 'ai-tamer')
+				);
 			},
 			'ai-tamer-monetization',
-			'aitamer_web3_toll'
+			'aitamer_lnbits'
 		);
+
+		// Fiat Price amount.
+		add_settings_field(
+			'lnbits_pricing_fiat',
+			__('Fiat Price Per Article', 'ai-tamer'),
+			function () {
+				$settings = get_option('aitamer_settings', array());
+				$value    = $settings['lnbits_pricing_fiat'] ?? 0.01;
+
+				// Show live equivalent if we have a cached rate.
+				$currency  = $settings['lnbits_pricing_currency'] ?? 'usd';
+				$sats_equiv = PricingEngine::convert_fiat_to_sats((float) $value, $currency);
+				$equiv_text = ($sats_equiv > 0)
+					? sprintf(
+						/* translators: %s: number of satoshis */
+						__('≈ %s sats (based on current exchange rate)', 'ai-tamer'),
+						number_format($sats_equiv)
+					)
+					: __('Exchange rate unavailable — will use manual sats fallback.', 'ai-tamer');
+
+				printf(
+					'<div id="aitamer-fiat-price-row">' .
+						'<input type="number" step="0.001" min="0.001" id="lnbits_pricing_fiat" name="aitamer_settings[lnbits_pricing_fiat]" value="%s" class="small-text">' .
+						'<p class="description" id="aitamer-fiat-equiv">%s</p></div>',
+					esc_attr($value),
+					esc_html($equiv_text)
+				);
+			},
+			'ai-tamer-monetization',
+			'aitamer_lnbits'
+		);
+
+
+
+		// Real-time conversion handled via admin/pro/assets/js/pricing-sync.js
 	}
 
 	/**
@@ -401,5 +470,4 @@ class AdminPro
 		$strategies[DefenseStrategy::PAYMENT->value] = __('Payment Required (Fiat & Crypto - 402)', 'ai-tamer');
 		return $strategies;
 	}
-
 }

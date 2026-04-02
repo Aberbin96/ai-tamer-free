@@ -24,10 +24,9 @@ require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-license-verifier.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-rest-api-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-content-filter-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-meta-box-pro.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/interface-payment-provider.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-lnbits-manager.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-billing-manager.php';
+require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-usdt-verifier.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-pricing-engine.php';
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-stripe-manager.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-watermarker.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-heuristic-detector.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-c2pa-manager.php';
@@ -35,15 +34,6 @@ require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-media-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-plugin-pro.php';
 require_once AITAMER_PLUGIN_DIR . 'admin/pro/class-admin-pro.php';
 
-require_once AITAMER_PLUGIN_DIR . 'includes/pro/class-plugin-updater.php';
-
 // Instantiate Pro handlers.
 new PluginPro();
 new AdminPro();
-
-// Start updater process (only active if license is populated).
-new PluginUpdater(
-	AITAMER_VERSION,
-	'ai-tamer-project/ai-tamer.php',
-	'ai-tamer'
-);

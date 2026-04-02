@@ -60,33 +60,16 @@ class PricingEngine
 	{
 		$base_sats = self::get_base_price($post_id);
 
-		$settings = get_option('aitamer_settings', []);
-		$dynamic_enabled = !empty($settings['lnbits_dynamic_pricing']);
-
-		if (!$dynamic_enabled || empty($agent)) {
-			return max(1, $base_sats);
-		}
-
-		$bot_multiplier     = self::get_bot_multiplier($agent);
-		$content_multiplier = self::get_content_multiplier($post_id);
+		$final = $base_sats;
 
 		/**
-		 * Filter the combined pricing multiplier.
+		 * Filter the final pricing in Satoshis.
 		 *
-		 * @param float $multiplier  Combined multiplier (bot × content).
-		 * @param int   $post_id     Post ID.
-		 * @param array $agent       Agent classification.
-		 * @param int   $base_sats   Base price before multipliers.
+		 * @param int   $final    The calculated price.
+		 * @param int   $post_id  Post ID.
+		 * @param array $agent    Agent classification.
 		 */
-		$multiplier = apply_filters(
-			'aitamer_pricing_multiplier',
-			$bot_multiplier * $content_multiplier,
-			$post_id,
-			$agent,
-			$base_sats
-		);
-
-		$final = (int) ceil($base_sats * max(1.0, (float) $multiplier));
+		$final = (int) apply_filters('aitamer_pricing_final', $final, $post_id, $agent);
 
 		return max(1, $final);
 	}
@@ -114,32 +97,25 @@ class PricingEngine
 			}
 		}
 
-		// 2. Global setting.
+		// 2. Global setting (Always Fiat).
 		$settings = get_option('aitamer_settings', []);
-		$mode     = $settings['lnbits_pricing_mode'] ?? 'manual';
+		$currency = $settings['lnbits_pricing_currency'] ?? 'usd';
+		$fiat     = (float) ($settings['lnbits_pricing_fiat'] ?? 0.01);
 
-		if ('fiat' === $mode) {
-			$currency = $settings['lnbits_pricing_currency'] ?? 'usd';
-			$fiat     = (float) ($settings['lnbits_pricing_fiat'] ?? 0.01);
-
-			$sats = self::convert_fiat_to_sats($fiat, $currency);
-			if ($sats > 0) {
-				/**
-				 * Filter the base price after fiat conversion.
-				 *
-				 * @param int    $sats     Converted price in Satoshis.
-				 * @param float  $fiat     Original fiat amount.
-				 * @param string $currency Currency code.
-				 * @param int    $post_id  Post ID.
-				 */
-				return (int) apply_filters('aitamer_base_price_sats', $sats, $fiat, $currency, $post_id);
-			}
+		$sats = self::convert_fiat_to_sats($fiat, $currency);
+		if ($sats > 0) {
+			/**
+			 * Filter the base price after fiat conversion.
+			 *
+			 * @param int    $sats     Converted price in Satoshis.
+			 * @param float  $fiat     Original fiat amount.
+			 * @param string $currency Currency code.
+			 * @param int    $post_id  Post ID.
+			 */
+			return (int) apply_filters('aitamer_base_price_sats', $sats, $fiat, $currency, $post_id);
 		}
 
-		// Fallback: manual sats setting.
-		$manual = absint($settings['lnbits_price_sats'] ?? 100);
-
-		return max(1, $manual);
+		return 100; // Final fallback if exchange rate fails.
 	}
 
 	/**

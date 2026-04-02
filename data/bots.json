@@ -29,6 +29,13 @@
       "docs": "https://developers.google.com/search/docs/crawling-indexing/google-extended"
     },
     {
+      "name": "GoogleOther",
+      "user_agent": "GoogleOther",
+      "owner": "Google",
+      "type": "training",
+      "docs": "https://developers.google.com/search/docs/crawling-indexing/googlebot"
+    },
+    {
       "name": "anthropic-ai",
       "user_agent": "anthropic-ai",
       "owner": "Anthropic",
@@ -106,11 +113,90 @@
       "docs": "https://www.facebook.com/externalua"
     },
     {
+      "name": "Diffbot",
+      "user_agent": "Diffbot",
+      "owner": "Diffbot",
+      "type": "training",
+      "docs": "https://www.diffbot.com"
+    },
+    {
       "name": "Bytespider",
       "user_agent": "Bytespider",
       "owner": "ByteDance",
       "type": "training",
       "docs": "https://bytedance.com"
+    },
+    {
+      "name": "Magpie-Crawler",
+      "user_agent": "magpie-crawler",
+      "owner": "Mixed",
+      "type": "scraper"
+    },
+    {
+      "name": "curl",
+      "user_agent": "curl",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Wget",
+      "user_agent": "Wget",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Python-Requests",
+      "user_agent": "Python-Requests",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Postman",
+      "user_agent": "Postman",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Insomnia",
+      "user_agent": "Insomnia",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "HTTPie",
+      "user_agent": "HTTPie",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Axios",
+      "user_agent": "axios",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Node-Fetch",
+      "user_agent": "node-fetch",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Go-HTTP-Client",
+      "user_agent": "Go-http-client",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Java-Client",
+      "user_agent": "Java/",
+      "type": "scraper",
+      "is_dev_tool": true
+    },
+    {
+      "name": "Aiohttp",
+      "user_agent": "aiohttp",
+      "type": "scraper",
+      "is_dev_tool": true
     },
     {
       "name": "Googlebot",
